@@ -22,6 +22,19 @@
 
 После этого лендинг будет доступен по URL GitHub Pages для репозитория.
 
+### Если GitHub Pages падает из-за submodules
+
+Если в репозитории остались “висячие” git submodules (gitlink entries) без `.gitmodules`, Pages build может падать с ошибкой вида:
+`No url found for submodule path ... in .gitmodules`.
+
+Решение: удалить submodules из репозитория (мы используем папку `repos/` только локально):
+```bash
+git rm --cached -f repos/tapi-yandex-direct repos/tapi-yandex-metrika repos/yandex-mcp repos/yandex-tools-mcp
+git add .gitignore
+git commit -m "Remove orphaned submodules (repos/)"
+git push
+```
+
 ## 2) GHCR (GitHub Container Registry)
 Ничего дополнительно настраивать не нужно:
 - workflow логинится в GHCR через `GITHUB_TOKEN`

@@ -1208,6 +1208,60 @@ def _dashboard_campaign_type_from_utm(
     return None
 
 
+def _dashboard_campaign_type_from_id(*, campaign_id: str, campaign_data: dict[str, Any]) -> str | None:
+    cid = (campaign_id or "").strip()
+    if not cid:
+        return None
+    t = str((campaign_data.get(cid) or {}).get("type") or "").strip()
+    return t if t in {"search", "rsya"} else None
+
+
+def _dashboard_campaign_id_from_metrica_direct_dim(
+    *,
+    dim: Any,
+    campaign_data: dict[str, Any],
+    name_index: dict[str, list[str]],
+) -> str | None:
+    """Best-effort extract Direct campaign id from Metrica `lastsignDirectClickOrder` dimension.
+
+    In practice Metrica can return objects like:
+      {id: "...", name: "...", direct_id: "N-123456"}
+    where `direct_id` contains the Direct campaign id.
+    """
+    if dim is None:
+        return None
+
+    if isinstance(dim, dict):
+        direct_id = str(dim.get("direct_id") or "").strip()
+        if direct_id:
+            for m in re.findall(r"\b\d{6,}\b", direct_id):
+                if m in campaign_data:
+                    return m
+
+        name = str(dim.get("name") or "").strip()
+        if name:
+            # Sometimes the campaign id is embedded in the name.
+            for m in re.findall(r"\b\d{6,}\b", name):
+                if m in campaign_data:
+                    return m
+            ids = name_index.get(name) or []
+            if len(ids) == 1:
+                return ids[0]
+
+        return None
+
+    name = str(dim).strip()
+    if not name:
+        return None
+    for m in re.findall(r"\b\d{6,}\b", name):
+        if m in campaign_data:
+            return m
+    ids = name_index.get(name) or []
+    if len(ids) == 1:
+        return ids[0]
+    return None
+
+
 def _dashboard_campaign_id_from_utm(
     *,
     utm_campaign: str,
@@ -1242,6 +1296,7 @@ def _dashboard_build_metrica_direct_by_campaign_utm(
     goals_mode: str,
     goal_ids_user: list[str],
     report_is_direct_only: bool,
+    direct_campaign_ids_allowlist: set[str] | None = None,
 ) -> dict[str, Any]:
     """Build per-campaign (campaignId) daily visits/leads from UTMCampaign report (best effort).
 
@@ -1272,6 +1327,8 @@ def _dashboard_build_metrica_direct_by_campaign_utm(
     classified_leads = 0.0
     unclassified_by_utm: dict[str, float] = {}
     unclassified_leads_by_utm: dict[str, float] = {}
+    allowlist_rows_total = 0
+    allowlist_rows_matched = 0
 
     for row in rows:
         if not isinstance(row, dict):
@@ -1283,6 +1340,17 @@ def _dashboard_build_metrica_direct_by_campaign_utm(
 
         dim_date = dims[0] if isinstance(dims[0], dict) else {"name": str(dims[0])}
         dim_utm = dims[1] if isinstance(dims[1], dict) else {"name": str(dims[1])}
+        dim_click_order = None
+        if direct_campaign_ids_allowlist is not None:
+            allowlist_rows_total += 1
+            if len(dims) >= 3:
+                dim_click_order = dims[2] if isinstance(dims[2], dict) else {"name": str(dims[2])}
+            cid_allow = _dashboard_campaign_id_from_metrica_direct_dim(
+                dim=dim_click_order, campaign_data=campaign_data, name_index=name_index
+            )
+            if not cid_allow or cid_allow not in direct_campaign_ids_allowlist:
+                continue
+            allowlist_rows_matched += 1
 
         day = str(dim_date.get("name") or "")[:10]
         if not day:
@@ -1304,7 +1372,13 @@ def _dashboard_build_metrica_direct_by_campaign_utm(
             total_direct_leads += leads
 
         utm = str(dim_utm.get("name") or "").strip()
-        cid = _dashboard_campaign_id_from_utm(utm_campaign=utm, campaign_data=campaign_data, name_index=name_index)
+        cid = None
+        if dim_click_order is not None:
+            cid = _dashboard_campaign_id_from_metrica_direct_dim(
+                dim=dim_click_order, campaign_data=campaign_data, name_index=name_index
+            )
+        if cid is None:
+            cid = _dashboard_campaign_id_from_utm(utm_campaign=utm, campaign_data=campaign_data, name_index=name_index)
         if cid is None:
             if report_is_direct_only:
                 key = utm or "(not set)"
@@ -1351,11 +1425,26 @@ def _dashboard_build_metrica_direct_by_campaign_utm(
     for cid in sorted(by_campaign_date.keys()):
         campaigns_out[str(cid)] = _series_for_campaign(str(cid))
 
+    if direct_campaign_ids_allowlist is not None and allowlist_rows_total > 0 and allowlist_rows_matched == 0:
+        return {
+            "available": False,
+            "reason": "allowlist_no_matches",
+            "meta": {
+                "report_is_direct_only": bool(report_is_direct_only),
+                "allowlist_rows_total": allowlist_rows_total,
+                "allowlist_rows_matched": allowlist_rows_matched,
+                "allowlist_size": len(direct_campaign_ids_allowlist),
+            },
+        }
+
     return {
         "available": True,
         "method": "utm_campaign",
         "meta": {
             "report_is_direct_only": bool(report_is_direct_only),
+            "allowlist_rows_total": (allowlist_rows_total if direct_campaign_ids_allowlist is not None else None),
+            "allowlist_rows_matched": (allowlist_rows_matched if direct_campaign_ids_allowlist is not None else None),
+            "allowlist_size": (len(direct_campaign_ids_allowlist) if direct_campaign_ids_allowlist is not None else None),
             "mapped_campaigns": len(campaigns_out),
             "classified_visits": classified_visits,
             "classified_leads": classified_leads,
@@ -1385,6 +1474,7 @@ def _dashboard_build_metrica_direct_split_by_utm(
     goals_mode: str,
     goal_ids_user: list[str],
     report_is_direct_only: bool,
+    direct_campaign_ids_allowlist: set[str] | None = None,
 ) -> dict[str, Any]:
     """Build UTMCampaign-attributed daily series split into Search/RSYA via UTMCampaign mapping.
 
@@ -1416,6 +1506,8 @@ def _dashboard_build_metrica_direct_split_by_utm(
     total_direct_leads = 0.0
     classified_leads = 0.0
     unclassified_leads_by_utm: dict[str, float] = {}
+    allowlist_rows_total = 0
+    allowlist_rows_matched = 0
 
     for row in rows:
         if not isinstance(row, dict):
@@ -1427,6 +1519,17 @@ def _dashboard_build_metrica_direct_split_by_utm(
 
         dim_date = dims[0] if isinstance(dims[0], dict) else {"name": str(dims[0])}
         dim_utm = dims[1] if isinstance(dims[1], dict) else {"name": str(dims[1])}
+        dim_click_order = None
+        if direct_campaign_ids_allowlist is not None:
+            allowlist_rows_total += 1
+            if len(dims) >= 3:
+                dim_click_order = dims[2] if isinstance(dims[2], dict) else {"name": str(dims[2])}
+            cid_allow = _dashboard_campaign_id_from_metrica_direct_dim(
+                dim=dim_click_order, campaign_data=campaign_data, name_index=name_index
+            )
+            if not cid_allow or cid_allow not in direct_campaign_ids_allowlist:
+                continue
+            allowlist_rows_matched += 1
 
         day = str(dim_date.get("name") or "")[:10]
         if not day:
@@ -1448,7 +1551,12 @@ def _dashboard_build_metrica_direct_split_by_utm(
             total_direct_leads += leads
 
         utm = str(dim_utm.get("name") or "").strip()
-        t = _dashboard_campaign_type_from_utm(utm_campaign=utm, campaign_data=campaign_data, name_index=name_index)
+        t = None
+        if dim_click_order is not None:
+            cid = _dashboard_campaign_id_from_metrica_direct_dim(dim=dim_click_order, campaign_data=campaign_data, name_index=name_index)
+            t = _dashboard_campaign_type_from_id(campaign_id=str(cid or ""), campaign_data=campaign_data) if cid else None
+        if t is None:
+            t = _dashboard_campaign_type_from_utm(utm_campaign=utm, campaign_data=campaign_data, name_index=name_index)
         if t is None:
             if report_is_direct_only:
                 key = utm or "(not set)"
@@ -1490,11 +1598,25 @@ def _dashboard_build_metrica_direct_split_by_utm(
     top_unknown = sorted(unclassified_by_utm.items(), key=lambda x: x[1], reverse=True)[:8]
     share = (100.0 * classified_visits / total_direct_visits) if total_direct_visits > 0 else None
     leads_share = (100.0 * classified_leads / total_direct_leads) if total_direct_leads > 0 else None
+    if direct_campaign_ids_allowlist is not None and allowlist_rows_total > 0 and allowlist_rows_matched == 0:
+        return {
+            "available": False,
+            "reason": "allowlist_no_matches",
+            "meta": {
+                "report_is_direct_only": bool(report_is_direct_only),
+                "allowlist_rows_total": allowlist_rows_total,
+                "allowlist_rows_matched": allowlist_rows_matched,
+                "allowlist_size": len(direct_campaign_ids_allowlist),
+            },
+        }
     return {
         "available": True,
         "method": "utm_campaign",
         "meta": {
             "report_is_direct_only": bool(report_is_direct_only),
+            "allowlist_rows_total": (allowlist_rows_total if direct_campaign_ids_allowlist is not None else None),
+            "allowlist_rows_matched": (allowlist_rows_matched if direct_campaign_ids_allowlist is not None else None),
+            "allowlist_size": (len(direct_campaign_ids_allowlist) if direct_campaign_ids_allowlist is not None else None),
             "classified_visits": classified_visits,
             "classified_leads": classified_leads,
             "total_direct_visits": (total_direct_visits if report_is_direct_only else None),
@@ -2308,6 +2430,22 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
     try:
         counter_id = args.get("counter_id")
         if counter_id and direct_campaign_data:
+            counter_id_s = str(counter_id).strip()
+            accounts_for_counter: list[str] = []
+            try:
+                accounts = _refresh_accounts_registry(ctx)
+                for aid, acc in (accounts or {}).items():
+                    if not isinstance(acc, dict):
+                        continue
+                    ids = acc.get("metrica_counter_ids")
+                    if not isinstance(ids, list):
+                        continue
+                    if counter_id_s in {str(x).strip() for x in ids if str(x).strip()}:
+                        accounts_for_counter.append(str(aid))
+            except Exception:
+                accounts_for_counter = []
+            is_shared_counter = len(set(accounts_for_counter)) > 1
+
             picked_engine = (
                 (metrica_sources.get("meta") or {}).get("picked_yandex_direct_engine") if isinstance(metrica_sources, dict) else None
             )
@@ -2329,21 +2467,51 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
                 "attribution": "lastsign",
             }
             used_direct_only = False
-            params = dict(base_params)
-            # Prefer a Direct-only report via lastsignSourceEngine filter, but fall back if API rejects it.
-            if picked_engine:
-                params["dimensions"] = "ym:s:date,ym:s:UTMCampaign,ym:s:lastsignSourceEngine"
-                params["filters"] = f"ym:s:lastsignSourceEngine=={_dashboard_metrica_filter_quote(str(picked_engine))}"
-                try:
-                    metrica_direct_split_report = _metrica_get_stats(ctx, params)
-                    used_direct_only = True
-                except Exception as exc:
+            direct_campaign_ids_allowlist: set[str] | None = None
+
+            # Prefer a safe Direct-only report for the current account by filtering Metrica rows
+            # via lastsignDirectClickOrder (Direct campaign id). This prevents cross-account
+            # pollution when multiple Direct logins share one Metrica counter.
+            fallback_params = dict(base_params)
+            fallback_params["dimensions"] = "ym:s:date,ym:s:UTMCampaign,ym:s:lastsignDirectClickOrder"
+            try:
+                direct_campaign_ids_allowlist = {str(x).strip() for x in (direct_campaign_data or {}).keys() if str(x).strip()}
+                metrica_direct_split_report = _metrica_get_stats(ctx, fallback_params)
+                used_direct_only = True
+                if is_shared_counter:
                     warnings.append(
-                        f"Option C: UTMCampaign engine filter rejected, using unfiltered UTMCampaign report: {exc.__class__.__name__}"
+                        "Option C: shared Metrica counter detected; using lastsignDirectClickOrder allowlist to isolate Direct traffic."
                     )
-                    metrica_direct_split_report = _metrica_get_stats(ctx, base_params)
-            else:
-                metrica_direct_split_report = _metrica_get_stats(ctx, base_params)
+            except Exception as exc:
+                msg = str(exc)
+                warnings.append(
+                    "Option C: lastsignDirectClickOrder report failed"
+                    + (f": {exc.__class__.__name__}" if exc.__class__.__name__ else "")
+                    + (f": {msg}" if msg else "")
+                )
+                # If the counter is not shared, we can still try a Direct-only report via source engine filter.
+                if (not is_shared_counter) and picked_engine:
+                    params = dict(base_params)
+                    params["dimensions"] = "ym:s:date,ym:s:UTMCampaign,ym:s:lastsignSourceEngine"
+                    params["filters"] = f"ym:s:lastsignSourceEngine=={_dashboard_metrica_filter_quote(str(picked_engine))}"
+                    try:
+                        metrica_direct_split_report = _metrica_get_stats(ctx, params)
+                        used_direct_only = True
+                        direct_campaign_ids_allowlist = None
+                    except Exception as exc2:
+                        msg2 = str(exc2)
+                        warnings.append(
+                            "Option C: UTMCampaign engine filter rejected"
+                            + (f": {exc2.__class__.__name__}" if exc2.__class__.__name__ else "")
+                            + (f": {msg2}" if msg2 else "")
+                        )
+                        metrica_direct_split_report = _metrica_get_stats(ctx, base_params)
+                        used_direct_only = False
+                        direct_campaign_ids_allowlist = None
+                else:
+                    # Shared counter: do not silently fall back to unfiltered counter-wide UTMCampaign report
+                    # because it can catastrophically inflate Direct leads/CPL for this account.
+                    metrica_direct_split_report = None
 
             if isinstance(metrica_direct_split_report, dict) and isinstance(metrica_direct_split_report.get("data"), list):
                 metrica_direct_split = _dashboard_build_metrica_direct_split_by_utm(
@@ -2353,6 +2521,7 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
                     goals_mode=goals_mode,
                     goal_ids_user=goal_ids_user,
                     report_is_direct_only=used_direct_only,
+                    direct_campaign_ids_allowlist=direct_campaign_ids_allowlist,
                 )
                 metrica_direct_by_campaign = _dashboard_build_metrica_direct_by_campaign_utm(
                     all_days=all_days,
@@ -2361,7 +2530,18 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
                     goals_mode=goals_mode,
                     goal_ids_user=goal_ids_user,
                     report_is_direct_only=used_direct_only,
+                    direct_campaign_ids_allowlist=direct_campaign_ids_allowlist,
                 )
+                if (
+                    direct_campaign_ids_allowlist is not None
+                    and isinstance(metrica_direct_split, dict)
+                    and metrica_direct_split.get("available") is False
+                    and metrica_direct_split.get("reason") == "allowlist_no_matches"
+                ):
+                    warnings.append(
+                        "Option C: lastsignDirectClickOrder allowlist matched 0 rows; Direct funnel may be unavailable. "
+                        "Check that lastsignDirectClickOrder returns Direct campaign ids for this counter."
+                    )
     except Exception as exc:
         msg = str(exc)
         warnings.append(
