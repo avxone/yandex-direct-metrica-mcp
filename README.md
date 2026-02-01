@@ -58,7 +58,7 @@ claude mcp add yandex-direct-metrica-mcp -- \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    docker.io/4georgyagaev/yandex-direct-metrica-mcp:v0.1.3
+    docker.io/4georgyagaev/yandex-direct-metrica-mcp:v0.1.4
 ```
 
 Using the published GHCR image (alternative):
@@ -68,7 +68,7 @@ claude mcp add yandex-direct-metrica-mcp -- \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v0.1.3
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v0.1.4
 ```
 
 Using a locally-built image (for development):
