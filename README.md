@@ -4,6 +4,10 @@ MCP server for **Yandex Direct** + **Yandex Metrica** (Python).
 
 Website (docs): https://georgy-agaev.github.io/yandex-direct-metrica-mcp/
 
+Images:
+- Docker Hub: https://hub.docker.com/r/4georgyagaev/yandex-direct-metrica-mcp
+- GHCR: https://github.com/georgy-agaev/yandex-direct-metrica-mcp/pkgs/container/yandex-direct-metrica-mcp
+
 Primary UX goals:
 - Pull raw reporting data (lightweight MVP, minimal normalization).
 - Generate a practical **BI dashboard (Option 1)** as `HTML + JSON` (including multi-account dashboards).
