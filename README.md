@@ -20,7 +20,7 @@ Primary UX goals:
 ### 1) Prepare state folder
 
 Create a local folder for state/config (accounts registry, cache, etc):
-- Example: `~/mcp-state/yandex-direct-metrica-mcp`
+- Example: `/path/to/mcp-state/yandex-direct-metrica-mcp`
 
 Create `accounts.json` (multi-account dashboards use this):
 ```json

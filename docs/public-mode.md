@@ -1,56 +1,56 @@
-# Public Mode (v1.0.0 contract)
+# Public mode (контракт v1.0.0)
 
-This document defines the **public read-only** contract for the `yandex-direct-metrica-mcp` Docker image.
+Этот документ описывает **контракт public read-only** для Docker image `yandex-direct-metrica-mcp`.
 
-## Definition: “read-only” (Contract A)
+## Определение “read-only” (Контракт A)
 
-Read-only means:
-- No changes to **managed entities** in Direct/Metrica/Audience (no create/update/delete of campaigns, segments, goals, etc.).
+Read-only означает:
+- никаких изменений **управляемых сущностей** в Direct/Metrica/Audience (никаких create/update/delete кампаний, сегментов, целей и т.п.).
 
-Allowed provider-side side effects (still treated as read-only in this contract):
-- Wordstat operations that create/compute report-like data.
-- Metrica Logs API export jobs (`metrica.logs_export`) used for analysis/joins (no counter configuration changes).
+Допустимые сайд-эффекты на стороне провайдера (и всё равно считаются read-only в этом контракте):
+- запросы Wordstat, которые создают/считают “отчётные” данные на стороне API,
+- экспортные джобы Metrica Logs API (`metrica.logs_export`) для анализа/джоинов (без изменения настроек счётчика).
 
-## Contract surface: tools/list
+## Контрактная поверхность: tools/list
 
-The public contract is the exact output of `tools/list` for the **public edition**.
+Контракт public-версии — это точный результат `tools/list` для **public edition**.
 
-Stability guarantee (1.x):
-- Tool `name`, `description`, and `inputSchema` are contractually stable.
-- The canonical snapshot is stored in `tests/snapshots/public_tools_v1.json`.
+Гарантия стабильности (1.x):
+- `name`, `description`, `inputSchema` (включая дефолты) считаются частью контракта.
+- Канонический snapshot: `tests/snapshots/public_tools_v1.json`.
 
-## Public artifact model
+## Модель артефактов
 
 Public image:
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:v1.0.0`
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest` (stable public)
 
-Pro image (separate artifact, out of public contract):
+Pro image (отдельный артефакт, вне public контракта):
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:v1.0.0`
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest`
 
-## Safe-by-default guarantee
+## Safe-by-default гарантия
 
-The **public image** is safe-by-default:
-- it includes a build marker (`/app/.mcp_edition=public`)
-- the server forces `public_readonly=true` at runtime even if env vars are misconfigured.
+Public image safe-by-default:
+- в образе есть build marker (`/app/.mcp_edition=public`)
+- сервер форсит `public_readonly=true` на старте, даже если env переменные ошибочно выставлены.
 
-Meaning:
-- Write tools are not returned by `tools/list`.
-- Any attempt to call write-capable entrypoints is rejected with a predictable write-guard error.
+Следствие:
+- write инструменты не возвращаются через `tools/list`,
+- любые попытки вызвать write-capable entrypoints должны падать предсказуемой ошибкой write-guard.
 
-## Environment matrix (public)
+## Матрица окружения (public)
 
-### Allowed / honored
+### Разрешено / учитывается
 
-Credentials (no secrets stored on disk by the server):
+Credentials (сервер не хранит секреты на диске):
 - `YANDEX_ACCESS_TOKEN` / `YANDEX_REFRESH_TOKEN`
 - `YANDEX_CLIENT_ID` / `YANDEX_CLIENT_SECRET`
 - `YANDEX_AUDIENCE_*` (Audience OAuth)
 - `YANDEX_WORDSTAT_*` (Wordstat OAuth)
 
 Multi-account registry:
-- `MCP_ACCOUNTS_FILE` (read-only mapping `account_id` → Direct `Client-Login` + Metrica counter defaults)
+- `MCP_ACCOUNTS_FILE` (read-only mapping `account_id` → Direct `Client-Login` + default Metrica counters)
 
 Runtime tuning:
 - `MCP_CONTENT_MODE`
@@ -59,25 +59,25 @@ Runtime tuning:
 - `MCP_RETRY_*`
 - `MCP_AUDIENCE_ENABLED`, `MCP_WORDSTAT_ENABLED`
 
-### Ignored / forced off (public)
+### Игнорируется / принудительно выключено (public)
 
-Write-enabling flags are ignored in the public image:
+Флаги включения записей игнорируются в public image:
 - `MCP_WRITE_ENABLED`
 - `HF_WRITE_ENABLED`
 - `HF_DESTRUCTIVE_ENABLED`
 - `MCP_ACCOUNTS_WRITE_ENABLED`
 
-Escape hatches are not part of the public surface:
+Escape hatches не входят в public surface:
 - `direct.raw_call`, `metrica.raw_call`, `audience.raw_call`
 
-BI Option 2 is not part of the public surface:
+BI Option 2 не входит в public surface:
 - `dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`
 
 ## /data state (public)
 
-Recommended mounted state folder (example: `/data`):
-- `accounts.json` (optional): account registry used for multi-account dashboards and `account_id` resolution.
+Рекомендуемый каталог state внутри контейнера (пример: `/data`):
+- `accounts.json` (опционально): account registry для multi-account dashboards и `account_id` resolution.
 
-The server does not persist OAuth tokens or user data.
-If cache is enabled, the cache may store bounded API responses (no raw tokens).
+Сервер не сохраняет OAuth токены и пользовательские данные.
+Если включён cache, он может хранить ограниченные ответы API (без “сырых” токенов).
 

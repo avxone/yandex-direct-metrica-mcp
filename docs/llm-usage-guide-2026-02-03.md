@@ -1,95 +1,98 @@
-# LLM Usage Guide (Public Read-Only MCP)
+# Гайд для LLM (Public Read‑Only MCP)
 
-This document is written for **LLM agents** (Claude, ChatGPT, etc.) that connect to this MCP server and need to extract the most value **without write access**.
+Документ предназначен для **LLM‑агентов** (Claude, ChatGPT и др.), которые подключаются к этому MCP‑серверу и должны получить максимум пользы **без write‑доступа**.
 
-Scope: **public read-only** toolset (v1.0.0 contract target).
+Область: **public read‑only** toolset (целевой контракт v1.0.0).
 
-## What “read-only” means here (Public v1.0.0)
+## Что здесь значит “read‑only” (Public v1.0.0)
 
-Definition: **read-only = no changes to managed entities** in Direct/Metrica/Audience (no create/update/delete of campaigns, segments, goals, etc.).
+Определение: **read‑only = не менять управляемые сущности** в Direct/Метрике/Audience (никаких create/update/delete кампаний, сегментов, целей и т.п.).
 
-Allowed side effects (still considered “read-only” for the public contract):
-- **Wordstat** requests that create/compute report-like data on the provider side.
-- **Metrica Logs API** export jobs (`metrica.logs_export`) used for analysis/joins (no counter configuration changes).
+Разрешённые side effects (всё ещё считаются “read‑only” в рамках public‑контракта):
+- **Wordstat**: запросы, которые создают/считают отчёты на стороне провайдера.
+- **Metrica Logs API** export jobs (`metrica.logs_export`) для анализа/join’ов (без изменения настроек счётчика).
 
-Not allowed in public:
-- Any Direct entity writes (`direct.create_*`, `direct.update_*`) and any “escape hatch” writes (`*.raw_call`).
-- Any Audience writes (segment create/update/delete, uploads, activation in Direct).
-- Any Metrica management writes (e.g., goals CRUD).
+Запрещено в public:
+- Любые Direct write (`direct.create_*`, `direct.update_*`) и любые “escape hatch” write (`*.raw_call`).
+- Любые Audience write (создание/обновление/удаление сегментов, загрузки, активация в Direct).
+- Любые write в Management API Метрики (например, CRUD целей).
 
-## Core rules (public contract mindset)
+## Базовые правила (public contract mindset)
 
-1) **Assume read-only by default.** Never attempt tool names that are not returned by `tools/list`.
-2) **Always pick an account explicitly** when possible:
-  - Prefer `account_id` (maps to Direct `Client-Login` + optional default Metrica counters).
-   - Use `counter_id` only when the account has multiple counters or you need an override.
-3) **Always bound data volume.** Use `limit`, `max_rows`, and dashboard/wordstat caps to keep runs fast and stable.
-4) **Prefer HF tools first.** Use `direct.hf.*`, `metrica.hf.*`, `wordstat.hf.*`, and `join.hf.*` unless you truly need raw endpoints.
-5) **Treat outputs as “raw-ish JSON”.** Do not assume optional keys exist. Be resilient to missing fields and partial coverage.
+1) **Считайте read‑only дефолтом.** Не вызывайте инструменты, которых нет в `tools/list`.
+2) **Явно выбирайте аккаунт**, когда возможно:
+  - Предпочитайте `account_id` (маппит Direct `Client-Login` + дефолтные счётчики Метрики).
+  - `counter_id` используйте только если у профиля несколько счётчиков или нужен override.
+3) **Ограничивайте объём данных.** Используйте `limit`, `max_rows` и caps dashboard/wordstat.
+4) **Сначала используйте HF.** `direct.hf.*`, `metrica.hf.*`, `wordstat.hf.*`, `join.hf.*` — до raw инструментов.
+5) **Считайте ответы “raw‑ish JSON”.** Не предполагайте, что опциональные ключи всегда есть. Устойчиво обрабатывайте partial coverage.
 
-## Minimal “good agent” workflow
+## Минимальный “хороший агент” (workflow)
 
-1) Discover accounts:
-   - Call `accounts.list`
-   - If the user changed `accounts.json`, call `accounts.reload`
+1) Обнаружьте аккаунты:
+   - `accounts.list`
+   - Если пользователь обновил `accounts.json` — `accounts.reload`
 
-2) Get a quick situation snapshot:
-   - Direct: `direct.hf.get_campaign_summary` or `direct.hf.report_performance`
+2) Быстрый “снимок ситуации”:
+   - Direct: `direct.hf.get_campaign_summary` или `direct.hf.report_performance`
    - Metrica: `metrica.hf.report_time_series` + `metrica.hf.report_landing_pages`
 
-3) Join Direct ↔ Metrica (if needed):
-   - Use `join.hf.direct_vs_metrica_by_utm` for stable campaign-level comparisons
-   - Use `join.hf.direct_vs_metrica_by_yclid` for click-to-visit linking (best effort; heavier)
+3) Join Direct ↔ Metrica (если нужно):
+   - `join.hf.direct_vs_metrica_by_utm` — более стабильное сравнение на уровне кампаний
+   - `join.hf.direct_vs_metrica_by_yclid` — связывание кликов и визитов (best effort; тяжелее)
 
-4) Generate a dashboard for humans:
-   - Use `dashboard.generate_option1` with `output_dir` and `return_data=false`
-   - Multi-account: set `all_accounts=true` (UI will show an account switcher)
-   - Optional: set `include_audience=true` to add Audience blocks (catalog + overlaps)
+4) Сгенерируйте дашборд для человека:
+   - `dashboard.generate_option1` с `output_dir` и `return_data=false`
+   - Multi‑account: `all_accounts=true` (в UI будет переключатель аккаунтов)
+   - Опционально: `include_audience=true` чтобы добавить блоки Audience (каталог + пересечения)
 
-5) Add keyword intelligence (Wordstat):
+5) Добавьте семантику/спрос (Wordstat):
    - Raw: `wordstat.top_requests` / `wordstat.dynamics` / `wordstat.regions`
-   - HF: `wordstat.hf.suggest_keywords` (resumable via cursor) + `wordstat.hf.suggest_negative_keywords`
+   - HF: `wordstat.hf.suggest_keywords` (возобновляемо по `cursor`) + `wordstat.hf.suggest_negative_keywords`
 
-6) Add audiences intelligence (Audience):
+6) Добавьте аудитории (Audience):
    - Raw: `audience.segments.list` / `audience.segments.get` / `audience.segments.overlap`
    - HF: `audience.hf.catalog` + `audience.hf.find_segment` + `audience.hf.segment_perf` (best effort)
 
-## Accounts and multi-account behavior
+## Accounts и multi‑account поведение
 
-### When to use `account_id`
-- When the user wants “project-aware” behavior:
-  - Correct Direct `Client-Login`
-  - Correct allow-list/defaults for Metrica counters
-  - Dashboard multi-account mode
+### Когда использовать `account_id`
 
-### How to handle multi-account dashboards
-- Prefer one call:
-  - `dashboard.generate_option1` with `all_accounts=true`
-- Or pick accounts explicitly:
-  - `dashboard.generate_option1` with `account_ids=["a","b","c"]`
+Когда нужен “project‑aware” режим:
+- корректный Direct `Client-Login`
+- корректные allow‑list/дефолты по счётчикам Метрики
+- multi‑account dashboard
 
-### Recommended agent prompt template (for user input)
-Ask the user to provide:
-- `account_id` (or “all accounts”)
-- `date_from`, `date_to` (YYYY-MM-DD; “to yesterday” is often best)
-- What they want: **dashboard**, **analysis**, **keywords**, **join**, or **raw export**
-- Any constraints: max time, max rows, language/regions/devices for Wordstat
+### Как делать multi‑account dashboards
+
+- Предпочтительно одним вызовом:
+  - `dashboard.generate_option1` с `all_accounts=true`
+- Или явно перечислить:
+  - `dashboard.generate_option1` с `account_ids=["a","b","c"]`
+
+### Шаблон запроса к пользователю (что спросить)
+
+Попросите пользователя дать:
+- `account_id` (или “all accounts”)
+- `date_from`, `date_to` (YYYY-MM-DD; “до вчера” обычно лучше)
+- цель: **dashboard**, **analysis**, **keywords**, **join**, **raw export**
+- ограничения: бюджет времени, max rows, язык/регионы/устройства для Wordstat
 
 ## Dashboard (`dashboard.generate_option1`) best practices
 
-Use the dashboard when you need:
-- A human-readable overview (HTML)
-- A JSON dataset that can be saved and analyzed later
-- A **multi-account** summary with a UI account switcher
+Используйте dashboard, когда нужно:
+- Читабельное резюме (HTML)
+- JSON датасет “на потом”
+- **multi‑account** summary с переключателем в UI
 
-Recommended defaults:
-- `output_dir` set (so artifacts are saved)
-- `return_data=false` (prevents huge payloads in chat)
-- `include_raw_reports=true` only when you actually need raw payloads for debugging
-- `include_wordstat=true` only when Wordstat credentials exist and time budget allows
-- `include_audience=true` only when Audience credentials exist and you want audience blocks
+Рекомендованные дефолты:
+- `output_dir` задан (чтобы артефакты сохранялись)
+- `return_data=false` (чтобы не тащить гигантские payload’ы в чат)
+- `include_raw_reports=true` — только если реально нужен дебаг raw payload’ов
+- `include_wordstat=true` — только если есть Wordstat креды и хватает time‑budget
+- `include_audience=true` — только если есть Audience креды и нужен блок по аудиториям
 
-Example (multi-account, 30d, write files only):
+Пример (multi‑account, 30 дней, только запись файлов):
 ```json
 {
   "all_accounts": true,
@@ -104,33 +107,34 @@ Example (multi-account, 30d, write files only):
 }
 ```
 
-Notes:
-- The server may auto-shift `date_to` to **yesterday** if you pass today/future.
-- In multi-account mode, the HTML includes an account selector and updates the view client-side.
-- Wordstat dashboard block is **best effort** and bounded by `wordstat_*` caps.
+Примечания:
+- Сервер может автоматически сдвинуть `date_to` на **вчера**, если вы передали сегодня/будущее.
+- В multi‑account режиме HTML содержит переключатель аккаунтов и обновляет view на клиенте.
+- Wordstat блок в дашборде — **best effort** и ограничен `wordstat_*` caps.
 
-## Direct tools: when to use raw vs HF
+## Direct: когда raw, а когда HF
 
-### Prefer HF tools for analysis
-Use these for “what’s going on?” questions:
+### Для анализа — сначала HF
+
+Используйте для вопросов “что происходит?”:
 - `direct.hf.get_campaign_summary`
 - `direct.hf.report_performance`
-- `direct.hf.report_search_phrases` (search terms analysis)
+- `direct.hf.report_search_phrases` (анализ поисковых фраз)
 - `direct.hf.report_keywords` / `direct.hf.report_ads` / `direct.hf.report_adgroups`
-- `direct.hf.get_bids_summary` (bidding snapshot)
+- `direct.hf.get_bids_summary` (снимок ставок)
 
-### Use raw tools when you need exact API payloads
-Use these for debugging or custom mapping:
+### Raw инструменты — когда нужен “как в API”
+Используйте, если нужен дебаг или кастомный маппинг:
 - `direct.report` (custom reports)
 - `direct.list_campaigns`, `direct.list_adgroups`, `direct.list_ads`, `direct.list_keywords`, etc.
 
-Efficiency hints:
-- Start with HF summary → only then drill down into raw lists.
-- Use `direct.get_changes` for incremental/“what changed?” workflows (lighter than full refresh).
+Подсказки по эффективности:
+- Начинайте с HF summary → затем углубляйтесь в raw списки.
+- Для инкрементальных сценариев “что изменилось?” используйте `direct.get_changes` (легче, чем полный refresh).
 
-## Metrica tools: quick reports vs heavy logs
+## Metrica: быстрые отчёты vs тяжёлые логи
 
-### Prefer HF reports for dashboards and analysis
+### Для dashboard/аналитики — HF отчёты
 - `metrica.hf.report_time_series`
 - `metrica.hf.report_landing_pages`
 - `metrica.hf.report_utm_campaigns`
@@ -138,78 +142,78 @@ Efficiency hints:
 - `metrica.hf.report_devices`
 - `metrica.hf.counter_summary`
 
-### Logs API is powerful but heavier
-- `metrica.logs_export` is used by `join.hf.direct_vs_metrica_by_yclid`
-- Prefer joins/dashboard first; only fall back to logs when you must link clicks to visits
+### Logs API мощный, но тяжелее
+- `metrica.logs_export` используется в `join.hf.direct_vs_metrica_by_yclid`
+- Сначала пробуйте join’ы/dashboard; к логам переходите только если нужно линковать клики к визитам
 
-## Audience tools (public read-only)
+## Audience (public read‑only)
 
-### Raw layer (Audience API-shaped)
+### Raw слой (форма как у Audience API)
 - `audience.user_info`
-- Segments (read): `audience.segments.list`, `audience.segments.get`, `audience.segments.stats`, `audience.segments.overlap`
-- Catalogs (read): `audience.pixels.list`, `audience.pixels.get`, `audience.lookalikes.list`, `audience.lookalikes.get`
+- Сегменты (read): `audience.segments.list`, `audience.segments.get`, `audience.segments.stats`, `audience.segments.overlap`
+- Каталоги (read): `audience.pixels.list`, `audience.pixels.get`, `audience.lookalikes.list`, `audience.lookalikes.get`
 
-### HF layer (agent-friendly)
+### HF слой (agent‑friendly)
 - `audience.hf.find_segment`
 - `audience.hf.catalog`
 - `audience.hf.segment_perf` (best effort proxy; bounded; expect partial coverage)
 
-## Join tools: how to choose
+## Join: как выбирать инструмент
 
-### `join.hf.direct_vs_metrica_by_utm` (recommended)
-Use when:
-- You want daily series comparison at campaign level
-- You have stable `UTMCampaign` tagging or can infer it reliably
+### `join.hf.direct_vs_metrica_by_utm` (рекомендуется)
+Используйте, когда:
+- Нужна дневная динамика и сравнение на уровне кампаний
+- Есть стабильная разметка `UTMCampaign` (или вы можете надёжно её вывести)
 
-Typical question it answers:
-- “Direct clicks/cost/leads per day vs Metrica visits/leads per day — do they correlate?”
+Типичный вопрос:
+- «Клики/расход/лиды Direct по дням vs визиты/лиды Метрики по дням — коррелирует ли?»
 
-### `join.hf.direct_vs_metrica_by_yclid` (best effort, heavier)
-Use when:
-- You need to link Direct click identifiers to Metrica visits (Logs API)
+### `join.hf.direct_vs_metrica_by_yclid` (best effort, тяжелее)
+Используйте, когда:
+- Нужно связать click identifiers из Direct с визитами Метрики (Logs API)
 - UTMs are missing/unreliable and you need click-level evidence
 
-Operational tips:
-- Keep `max_rows` bounded (default is already capped)
-- Use `request_id` to resume a run if it times out
-- Expect partial joins: logs fields may be missing or data may not cover all clicks
+Операционные советы:
+- Держите `max_rows` ограниченным (по умолчанию уже есть cap)
+- Используйте `request_id`, чтобы продолжить прогон при таймауте
+- Ожидайте partial join: поля логов могут отсутствовать, а данные могут не покрывать все клики
 
-## Wordstat tools (public read-only keyword intelligence)
+## Wordstat (public read‑only: семантика/спрос)
 
-### Raw layer (API-shaped data)
-- `wordstat.user_info` — validates access & shows account/context
-- `wordstat.get_regions_tree` — region ids catalog
+### Raw слой (форма как у API)
+- `wordstat.user_info` — проверка доступа и контекста аккаунта
+- `wordstat.get_regions_tree` — каталог region ids
 - `wordstat.top_requests` — related queries for one phrase (or a list)
 - `wordstat.dynamics` — time dynamics for a phrase
 - `wordstat.regions` — region distribution for a phrase
 
-Use raw tools when you need:
-- Maximum flexibility (you will interpret the payload yourself)
-- Exact response fields for export/audit
+Raw используйте, когда нужно:
+- Максимальная гибкость (вы сами интерпретируете payload)
+- Точные поля ответа для выгрузки/аудита
 
-### HF layer (agent-friendly)
+### HF слой (agent‑friendly)
 
 #### `wordstat.hf.suggest_keywords` (resumable)
-Use when:
-- You have **seed phrases** and want a consolidated shortlist of candidates
+Используйте, когда:
+- Есть **seed phrases** и нужен консолидированный shortlist кандидатов
 
-Important:
-- This tool may return `status="pending"` with `preview.cursor`.
-- If pending, call the tool again with `cursor` until it returns `status="ok"`.
+Важно:
+- Инструмент может вернуть `status="pending"` и `preview.cursor`.
+- Если pending — вызывайте ещё раз с `cursor`, пока не получите `status="ok"`.
 
-Example loop:
+Пример цикла:
 1) Call with `seed_phrases`
 2) If pending, call again with `cursor`
 3) Stop when `status="ok"`
 
 #### `wordstat.hf.suggest_negative_keywords` (lexicon-based)
-Use when:
-- You already have phrases (from search terms, Wordstat, landing pages) and want **negative token candidates**
-- You need a quick heuristic list without calling external APIs
+Используйте, когда:
+- Уже есть список фраз (из поисковых фраз, Wordstat, лендингов) и нужны кандидаты **минус‑слов/токенов**
+- Нужен быстрый эвристический список без внешних API вызовов
 
-## Putting it together: “keyword recommendations for running campaigns”
+## Сборка сценария: “рекомендации ключей для запущенных кампаний”
 
-Good pattern for a public read-only agent:
+Хороший паттерн для public read‑only агента:
 1) Identify top-spend or top-click campaigns:
    - `direct.hf.report_performance` (bounded)
 2) Extract seed terms:
@@ -223,21 +227,21 @@ Good pattern for a public read-only agent:
    - Provide rationale + expected impact
    - Flag that actual edits require Pro/write tools
 
-## Error handling: what to do when tools fail
+## Ошибки: как действовать, когда tool падает
 
-When a tool returns an MCP error:
-- Surface the **provider** (`direct`, `metrica`, `wordstat`) and any `request_id`/ids.
-- Provide an actionable hint:
-  - missing access → check account permissions
-  - invalid token → refresh/re-auth and re-run
-  - rate limit → reduce caps / retry later
-  - missing `account_id` mapping → check `/data/accounts.json` and call `accounts.reload`
+Когда инструмент вернул MCP‑ошибку:
+- Выведите **provider** (`direct`, `metrica`, `wordstat`, `audience`) и любые `request_id`/ids.
+- Дайте практичный hint:
+  - нет доступа → проверьте права на аккаунт/счётчик/логин
+  - невалидный токен → обновить/перепройти OAuth и повторить
+  - rate limit → уменьшить caps / повторить позже
+  - нет маппинга `account_id` → проверить `accounts.json` и вызвать `accounts.reload`
 
-Recommended retry logic in an LLM:
-- Retry only on clearly transient failures (timeouts/5xx/rate limit).
-- Do not blindly retry 4xx (usually configuration/permission).
+Рекомендации по ретраям:
+- Повторяйте только при явно временных ошибках (timeout/5xx/rate limit).
+- Не ретрайте “вслепую” 4xx (обычно это конфиг/права).
 
-## Tool index (public read-only)
+## Индекс инструментов (public read‑only)
 
 Accounts:
 - `accounts.list`, `accounts.reload`

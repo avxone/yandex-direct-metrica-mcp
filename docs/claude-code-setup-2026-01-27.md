@@ -44,7 +44,7 @@ If you prefer CLI-managed config:
 claude mcp add yandex-direct-metrica-mcp -s user -- /path/to/venv/bin/yandex-direct-metrica-mcp --env-file /path/to/your/.env
 claude mcp list
 ```
-Then update `~/crew_a/.claude/settings.local.json` allow-list similarly.
+Then update your Claude Code settings allow-list similarly (path depends on your setup).
 
 ## Quick prompts to test UX
 

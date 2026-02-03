@@ -1,42 +1,42 @@
-# Dashboard generator (Option 1)
+# Генератор дашборда (Option 1)
 
-Tool: `dashboard.generate_option1`
+Инструмент: `dashboard.generate_option1`
 
-Outputs:
-- `*.html` (self-contained dashboard)
-- `*.json` (same data; convenient for diffs and automated checks)
+Выходы:
+- `*.html` (самодостаточный дашборд)
+- `*.json` (те же данные; удобно для diff/проверок)
 
-## Common usage patterns
+## Типовые сценарии
 
-### Single account
+### Один аккаунт
 
-Arguments (example):
-- `account_id`: profile id from `accounts.json`
+Аргументы (пример):
+- `account_id`: profile id из `accounts.json`
 - `date_from`: `YYYY-MM-DD`
-- `date_to`: `YYYY-MM-DD` (recommended: **yesterday**)
-- `output_dir`: where to write files
-- `dashboard_slug`: optional, for nicer filenames
-- `return_data=false`: avoid token-limit issues in Claude Code
+- `date_to`: `YYYY-MM-DD` (рекомендуется: **вчера**)
+- `output_dir`: куда писать файлы
+- `dashboard_slug`: опционально, для более читаемых имён файлов
+- `return_data=false`: чтобы не упираться в лимиты ответа в Claude Code
 
-### Multi-account
+### Несколько аккаунтов
 
-Use:
+Используйте:
 - `all_accounts=true`
-or
+или
 - `account_ids=[...]`
 
-The generated HTML contains an account selector and switches content client-side.
+Сгенерированный HTML содержит селектор аккаунта и переключает контент на стороне клиента.
 
-## Notes
+## Примечания
 
-- “Today” data can be incomplete in Direct/Metrica; for daily use set `date_to` to yesterday.
-- Campaign-level CPL/leads can be **best-effort** and may be gated if Metrica attribution filters fail (to avoid misleading numbers).
+- Данные за “сегодня” в Direct/Metrica часто неполные; для ежедневного использования ставьте `date_to` = вчера.
+- Leads/CPL на уровне кампаний могут считаться **best-effort** и иногда “гейтятся”, если фильтры атрибуции Metrica не проходят проверку (чтобы не показывать вводящие в заблуждение числа).
 
-## Wordstat (optional)
+## Wordstat (опционально)
 
-You can include Wordstat-based keyword suggestions:
+Можно включить подсказки ключевых фраз на основе Wordstat:
 - `include_wordstat=true`
-- Optional tuning:
+- Дополнительные настройки:
   - `wordstat_max_campaigns`
   - `wordstat_max_seed_phrases_per_campaign`
   - `wordstat_num_phrases`
@@ -45,12 +45,11 @@ You can include Wordstat-based keyword suggestions:
   - `wordstat_language`
   - `wordstat_regions`, `wordstat_devices`
 
-In multi-account mode (`all_accounts=true` / `account_ids=[...]`) Wordstat suggestions are computed per selected account dataset and switch together with the account selector.
+В multi-account режиме (`all_accounts=true` / `account_ids=[...]`) подсказки Wordstat считаются для выбранного аккаунта и переключаются вместе с селектором.
 
-## Audience (optional)
+## Audience (опционально)
 
-You can include Audience segments + overlaps blocks:
+Можно включить блоки с сегментами и пересечениями Audience:
 - `include_audience=true`
 
-In multi-account mode (`all_accounts=true` / `account_ids=[...]`) Audience data is computed once per selected account dataset and switches together with the account selector.
-
+В multi-account режиме (`all_accounts=true` / `account_ids=[...]`) данные Audience считаются для выбранного аккаунта и переключаются вместе с селектором.

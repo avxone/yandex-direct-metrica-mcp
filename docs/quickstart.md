@@ -1,21 +1,23 @@
-# Quickstart (Docker + Claude Code)
+# Быстрый старт (Docker + Claude Code)
 
-This guide assumes you want the **Docker** runtime (recommended) and you will connect via **Claude Code**.
+Гайд предполагает, что вы используете **Docker** (рекомендуется) и подключаетесь через **Claude Code**.
 
-## Prerequisites
+## Требования
 
 - Docker Desktop
 - Claude Code CLI (`claude`)
-- Yandex OAuth token(s) with access to:
-  - Direct API (for the relevant client logins)
-  - Metrica API (for the relevant counter IDs)
+- OAuth‑токен(ы) Яндекса с доступом к:
+  - Direct API (для нужных `Client-Login`)
+  - Metrica API (для нужных счётчиков)
+  - (опционально) Audience API
+  - (опционально) Wordstat API
 
-## 1) Create a state folder
+## 1) Создайте state‑папку
 
-Pick a folder that will store configuration/state on your machine:
-- Example: `~/mcp-state/yandex-direct-metrica-mcp`
+Выберите папку на своей машине, где будет храниться состояние/конфиги:
+- Пример: `/path/to/mcp-state/yandex-direct-metrica-mcp`
 
-Inside it, create `accounts.json`:
+Внутри создайте `accounts.json`:
 ```json
 {
   "accounts": [
@@ -29,30 +31,30 @@ Inside it, create `accounts.json`:
 }
 ```
 
-Notes:
-- `id` must be **unique**. If one Direct client login maps to multiple sites/counters, create multiple profiles with different `id`.
-- `metrica_counter_ids` is an allow-list for that profile (used by dashboard + joins).
+Примечания:
+- `id` должен быть **уникальным**. Если один `direct_client_login` соответствует нескольким сайтам/счётчикам — заведите несколько профилей с разными `id`.
+- `metrica_counter_ids` — allow‑list счётчиков для профиля (используется в dashboard + join’ах).
 
-## 2) Create an `.env`
+## 2) Создайте `.env`
 
-Copy `.env.example` and fill it:
-- OAuth token(s)
-- Direct defaults (`YANDEX_DIRECT_CLIENT_LOGIN`, optional `YANDEX_DIRECT_CLIENT_LOGINS`)
-- Metrica allow-list (`YANDEX_METRICA_COUNTER_IDS`)
+Скопируйте `.env.example` и заполните:
+- OAuth‑токены/refresh tokens
+- дефолты Direct (например, `YANDEX_DIRECT_CLIENT_LOGIN`, опционально `YANDEX_DIRECT_CLIENT_LOGINS`)
+- allow‑list счётчиков Метрики (`YANDEX_METRICA_COUNTER_IDS`)
 
-Recommended defaults for public/read-only usage:
+Рекомендованные дефолты для public/read‑only:
 - `MCP_WRITE_ENABLED=false`
 - `HF_WRITE_ENABLED=false`
 - `MCP_PUBLIC_READONLY=true`
 
-## 3) Add MCP to Claude Code
+## 3) Добавьте MCP в Claude Code
 
-Build locally:
+Соберите локально:
 ```bash
 docker build -t yandex-direct-metrica-mcp:local .
 ```
 
-Add to Claude Code:
+Добавьте в Claude Code:
 ```bash
 claude mcp add yandex-direct-metrica-mcp -- \
   docker run --rm -i \
@@ -62,13 +64,13 @@ claude mcp add yandex-direct-metrica-mcp -- \
     yandex-direct-metrica-mcp:local
 ```
 
-Verify:
+Проверьте:
 ```bash
 claude mcp list
 ```
 
-## 4) First checks
+## 4) Первые проверки
 
-In Claude Code, try:
-- “List accounts from the server.”
-- “Generate `dashboard.generate_option1` for all accounts for the last 30 days **to yesterday**, save into `/path/to/dashboards`, `all_accounts=true`, `return_data=false`, and give me the HTML path.”
+В Claude Code попробуйте:
+- «List accounts from the server.»
+- «Сгенерируй `dashboard.generate_option1` по всем аккаунтам за последние 30 дней **до вчера**, сохрани в `/path/to/dashboards`, `all_accounts=true`, `return_data=false`, и верни путь к HTML.»

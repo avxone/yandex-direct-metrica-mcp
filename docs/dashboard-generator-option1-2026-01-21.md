@@ -29,7 +29,7 @@
   - `all_accounts=true` — включить все профили из `accounts.json`.
   - `account_ids=[...]` — включить только перечисленные профили (по `id` из `accounts.json`).
 - `date_from`, `date_to` — период отчёта (например, `2025-12-01`…`2025-12-31`).
-- `output_dir` — куда сохранять (например, `~/Downloads/Marketing2025/` или state-папка).
+- `output_dir` — куда сохранять (например, `/path/to/dashboards` или state-папка).
 - `dashboard_slug` (опционально) — для читаемого имени файла.
 - `goal_ids` (опционально) — IDs целей Метрики для расчёта “Leads” (`ym:s:goal{ID}reaches`). Если не заданы, генератор пытается включить “все цели” через отчёт по измерению `ym:s:goal` (best effort).
 - `return_data` (опционально) — возвращать ли полный `data` в ответе (по умолчанию `false`, если задан `output_dir`).

@@ -1,38 +1,38 @@
-# Public vs Pro (tool access model)
+# Public vs Pro (модель доступа к инструментам)
 
-Goal: publish a safe public build focused on **read-only** analytics, and keep Direct write operations in a separate **Pro** distribution.
+Цель: публиковать безопасную **public** сборку для **read‑only** аналитики и держать write‑операции (особенно Direct) в отдельной **Pro** дистрибуции.
 
-## Public (read-only)
+## Public (read‑only)
 
-Recommended setting:
+Рекомендованная настройка:
 - `MCP_PUBLIC_READONLY=true`
 
-Effect:
-- Write tools are hidden/blocked (Direct create/update, raw calls).
-- Designed for reporting, joins, and dashboard generation.
- - BI Option 2 tools (`dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`) are **not** part of the public surface.
+Эффект:
+- Write‑инструменты скрыты/заблокированы (Direct create/update, escape‑hatch raw calls).
+- Режим рассчитан на отчёты, join’ы и генерацию BI‑дашборда.
+- BI Option 2 (`dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`) **не** входит в public поверхность.
 
-Recommended artifact model (release 1.0.0):
-- Public Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<tag>` and `:latest`
-  - Safe-by-default: public edition forces read-only even if runtime env vars are misconfigured.
-- Pro Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<tag>` (separate artifact)
+Рекомендованная модель артефактов (релиз 1.0.0):
+- Public Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<tag>` и `:latest`
+  - Safe‑by‑default: public edition форсирует read‑only даже если env‑переменные настроены неверно.
+- Pro Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<tag>` (отдельный артефакт)
 
-See also:
-- `docs/public-mode.md` (public contract spec)
-- `docs/compatibility-semver.md` (compatibility policy)
+См. также:
+- `docs/public-mode.md` (спецификация public‑контракта)
+- `docs/compatibility-semver.md` (политика совместимости)
 
-## Pro (full)
+## Pro (полный контур)
 
-Recommended setting:
+Рекомендованная настройка:
 - `MCP_PUBLIC_READONLY=false`
 
-Effect:
-- Full toolset is available (still guarded by existing safety env flags like `MCP_WRITE_ENABLED`, sandbox-only policies, etc.).
- - Includes BI Option 2 datasets + incremental sync (for warehouse/BI pipelines).
- - Includes HF write tools (guarded by `apply=true`) such as Direct plan/apply and Metrica goals CRUD.
+Эффект:
+- Доступен полный набор инструментов (всё ещё под guardrails: `MCP_WRITE_ENABLED`, sandbox‑only политики и т.д.).
+- Доступен BI Option 2 (датасеты + инкрементальный sync для BI/warehouse пайплайнов).
+- Доступны HF write инструменты (guarded `apply=true`) — например, Direct plan/apply и CRUD целей в Метрике.
 
-## Why this split
+## Зачем делить
 
-- Reduces risk for public users (no accidental writes).
-- Keeps the public surface smaller and easier to support.
-- Allows a paid/pro offering without changing the core architecture.
+- Меньше риск для public пользователей (нет “случайных” записей).
+- Public поверхность меньше и проще сопровождать.
+- Можно сделать платный/pro слой без изменения архитектуры ядра.

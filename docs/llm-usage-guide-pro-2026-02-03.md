@@ -1,28 +1,28 @@
-# LLM Usage Guide (PRO MCP)
+# Гайд для LLM (PRO MCP)
 
-This document is written for **LLM agents** that connect to this MCP server and need to extract the most value **with PRO tools enabled** (including write tools guarded by `apply=true` + env flags).
+Документ предназначен для **LLM‑агентов**, которые подключаются к этому MCP‑серверу и должны получить максимум пользы **с включёнными PRO‑инструментами** (включая write‑инструменты под guardrails: `apply=true` + env flags).
 
-Scope: **PRO** toolset (Direct + Metrica + Wordstat + Audience) including **BI Option 2** datasets + incremental sync.
+Область: **PRO** toolset (Direct + Metrica + Wordstat + Audience), включая **BI Option 2** (датасеты + инкрементальный sync).
 
-## Safety rules (PRO mindset)
+## Правила безопасности (PRO mindset)
 
-1) **Still “safe by default”.** Only execute writes when the user explicitly asks and you can satisfy the guardrails (`apply=true`, write flags enabled, sandbox-only policy).
-2) **Use plan/apply for Direct changes.** Prefer `direct.hf.plan_changes` → user review → `direct.hf.apply_plan`.
-3) **Always bind data volume.** Use `date_from/date_to`, `chunk_days`, per-day limits, and pagination.
-4) **Prefer account-aware calls.** Use `account_id` where possible; it resolves Direct `Client-Login` and optional default `counter_id`.
+1) **Даже в PRO — safe by default.** Делайте write только если пользователь явно попросил и соблюдены guardrails (`apply=true`, write flags включены, sandbox‑only policy).
+2) **Для Direct изменений — plan/apply.** Предпочитайте `direct.hf.plan_changes` → ревью пользователя → `direct.hf.apply_plan`.
+3) **Ограничивайте объём данных.** `date_from/date_to`, `chunk_days`, per‑day limits, pagination.
+4) **Предпочитайте account‑aware вызовы.** Используйте `account_id`, когда возможно; он резолвит Direct `Client-Login` и опциональный default `counter_id`.
 
-## Enabling PRO features (operator checklist)
+## Включение PRO (чеклист оператора)
 
-Typical setup:
+Типичный набор:
 - `MCP_PUBLIC_READONLY=false`
 - For Direct/Audience writes: `MCP_WRITE_ENABLED=true`
 - For HF writes: `HF_WRITE_ENABLED=true`
 - For destructive HF (deletes): `HF_DESTRUCTIVE_ENABLED=true` (only if you really mean it)
-- Keep sandbox-only writes: `MCP_WRITE_SANDBOX_ONLY=true` (recommended)
+- Оставьте sandbox‑only writes: `MCP_WRITE_SANDBOX_ONLY=true` (рекомендуется)
 
-## Tool index (PRO)
+## Индекс инструментов (PRO)
 
-Rule: `tools/list` is the source of truth. The index below is a practical map of namespaces and recommended entrypoints.
+Правило: `tools/list` — источник истины. Индекс ниже — практическая карта namespaces и рекомендуемых entrypoints.
 
 Accounts:
 - `accounts.list`, `accounts.reload`, `accounts.upsert`, `accounts.delete` (writes guarded by `MCP_ACCOUNTS_WRITE_ENABLED`)
@@ -30,7 +30,7 @@ Accounts:
 Dashboard (Option 1):
 - `dashboard.generate_option1` (multi-account, optional Wordstat/Audience blocks)
 
-Dashboard (BI Option 2 datasets + sync):
+Dashboard (BI Option 2: датасеты + sync):
 - `dashboard.schema`
 - `dashboard.dataset.*` (Variant B: Direct/Metrica/Wordstat/Join + Audience)
 - `dashboard.sync.start`, `dashboard.sync.next`
@@ -39,7 +39,7 @@ Direct (raw):
 - Reporting: `direct.report`, `direct.get_changes`
 - Entities: `direct.list_*` / `direct.get_*`
 - Writes: `direct.create_*`, `direct.update_*` (guarded by `MCP_WRITE_ENABLED` + sandbox policy)
-- Escape hatch (advanced): `direct.raw_call` (guarded; avoid unless needed)
+- Escape hatch (advanced): `direct.raw_call` (guarded; избегайте без необходимости)
 
 Direct (HF):
 - Read helpers: `direct.hf.find_*`, `direct.hf.get_*`, `direct.hf.report_*`
@@ -52,7 +52,7 @@ Metrica (raw):
 - Reports: `metrica.report`, `metrica.list_counters`, `metrica.counter_info`
 - Logs API: `metrica.logs_export` (create/evaluate/download/clean/cancel)
 - Management writes: `metrica.goals.*` (create/update/delete)
-- Escape hatch (advanced): `metrica.raw_call` (avoid unless needed)
+- Escape hatch (advanced): `metrica.raw_call` (избегайте без необходимости)
 
 Metrica (HF):
 - Read helpers: `metrica.hf.*` reports + `metrica.hf.counter_summary`
@@ -61,7 +61,7 @@ Metrica (HF):
 Audience (raw):
 - Read: `audience.user_info`, `audience.segments.list/get/stats/overlap`, `audience.pixels.*`, `audience.lookalikes.*`
 - Writes (guarded by `MCP_WRITE_ENABLED` + sandbox policy): `audience.segments.create/update/delete`, `audience.upload.*`
-- Escape hatch (advanced): `audience.raw_call` (avoid unless needed)
+- Escape hatch (advanced): `audience.raw_call` (избегайте без необходимости)
 
 Audience (HF):
 - Read helpers: `audience.hf.find_segment`, `audience.hf.catalog`, `audience.hf.segment_perf`
@@ -75,75 +75,75 @@ Join (HF):
 - `join.hf.direct_vs_metrica_by_utm`
 - `join.hf.direct_vs_metrica_by_yclid` (heavier; uses Logs API; resumable via `request_id`)
 
-## BI Option 2 (datasets + incremental sync)
+## BI Option 2 (датасеты + инкрементальный sync)
 
-### The core API
+### Базовый API
 
-1) Discover schema:
+1) Посмотреть схему:
 - `dashboard.schema`
 
-2) Start sync:
+2) Стартовать sync:
 - `dashboard.sync.start`
-  - Provide: `datasets[]`, `account_ids[]`, `date_from`, `date_to`
-  - Optional: `chunk_days`, `limit_per_day`, `goal_ids`, `segment_ids`
+  - Обязательные: `datasets[]`, `account_ids[]`, `date_from`, `date_to`
+  - Опционально: `chunk_days`, `limit_per_day`, `goal_ids`, `segment_ids`
 
-3) Consume pages:
+3) Забирать страницы:
 - `dashboard.sync.next` with `cursor`
-  - Returns `ndjson` (one JSON object per line) with the shape:
+  - Возвращает `ndjson` (по одному JSON‑объекту на строку) вида:
     - `{ "dataset": "...", "account_id": "...", "row": { ... } }`
 
-### Recommended Variant B dataset set
+### Рекомендуемый набор датасетов (Variant B)
 
 Direct (dims + facts):
 - `dashboard.dataset.direct_campaigns_dim`
 - `dashboard.dataset.direct_adgroups_dim`
 - `dashboard.dataset.direct_keywords_dim`
 - `dashboard.dataset.direct_campaign_daily`
-- `dashboard.dataset.direct_keyword_daily` (heavy; prefer 1-day chunks)
-- `dashboard.dataset.direct_ads_daily` (heavy; prefer 1-day chunks)
-- `dashboard.dataset.direct_search_phrases_daily` (very heavy; only when needed)
+- `dashboard.dataset.direct_keyword_daily` (тяжёлый; лучше чанки по 1 дню)
+- `dashboard.dataset.direct_ads_daily` (тяжёлый; лучше чанки по 1 дню)
+- `dashboard.dataset.direct_search_phrases_daily` (очень тяжёлый; только при необходимости)
 - `dashboard.dataset.direct_bids_snapshot`
 
 Metrica (facts):
 - `dashboard.dataset.metrica_daily`
 - `dashboard.dataset.metrica_devices_daily`
 - `dashboard.dataset.metrica_geo_daily`
-- `dashboard.dataset.metrica_goals_daily` (requires `goal_ids`)
-- `dashboard.dataset.metrica_utm_campaigns_daily` (bounded by `limit_per_day`)
-- `dashboard.dataset.metrica_landing_pages_daily` (bounded by `limit_per_day`)
+- `dashboard.dataset.metrica_goals_daily` (требует `goal_ids`)
+- `dashboard.dataset.metrica_utm_campaigns_daily` (ограничен `limit_per_day`)
+- `dashboard.dataset.metrica_landing_pages_daily` (ограничен `limit_per_day`)
 
 Audience:
 - `dashboard.dataset.audience_segments`
-- `dashboard.dataset.audience_overlap` (requires `segment_ids`)
-- `dashboard.dataset.audience_segment_perf_daily` (requires `segment_ids` + dates)
+- `dashboard.dataset.audience_overlap` (требует `segment_ids`)
+- `dashboard.dataset.audience_segment_perf_daily` (требует `segment_ids` + даты)
 
-Wordstat (manual / ad-hoc):
+Wordstat (manual / ad‑hoc):
 - `dashboard.dataset.wordstat_top_requests`
 
-Join (manual / ad-hoc):
+Join (manual / ad‑hoc):
 - `dashboard.dataset.join_direct_vs_metrica_utm_daily`
 
-## Keyword recommendations → apply (Direct plan/apply)
+## Рекомендации ключей → применение (Direct plan/apply)
 
-Recommended workflow:
+Рекомендуемый workflow:
 
-1) Extract candidates:
+1) Собрать кандидатов:
 - `direct.hf.report_search_phrases` (search terms)
 - `wordstat.hf.suggest_keywords` (expansion, resumable via `cursor`)
 - `wordstat.hf.suggest_negative_keywords` (heuristic negatives)
 
-2) Build an action plan (preview-only):
+2) Собрать action plan (только preview):
 - `direct.hf.plan_changes`
-  - Operations supported:
+  - Поддерживаемые операции:
     - `keywords.add` (adgroup)
     - `negatives.merge` (campaign/adgroup)
     - `bids.set` (keyword ids)
 
-3) User review:
+3) Ревью пользователем:
 - Show `preview.calls[]` + `warnings[]`
 - Confirm target account / scope
 
-4) Apply (writes):
+4) Применить (writes):
 - `direct.hf.apply_plan` with `apply=true`
 
 ## Metrica PRO writes (Variant 1+2)
@@ -153,16 +153,16 @@ Raw goals management (write):
 - `metrica.goals.update`
 - `metrica.goals.delete`
 
-HF goals management (write, apply-guarded):
+HF goals management (write, apply‑guarded):
 - `metrica.hf.create_goal`
 - `metrica.hf.update_goal`
 - `metrica.hf.delete_goal`
 
-Logs API operations remain separate and are still useful for click-level joins.
+Операции Logs API остаются отдельными и всё ещё полезны для join’ов на уровне кликов.
 
-## Audience PRO workflows (segment lifecycle + activation)
+## Audience PRO workflows (жизненный цикл сегментов + activation)
 
-Typical flow:
+Типичный flow:
 1) Inspect segments:
    - `audience.segments.list` / `audience.hf.catalog`
 2) Create or update:
@@ -173,5 +173,5 @@ Typical flow:
    - `audience.hf.activation_plan` (preview-only)
    - `audience.hf.apply_activation_plan` with `apply=true`
 
-Important:
-- Treat Audience upload payloads as sensitive: do not log them, do not persist them.
+Важно:
+- Считайте payload’ы Audience upload чувствительными (потенциально PII): не логируйте и не сохраняйте.

@@ -1,46 +1,46 @@
-# Publishing (Docker + GHCR) — 2026-01-29 (updated for v1.0.0)
+# Публикация (Docker + GHCR) — 2026-01-29 (обновлено для v1.0.0)
 
-This project publishes Docker images to **GHCR** (GitHub Container Registry).
+Проект публикует Docker образы в **GHCR** (GitHub Container Registry).
 
-## Artifacts (Public vs Pro)
+## Артефакты (Public vs Pro)
 
 Public (read-only, safe-by-default):
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<tag>`
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest` (stable public)
 
-Pro (separate artifact; intended for paid subscribers; keep GHCR package private):
+Pro (отдельный артефакт; планируется для платных подписчиков; пакет GHCR держим private):
 - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<tag>`
-- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest` (only when you explicitly publish PRO)
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest` (только когда вы явно публикуете PRO)
 
 ## CI / Workflows
 
-- Tests: `.github/workflows/ci.yml` (pytest, blocking)
-- Docker publish (public): `.github/workflows/docker-publish-public.yml`
-  - triggers: push to `main` and tags `v*`
-  - publishes `:latest` only when pushing a tag
-- Docker publish (pro): `.github/workflows/docker-publish-pro.yml`
-  - triggers: manual `workflow_dispatch` or tags `pro-v*`
+- Тесты: `.github/workflows/ci.yml` (pytest, blocking)
+- Публикация Docker (public): `.github/workflows/docker-publish-public.yml`
+  - триггеры: push в `main` и теги `v*`
+  - `:latest` публикуется только при пуше тега
+- Публикация Docker (pro): `.github/workflows/docker-publish-pro.yml`
+  - триггеры: ручной `workflow_dispatch` или теги `pro-v*`
 
-## How to release public
+## Как релизить public
 
-1) Ensure CI is green on `main`.
-2) Create and push a tag:
+1) Убедитесь, что CI зелёный на `main`.
+2) Создайте и запушьте тег:
    - `vX.Y.Z`
-3) The public publish workflow builds and pushes:
+3) Public workflow соберёт и запушит:
    - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:vX.Y.Z`
    - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest`
 
-## How to release PRO (restricted)
+## Как релизить PRO (ограниченный доступ)
 
-Recommended:
-- Keep `yandex-direct-metrica-mcp-pro` package **private** in GHCR.
-- Publish PRO only on demand:
-  - manual run (`workflow_dispatch`), or
-  - a `pro-vX.Y.Z` tag.
+Рекомендация:
+- Держать package `yandex-direct-metrica-mcp-pro` в GHCR **private**.
+- Публиковать PRO только по необходимости:
+  - вручную (через `workflow_dispatch`), или
+  - через тег `pro-vX.Y.Z`.
 
-## Manual publish (optional)
+## Ручная публикация (опционально)
 
-If you need to publish manually from your machine, use `docker buildx`:
+Если нужно запушить образ вручную с машины, используйте `docker buildx`.
 
 Public:
 ```bash
@@ -72,7 +72,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push .
 ```
 
-## Connecting images to Claude Code
+## Подключение образов к Claude Code
 
 Public:
 ```bash
@@ -93,4 +93,3 @@ claude mcp add yandex-direct-metrica-mcp-pro -- \
     -v /path/to/your/state:/data \
     ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<TAG>
 ```
-
