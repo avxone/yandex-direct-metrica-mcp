@@ -1,16 +1,18 @@
 # yandex-direct-metrica-mcp
 
-MCP server for **Yandex Direct** + **Yandex Metrica** (Python).
+MCP server for **Yandex Direct + Yandex Metrica + Yandex Wordstat + Yandex Audience** (Python).
 
 Website (docs): https://georgy-agaev.github.io/yandex-direct-metrica-mcp/
 
 Images:
-- Docker Hub: https://hub.docker.com/r/4georgyagaev/yandex-direct-metrica-mcp
-- GHCR: https://github.com/georgy-agaev/yandex-direct-metrica-mcp/pkgs/container/yandex-direct-metrica-mcp
+- GHCR (public): https://github.com/georgy-agaev/yandex-direct-metrica-mcp/pkgs/container/yandex-direct-metrica-mcp
+- GHCR (pro): https://github.com/georgy-agaev/yandex-direct-metrica-mcp/pkgs/container/yandex-direct-metrica-mcp-pro
+- Docker Hub (optional mirror, if configured): https://hub.docker.com/r/4georgyagaev/yandex-direct-metrica-mcp
 
 Primary UX goals:
-- Pull raw reporting data (lightweight MVP, minimal normalization).
+- Pull raw data for analytics (minimal normalization, traceable outputs).
 - Generate a practical **BI dashboard (Option 1)** as `HTML + JSON` (including multi-account dashboards).
+- Provide **BI Option 2 (PRO)**: datasets + incremental sync (warehouse/BI pipelines).
 - Make it easy to use from **Claude Code** via `claude mcp add`.
 
 ## Quick start (Claude Code + Docker)
@@ -37,22 +39,22 @@ Create `accounts.json` (multi-account dashboards use this):
 ### 2) Prepare `.env`
 
 Copy `.env.example` to your state folder and fill in:
-- Yandex OAuth tokens
-- Default Direct client login
-- Allowed Metrica counters
+- Direct/Metrica OAuth credentials
+- Audience OAuth credentials (optional)
+- Wordstat OAuth credentials (optional)
 
 Important: **do not** commit secrets to git.
 
 ### 3) Add MCP server to Claude Code
 
-Using the published Docker Hub image (recommended):
+Public (read-only, safe-by-default):
 ```bash
 claude mcp add yandex-direct-metrica-mcp -- \
   docker run --rm -i \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    docker.io/4georgyagaev/yandex-direct-metrica-mcp:latest
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:latest
 ```
 
 Pinned to a specific version:
@@ -62,17 +64,17 @@ claude mcp add yandex-direct-metrica-mcp -- \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    docker.io/4georgyagaev/yandex-direct-metrica-mcp:v1.0.0
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v1.0.0
 ```
 
-Using the published GHCR image (alternative):
+Pro (separate artifact; write tools exist but are still guarded by env + `apply=true`):
 ```bash
-claude mcp add yandex-direct-metrica-mcp -- \
+claude mcp add yandex-direct-metrica-mcp-pro -- \
   docker run --rm -i \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v1.0.0
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp-pro:v1.0.0
 ```
 
 Using a locally-built image (for development):
@@ -99,6 +101,18 @@ Tip: Direct/Metrica data for “today” is often incomplete. For daily use, set
 Ask Claude Code:
 - “Generate `dashboard.generate_option1` for all accounts for last 30 days (to yesterday), save to `/path/to/dashboards`, `all_accounts=true`, `return_data=false`, and give me the HTML path.”
 
+## What “read-only” means (Public 1.0.0 contract)
+
+Read-only means:
+- no changes to managed entities in **Direct/Metrica/Audience** (no create/update/delete of campaigns, segments, goals, etc.).
+
+Allowed side effects (still treated as read-only for the public contract):
+- **Wordstat** report-like requests (provider-side compute).
+- **Metrica Logs API** export jobs used for analysis/joins (`metrica.logs_export`) — no counter configuration changes.
+
+Public mode spec:
+- `docs/public-mode.md`
+
 ## What can it do? (tools / layers)
 
 This MCP exposes two layers:
@@ -109,6 +123,7 @@ The goal is to give the LLM **full access to raw reporting data** with minimal n
 - `direct.*` — Yandex Direct API calls (reports, entities, dictionaries)
 - `metrica.*` — Yandex Metrica API calls (exports, reports)
 - `wordstat.*` — Yandex Wordstat API calls (keyword statistics)
+- `audience.*` — Yandex Audience API calls (segments, overlaps, catalogs)
 
 Output format is controlled by:
 - `MCP_CONTENT_MODE=json` (recommended for raw analysis)
@@ -119,11 +134,47 @@ These tools focus on practical analytics workflows:
 - `direct.hf.*` — “human-friendly” helpers over Direct (find/report presets, convenience queries)
 - `join.hf.*` — best-effort joins between Direct + Metrica (UTM / yclid)
 - `wordstat.hf.*` — keyword suggestions helpers over Wordstat
+- `audience.hf.*` — audience catalog + best-effort segment performance proxy
 - `dashboard.generate_option1` — generates a self-contained BI dashboard (`HTML + JSON`)
+
+### 3) BI Option 2 (PRO): datasets + incremental sync
+
+PRO edition adds BI-oriented tools:
+- `dashboard.schema`
+- `dashboard.dataset.*`
+- `dashboard.sync.start` / `dashboard.sync.next` (NDJSON-friendly)
+
+See:
+- `docs/bi-option2-proposal-2026-02-03.md`
+- `docs/llm-usage-guide-pro-2026-02-03.md`
 
 To see the full list of tools in your environment:
 - In Claude Code: ask “List available tools for this MCP server” (it calls `tools/list`).
 - In this repo: see `docs/tool-coverage-2026-01-27.md`.
+
+## Environment variables (high level)
+
+Direct/Metrica OAuth (usually shared app/token):
+- `YANDEX_ACCESS_TOKEN` or `YANDEX_REFRESH_TOKEN`
+- if using refresh: `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`
+
+Audience OAuth (may be shared with Direct/Metrica, but can be separate):
+- `YANDEX_AUDIENCE_ACCESS_TOKEN` or `YANDEX_AUDIENCE_REFRESH_TOKEN`
+- if using refresh: `YANDEX_AUDIENCE_CLIENT_ID`, `YANDEX_AUDIENCE_CLIENT_SECRET`
+
+Wordstat OAuth (often a separate app/token):
+- `YANDEX_WORDSTAT_ACCESS_TOKEN` or `YANDEX_WORDSTAT_REFRESH_TOKEN`
+- if using refresh: `YANDEX_WORDSTAT_CLIENT_ID`, `YANDEX_WORDSTAT_CLIENT_SECRET`
+
+Multi-account registry:
+- `MCP_ACCOUNTS_FILE=/data/accounts.json`
+
+Public/pro flags:
+- Public image forces read-only (safe-by-default), but `MCP_PUBLIC_READONLY=true` remains a compatibility flag.
+- Pro writes require explicit enables:
+  - `MCP_WRITE_ENABLED=true`
+  - `HF_WRITE_ENABLED=true` (HF write tools)
+  - `HF_DESTRUCTIVE_ENABLED=true` (delete tools)
 
 ## CLI commands
 
@@ -136,9 +187,15 @@ The CLI also provides:
 
 ## Public vs Pro
 
-This repo supports a “public read-only” mode:
-- `MCP_PUBLIC_READONLY=true` hides/disables write tools (Direct create/update and raw_call).
-- `MCP_PUBLIC_READONLY=false` keeps full toolset (intended for a Pro image/release).
+This repo ships **two artifacts**:
+
+- Public: `yandex-direct-metrica-mcp` (safe-by-default read-only).
+  - Contract: `tests/snapshots/public_tools_v1.json`
+- Pro: `yandex-direct-metrica-mcp-pro` (full toolset; writes still require explicit env guardrails).
+
+See:
+- `docs/public-vs-pro.md`
+- `docs/compatibility-semver.md`
 
 ## Docs (developer notes / project history)
 
@@ -150,6 +207,7 @@ This repo supports a “public read-only” mode:
 - Audience: `docs/audience-2026-02-03.md`
 - BI Option 2 (proposal, PRO): `docs/bi-option2-proposal-2026-02-03.md`
 - LLM usage guide (public read-only): `docs/llm-usage-guide-2026-02-03.md`
+- LLM usage guide (PRO): `docs/llm-usage-guide-pro-2026-02-03.md`
 - Public vs Pro: `docs/public-vs-pro.md`
 - Claude Code prompt examples: `examples/claude-code-prompts.md`
 
