@@ -1,6 +1,6 @@
 # Claude Code setup — MCP Yandex Ad (2026-01-27)
 
-Goal: подключить `yandex-direct-metrica-mcp` (legacy alias: `mcp-yandex-ad`) в Claude Code как MCP server и быстро проверить UX (tools + dashboard).
+Goal: connect `yandex-direct-metrica-mcp` (legacy alias: `mcp-yandex-ad`) to Claude Code as an MCP server and quickly validate the UX (tools + dashboard).
 
 ## Option A (recommended): use `.mcp.json` in your Claude Code project folder
 
@@ -52,10 +52,10 @@ Then update your Claude Code settings allow-list similarly (path depends on your
 - “List available tools in yandexad and show me the main ones for reporting + joins.”
 
 ### 2) UTM join (works well)
-- “Сделай join Direct vs Metrica по UTM за последние 30 дней для кампании `<campaign_id>` и счётчика `<counter_id>`. Используй direct_client_login=`<direct_client_login>` и utm_campaign=`<utm_campaign>`.”
+- “Run a Direct vs Metrica join by UTM for the last 30 days for campaign `<campaign_id>` and counter `<counter_id>`. Use direct_client_login=`<direct_client_login>` and utm_campaign=`<utm_campaign>`.”
 
 ### 3) yclid join (best effort)
-- “Попробуй join по yclid за вчера для счётчика `<counter_id>` (direct_client_login=`<direct_client_login>`). Объясни join_mode и почему может быть много unmatched.”
+- “Try a yclid join for yesterday for counter `<counter_id>` (direct_client_login=`<direct_client_login>`). Explain join_mode and why unmatched rows can be high.”
 
 ## Dashboard generator (Option 1)
 
@@ -63,7 +63,7 @@ Generate HTML+JSON locally:
 - Option A (local script): this is **not** an MCP tool; it calls MCP over SSE (`http://localhost:8000/sse` by default), so start the server with SSE transport first (e.g. via `docker-compose.yml`).
 ```bash
 /path/to/venv/bin/python /path/to/project/scripts/generate_dashboard_option1.py \
-  --account-id voicexpert \
+  --account-id <account_id> \
   --date-from 2026-01-01 \
   --date-to 2026-01-31 \
   --output-dir /path/to/output/dashboard
