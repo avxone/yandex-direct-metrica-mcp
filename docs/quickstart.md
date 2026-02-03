@@ -13,7 +13,7 @@ This guide assumes you want the **Docker** runtime (recommended) and you will co
 ## 1) Create a state folder
 
 Pick a folder that will store configuration/state on your machine:
-- Example: `~/mcp-state/yandex-direct-metrica-mcp`
+- Example: `/path/to/mcp-state/yandex-direct-metrica-mcp`
 
 Inside it, create `accounts.json`:
 ```json

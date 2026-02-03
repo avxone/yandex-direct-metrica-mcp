@@ -1,45 +1,44 @@
-# Чеклист “beta-ready” для запуска (Claude Code + multi-account dashboard)
+# Beta-ready checklist (Claude Code + multi-account dashboard)
 
-Цель: безопасно и предсказуемо генерировать один BI-дашборд по нескольким профилям `account_id` через MCP `yandexad`.
+Goal: reliably generate a single BI dashboard for multiple `account_id` profiles via the `yandexad` MCP server.
 
 ## 1) Accounts registry (`accounts.json`)
-- `id` у каждого профиля **уникальный**.
-- Для каждого профиля задан `direct_client_login`.
-- Для каждого профиля задан ровно один счётчик: `metrica_counter_ids: ["<counter_id>"]`.
-  - Если счётчиков несколько — при генерации нужно явно передавать `counter_id`.
-  - Если счётчика нет — профиль будет в `accounts_errors` в multi-dashboard.
+- Each profile `id` is **unique**.
+- Each profile has `direct_client_login`.
+- Each profile has exactly one counter: `metrica_counter_ids: ["<counter_id>"]`.
+  - If there are multiple counters, pass `counter_id` explicitly when generating dashboards.
+  - If no counter is set, the profile will appear in `accounts_errors` in multi-dashboard mode.
 
-## 2) `.env` / права
-- Токены Direct/Metrica валидны и не логируются.
-- `YANDEX_DIRECT_SANDBOX=false` (для прод-сценария).
-- Если нужно добавлять/править профили из Claude: `MCP_ACCOUNTS_WRITE_ENABLED=true` и корректный `MCP_ACCOUNTS_FILE`.
+## 2) `.env` / access
+- Direct/Metrica tokens are valid and never logged.
+- `YANDEX_DIRECT_SANDBOX=false` for production scenarios.
+- If you plan to edit `accounts.json` via MCP (pro-only): `MCP_ACCOUNTS_WRITE_ENABLED=true` and a correct `MCP_ACCOUNTS_FILE`.
 
-## 3) Рекомендованные параметры генерации
+## 3) Recommended dashboard params
 - Multi-account:
-  - `all_accounts=true` (или `account_ids=[...]` чтобы исключать проблемные профили).
-  - `output_dir` обязателен (чтобы не упираться в лимиты токенов в чат-клиентах).
-  - `return_data=false` (быстрее/меньше ответ; полные данные остаются в JSON/HTML).
-- Период:
-  - `date_to` можно задавать “сегодня” — MCP автоматически сдвинет на “вчера”, т.к. “сегодня” часто неполное в Direct/Метрике.
+  - `all_accounts=true` (or `account_ids=[...]` to exclude problematic profiles).
+  - `output_dir` is required (so you don’t hit chat token limits).
+  - `return_data=false` (faster/smaller reply; full rows stay in JSON/HTML).
+- Date range:
+  - `date_to` may be “today” — the server auto-shifts it to **yesterday** because same-day data is often incomplete in Direct/Metrica.
 
-## 4) UI sanity-check (в одном HTML)
-- Переключение аккаунтов (справа сверху) меняет KPI/графики/таблицы.
-- Переключатель `Все / Поиск / РСЯ / Не классифицировано` работает:
-  - в `Не классифицировано` для Direct KPI допустимы `—` (расход/показы/клики не атрибутируются).
-- “Цели”:
-  - Переключение `Директ / Все источники` работает.
-  - Выбор цели в селекте работает.
-- “Источники”:
-  - Нет одинаковых цветов у разных линий на одном графике.
-- Воронки:
-  - “Сайт (все источники)” и “Директ (атрибуция Метрики)” считаются отдельно.
+## 4) UI sanity-check (single HTML)
+- Switching accounts (top-right) updates KPIs/charts/tables.
+- Campaign filter `All / Search / RSYA / Unclassified` works:
+  - In `Unclassified`, Direct KPIs may be `—` (no reliable attribution for cost/clicks/impressions).
+- Goals:
+  - `Direct / All sources` switch works.
+  - Goal selector works.
+- Sources:
+  - No duplicate colors for different lines on the same chart.
+- Funnels:
+  - “Site (all sources)” and “Direct (Metrica-attributed)” are calculated separately.
 
-## 5) Контроль warnings/errors
-- Warning `UTMCampaign engine filter rejected` допустим: split Поиск/РСЯ может быть менее точным, но данные есть.
-- Если есть `accounts_errors`:
-  - Это блокер для “готово”, пока не понятна причина (обычно: нет прав на счётчик/не задан `metrica_counter_ids`/конфликт логина).
+## 5) Warnings/errors
+- Warning `UTMCampaign engine filter rejected` is acceptable: Search/RSYA split might be less accurate, but data is present.
+- If `accounts_errors` is present:
+  - Treat as a blocker until the reason is understood (common causes: missing counter access, missing `metrica_counter_ids`, login mismatch).
 
-## 6) Операционные договорённости
-- Канонический каталог для артефактов, например: `~/crew_a/voicexpert/dashboards`.
-- Частота обновления: минимум “раз в день утром”; “сегодня” в отчёте всё равно исключается автоматически.
-
+## 6) Operations
+- Canonical artifacts folder example: `/path/to/dashboards`.
+- Refresh frequency: at least “once per day in the morning”; “today” is still auto-excluded.

@@ -1,141 +1,92 @@
-# Генератор BI-дашборда (Option 1): MCP → данные → HTML
+# BI Dashboard Generator (Option 1): MCP → Data → HTML
 
-Цель: сделать генератор, который по `account_id` (или `direct_client_login`) и периоду выгружает реальные данные из Yandex Direct + Metrica через наш MCP, подставляет их в HTML-шаблон и сохраняет готовый файл дэшборда.
+Goal: generate a real BI dashboard (HTML + JSON) for a given `account_id` (or `direct_client_login`) and date range by pulling data from Yandex Direct + Metrica (optionally Wordstat/Audience) via this MCP server.
 
 ## Status (2026-01-27)
-Реализация добавлена:
-- Скрипт: `scripts/generate_dashboard_option1.py`
-- Шаблон HTML (docs): `docs/templates/dashboard-template-2026-01-27.html`
-- Шаблон HTML (BI UI, используется MCP tool): `docs/templates/dashboard-template-option1-2026-01-28.html`
-- MCP tool: `dashboard.generate_option1` (генерация без отдельного SSE-клиента; удобно для Claude Code).
+Implemented:
+- Script: `scripts/generate_dashboard_option1.py`
+- HTML template (docs): `docs/templates/dashboard-template-2026-01-27.html`
+- HTML template (BI UI, used by the MCP tool): `docs/templates/dashboard-template-option1-2026-01-28.html`
+- MCP tool: `dashboard.generate_option1` (no separate SSE client required; convenient in Claude Code)
 
-Пример запуска (при запущенном SSE сервере, см. `docker-compose.yml`):
+Example (script; requires SSE transport; see `docker-compose.yml`):
 ```bash
-./.venv/bin/python scripts/generate_dashboard_option1.py \
-  --account-id voicexpert \
+python scripts/generate_dashboard_option1.py \
+  --account-id <account_id> \
   --date-from 2026-01-01 \
   --date-to 2026-01-31 \
-  --output-dir ./out
+  --output-dir /path/to/dashboards
 ```
 
-Пример вызова через MCP tool (в Claude Code / любом MCP-клиенте):
-- `dashboard.generate_option1` с `output_dir` вернёт пути к файлам (`files.html_path`, `files.json_path`).
-- Если `output_dir` не указан, можно запросить HTML в ответе (`include_html=true`).
-- Чтобы не упираться в лимиты токенов в чат-клиентах, при использовании `output_dir` используйте `return_data=false` (или оставьте по умолчанию — `false` при `output_dir`). При этом в ответе вернётся компактный `summary` (totals) + `files.*`, а полный набор рядов будет в JSON/HTML файле.
+Example (MCP tool; in Claude Code / any MCP client):
+- `dashboard.generate_option1` with `output_dir` returns file paths (`files.html_path`, `files.json_path`).
+- If `output_dir` is omitted, you can request HTML inline (`include_html=true`).
+- To avoid chat token limits, prefer `output_dir` + `return_data=false` (default is `false` when `output_dir` is set). You still get a compact `summary` + `files.*`, while full rows are saved into JSON/HTML.
 
-## 1) Входные параметры генерации
-- `account_id` (предпочтительно) — профиль проекта из `accounts.json` (решает multi-account).
-- Multi-account режим (один HTML/JSON с переключателем аккаунтов):
-  - `all_accounts=true` — включить все профили из `accounts.json`.
-  - `account_ids=[...]` — включить только перечисленные профили (по `id` из `accounts.json`).
-- `date_from`, `date_to` — период отчёта (например, `2025-12-01`…`2025-12-31`).
-- `output_dir` — куда сохранять (например, `~/Downloads/Marketing2025/` или state-папка).
-- `dashboard_slug` (опционально) — для читаемого имени файла.
-- `goal_ids` (опционально) — IDs целей Метрики для расчёта “Leads” (`ym:s:goal{ID}reaches`). Если не заданы, генератор пытается включить “все цели” через отчёт по измерению `ym:s:goal` (best effort).
-- `return_data` (опционально) — возвращать ли полный `data` в ответе (по умолчанию `false`, если задан `output_dir`).
+## 1) Input parameters
+- `account_id` (preferred) — profile ID from `accounts.json` (enables multi-account behavior).
+- Multi-account mode (one HTML/JSON with an account switcher):
+  - `all_accounts=true` — include all profiles from `accounts.json`.
+  - `account_ids=[...]` — include only the listed profiles.
+- `date_from`, `date_to` — reporting period (e.g. `2025-12-01` … `2025-12-31`).
+- `output_dir` — where to save artifacts (e.g. `/path/to/dashboards`).
+- `dashboard_slug` (optional) — for a readable file name.
+- `goal_ids` (optional) — Metrica goal IDs used to compute “Leads” (`ym:s:goal{ID}reaches`). If omitted, the generator attempts to include “all goals” via a `ym:s:goal` report (best effort).
+- `return_data` (optional) — whether to return full `data` inline (defaults to `false` when `output_dir` is set).
 
-Примечание по периоду:
-- Если `date_to` задан как “сегодня” (или будущая дата), `dashboard.generate_option1` автоматически сдвигает `date_to` на вчерашний день, т.к. данные за текущий день часто отсутствуют/неполные в Direct и Метрике.
+Date note:
+- If `date_to` is “today” (or future), `dashboard.generate_option1` auto-shifts `date_to` to **yesterday**, because Direct/Metrica same-day data is often incomplete.
 
-## 2) Выходные артефакты
-1) HTML файл дэшборда (обязателен)
-- Имя файла обязано включать аккаунт:
-  - `yandexad_dashboard__{account_id}__{date_from}_{date_to}.html`, или
+## 2) Output artifacts
+1) HTML dashboard (required)
+- File name includes the account:
+  - `yandexad_dashboard__{account_id}__{date_from}_{date_to}.html`, or
   - `yandexad_dashboard__{direct_client_login}__{date_from}_{date_to}.html`
-  - В multi-account режиме:
-    - `yandexad_dashboard__multi__{date_from}_{date_to}__{dashboard_slug}.html` (slug опционален)
-    - в правом верхнем углу появляется переключатель “Аккаунт”.
+- Multi-account mode:
+  - `yandexad_dashboard__multi__{date_from}_{date_to}__{dashboard_slug}.html` (slug optional)
+  - The HTML UI shows an “Account” selector in the top-right.
 
-2) `data.json` рядом (опционально, но рекомендуется)
+2) JSON data (recommended)
 - `yandexad_dashboard__{account_id}__{date_from}_{date_to}.json`
- - В multi-account режиме:
-   - `yandexad_dashboard__multi__{date_from}_{date_to}__{dashboard_slug}.json`
+- Multi-account mode:
+  - `yandexad_dashboard__multi__{date_from}_{date_to}__{dashboard_slug}.json`
 
-## 3) Источники данных (через MCP)
-Минимально нужны:
-- Direct: дневная динамика по кампаниям (показы/клики/расход) за период.
-- Metrica: дневная динамика визитов за период (и по возможности “лиды”/цели).
+## 3) Data sources (via MCP)
+Minimum:
+- Direct: daily performance (impressions/clicks/cost) over the period.
+- Metrica: daily visits (and, if possible, goals/leads) over the period.
 
-Данные должны приводиться к формату, который читает шаблон:
-- `campaignData[<campaignId>].daily = [{date, impressions, clicks, cost}, ...]`
-- `metricaDailyData = [{date, visits, ...}]`
-- `metrica.sources.series = [{key, label, daily:[{date, visits}], total_visits}, ...]` — “сквозная аналитика” по источникам (см. ниже)
-- Если есть цель “лиды”: добавить `leads` в `metricaDailyData`.
-- Если умеем маппить визиты по кампаниям (UTM/yclid) — добавить `window.metricaByCampaign`.
+The output is shaped to match the BI template expectations (see `docs/dashboard-option1.md` for the public spec).
 
-## 4) Правила/конвенции
-- Данные в шаблоне должны быть реальными: никаких синтетических коэффициентов.
-- Тренд “vs пред” = (последнее значение кликов в периоде / первое значение кликов в периоде − 1).
-- Имя файла обязательно включает идентификатор аккаунта (см. п.2).
+## 4) Attribution caveat (funnels / CPA)
+Important: `metrica.current.totals.visits` includes all sources. Using it for ad CPA can be misleading when non-ad traffic dominates.
 
-## 5) Сквозная аналитика (Метрика): источники
-BI-шаблон отображает отдельный график визитов по источникам, похожий на то, что показывает Direct Pro (“Яндекс.Директ”, “поисковые”, “прямые”, “прочие”, и т.п.).
+Therefore the generator attempts to compute **Direct-attributed** series via Stats API slices (`ym:s:lastsignTrafficSource` + `ym:s:lastsignSourceEngine`) and uses those for the “Direct” funnel/CPA (best effort).
 
-Текущая реализация в `dashboard.generate_option1`:
-- Делает дополнительный Stats API запрос к Метрике с измерениями:
-  - `ym:s:date`
-  - `ym:s:lastsignTrafficSource`
-  - `ym:s:lastsignSourceEngine`
-- На основе результата строит небольшой набор time-series (до 8 линий): категории + топ‑движки + линия “Другие источники” как остаток.
+## 5) Option C: Search vs RSYA split (via `UTMCampaign`)
+The UI campaign filter `All / Search / RSYA` changes Direct metrics based on Direct campaign classification (`search`/`rsya`).
 
-Если этот отчёт недоступен/ошибся, блок скрывается и в `warnings` появится сообщение.
+To split Metrica visits/leads into Search/RSYA consistently, Option C uses:
+- a Metrica Stats API report with dimensions `ym:s:date,ym:s:UTMCampaign`, mapped back to Direct campaigns.
 
-## 6) Конверсии (Метрика): детализация по целям
-BI-шаблон умеет отображать отдельный блок “Конверсии: цели”.
+`UTMCampaign` must be stable and map 1:1 to campaigns:
+- recommended: include `campaign_id` inside `utm_campaign`, or
+- use unique campaign names (exact match).
 
-Текущая реализация в `dashboard.generate_option1`:
-- Запрашивает достижения целей через Stats API метрики `ym:s:goal{ID}reaches` вместе с дневными метриками.
-- Заполняет `metrica.goals.goals[]` как набор time-series по каждой цели:
-  - `[{id, name, daily:[{date, reaches}]}]`
-- Имя цели (`name`) подставляется **best effort** из Management API `/goals` (если доступно); иначе будет `Goal <id>`.
+Some Direct-attributed traffic can remain **unclassified** (missing/unknown UTMCampaign). The UI explicitly shows coverage/missing values to avoid misleading totals.
 
-Если `goal_ids` не заданы:
-- Генератор пытается построить `metrica.goals` по всем целям через Stats API отчёт с измерениями `ym:s:date,ym:s:goal` и метрикой `ym:s:sumGoalReachesAny` (best effort).
-- В этом режиме список целей может быть большим, поэтому UI по умолчанию показывает “Все цели” и позволяет выбрать конкретную цель в селекторе.
+## 6) “Recommendations” block
+The Option 1 template renders two blocks:
+- “Do today” (`recommendations.today_actions`)
+- “Discussion questions” (`recommendations.discussion_questions`)
 
-В UI:
-- Строится график по целям (топ‑7 + “Другие цели” как остаток) и показываются totals за выбранный период.
-- Если включено сравнение (Пред. период), рядом с total показывается delta vs предыдущий период той же длины.
-- Если доступна атрибуция “Директ” (см. ниже), в блоке есть переключатель scope: **“Яндекс.Директ” / “Все источники”**.
-- По умолчанию выбран “Все цели”; можно выбрать конкретную цель в выпадающем списке.
+These are produced inside the MCP tool by simple heuristics (see `_dashboard_build_recommendations()` in `src/mcp_yandex_ad/server.py`). The HTML template only displays the data.
 
-Если цели недоступны/отчёт недоступен — блок скрывается.
-
-## 7) Воронка и CPA: не суммируем весь трафик
-Важно: общий `metrica.current.totals.visits` включает визиты со всех источников (поиск/прямые/соцсети и т.д.). Если использовать эти визиты для расчёта конверсии и CPA по рекламе, получится искажённый результат.
-
-Поэтому генератор пытается построить **Direct‑attributed** метрики через Stats API разрез
-`ym:s:lastsignTrafficSource + ym:s:lastsignSourceEngine` и использует их в воронке/CPA:
-- `metrica.direct.totals.visits` — визиты, атрибутированные к Яндекс.Директ (best effort)
-- `metrica.direct.totals.leads` — достижения целей (сумма по `goal_ids`, а в режиме “все цели” — `ym:s:sumGoalReachesAny`), атрибутированные к Яндекс.Директ
-
-В HTML это отражается как “(Директ)” в шагах воронки и расчёте “₽ за lead”.
-
-## 7b) Option C: Поиск vs РСЯ для Direct‑атрибуции (через UTMCampaign)
-Фильтр “Кампании: Все / Поиск / РСЯ” в UI меняет Direct‑метрики (показы/клики/расход) за счёт данных из Direct (кампании классифицируются как `search`/`rsya`).
-
-Чтобы **корректно** разделить также визиты/лиды из Метрики на “Поиск” и “РСЯ”, используется Option C:
-- Metrica Stats API отчёт с измерениями `ym:s:date,ym:s:UTMCampaign`, который мы маппим на Direct‑кампании.
-- UTMCampaign должен быть **стабильным** и однозначно соответствовать кампании:
-  - рекомендуем включать `campaign_id` в `utm_campaign`, или
-  - использовать уникальное имя кампании (точное совпадение).
-
-Важно: часть Direct‑трафика может оказаться **неклассифицированной** (нет UTMCampaign / не совпало) — тогда в UI показывается покрытие и “missing” величины, чтобы не вводить в заблуждение.
-
-## 7) Блок “Рекомендации” — как заполняется
-В BI-шаблоне есть два блока:
-- “Сделать сегодня” (`recommendations.today_actions`)
-- “Вопросы для обсуждения” (`recommendations.discussion_questions`)
-
-Сейчас они **заполняются внутри MCP tool** (см. `_dashboard_build_recommendations()` в `src/mcp_yandex_ad/server.py`) простыми эвристиками на основе текущих метрик. Шаблон HTML только отображает данные и ничего не “хардкодит”.
-Если нужна более “умная” логика, лучше согласовать стабильный список сигналов (цели/UTM/кампании/разрезы) и расширить рекомендации на основе них.
-
-## 8) Критерии готовности (Definition of Done)
-- Скрипт/команда принимает `account_id/date_from/date_to`, генерирует HTML с правильным именем файла.
-- В HTML нет захардкоженных “демо-чисел” — всё из выгрузок MCP.
-- Блоки “Рекомендации” заполнены (или содержат осмысленный “не хватает данных…”).
-- Скрипт проверяет консистентность дат Direct и Metrica (пересечение периодов) и пишет предупреждение в `recommendations.notes` при проблемах.
-- Выходной файл открывается локально без ошибок JS.
+## 7) Definition of Done
+- Accepts `account_id/date_from/date_to` and generates an HTML file with the correct naming.
+- No hardcoded demo numbers in HTML — only MCP-fetched data.
+- Recommendations are populated (or contain a meaningful “insufficient data” note).
+- Output opens locally without JS errors.
 
 ## Notes
-- Текущий BI-шаблон использует Chart.js из CDN. Для оффлайн-режима потребуется локальная копия библиотеки или упрощённые графики без зависимостей.
+- Current BI templates use Chart.js from a CDN. For offline usage, you’ll need a local copy or a simplified chart implementation.
