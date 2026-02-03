@@ -1,5 +1,7 @@
 .DS_Store
 docs/_sessions_local/
+docs/_product_strategy/
+private/
 __pycache__/
 *.pyc
 .pytest_cache/

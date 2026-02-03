@@ -327,6 +327,39 @@ def _hf_tools() -> list[Tool]:
         Tool(name="direct.hf.report_ads", description="Human-friendly: Direct ads report preset.", inputSchema={"type": "object", "properties": {"campaign_id": {"type": "integer"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}}}),
         Tool(name="direct.hf.report_adgroups", description="Human-friendly: Direct adgroups report preset.", inputSchema={"type": "object", "properties": {"campaign_id": {"type": "integer"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}}}),
         Tool(name="direct.hf.report_search_phrases", description="Human-friendly: Direct search phrases report preset (optional).", inputSchema={"type": "object", "properties": {"campaign_id": {"type": "integer"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}}}),
+        Tool(
+            name="direct.hf.pressure_report",
+            description="Human-friendly: market pressure report by semantic clusters (best effort, read-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "grain": {"type": "string", "description": "day|week|month (default: day)."},
+                    "placement": {"type": "string", "description": "search|rsya|all (default: all)."},
+                    "regions": {"type": "array", "items": {"type": "integer"}, "description": "Optional Direct regions filter (best effort)."},
+                    "devices": {"type": "array", "items": {"type": "string"}, "description": "Optional Direct devices filter (best effort)."},
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}, "description": "Optional campaign filter."},
+                    "adgroup_ids": {"type": "array", "items": {"type": "integer"}, "description": "Optional ad group filter."},
+                    "clusters": {
+                        "type": "array",
+                        "description": "Optional semantic clusters input. When omitted, returns one __all__ cluster.",
+                        "items": {
+                            "type": "object",
+                            "required": ["cluster_id"],
+                            "properties": {
+                                "cluster_id": {"type": "string"},
+                                "phrases": {"type": "array", "items": {"type": "string"}},
+                                "label": {"type": "string"},
+                            },
+                        },
+                    },
+                    "include_breakdown": {"type": "boolean", "description": "Try to include placement/device/region breakdown when supported."},
+                    "max_rows": {"type": "integer", "description": "Parse at most N report rows (default: 50000)."},
+                },
+            },
+        ),
         # Metrica HF (will error if no access; kept for discoverability)
         Tool(name="metrica.hf.list_accessible_counters", description="Human-friendly: list accessible counters.", inputSchema={"type": "object", "properties": {}}),
         Tool(name="metrica.hf.counter_summary", description="Human-friendly: counter summary.", inputSchema={"type": "object", "properties": {"counter_id": {"type": "string"}}}),
@@ -336,6 +369,323 @@ def _hf_tools() -> list[Tool]:
         Tool(name="metrica.hf.report_geo", description="Human-friendly: geo report (country/city).", inputSchema={"type": "object", "properties": {"counter_id": {"type": "string"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}, "level": {"type": "string"}, "limit": {"type": "integer"}}}),
         Tool(name="metrica.hf.report_devices", description="Human-friendly: device report.", inputSchema={"type": "object", "properties": {"counter_id": {"type": "string"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}, "limit": {"type": "integer"}}}),
         Tool(name="metrica.hf.logs_export_preset", description="Human-friendly: logs export preset (optional).", inputSchema={"type": "object", "properties": {"counter_id": {"type": "string"}, "date_from": {"type": "string"}, "date_to": {"type": "string"}}}),
+        # Metrica HF (pro write): goals CRUD
+        Tool(
+            name="metrica.hf.create_goal",
+            description="Human-friendly: create a Metrica goal (pro-only, apply=true).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal", "apply"],
+                "properties": {
+                    "counter_id": {"type": "string"},
+                    "goal": {"type": "object", "description": "Raw goal object as per Metrica Management API."},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.hf.update_goal",
+            description="Human-friendly: update a Metrica goal (pro-only, apply=true).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal_id", "goal", "apply"],
+                "properties": {
+                    "counter_id": {"type": "string"},
+                    "goal_id": {"type": "string"},
+                    "goal": {"type": "object", "description": "Raw goal patch object as per Metrica Management API."},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.hf.delete_goal",
+            description="Human-friendly: delete a Metrica goal (pro-only, apply=true).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal_id", "apply"],
+                "properties": {
+                    "counter_id": {"type": "string"},
+                    "goal_id": {"type": "string"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # Direct HF (pro): plan/apply changes (Wordstat→Direct apply pattern)
+        Tool(
+            name="direct.hf.plan_changes",
+            description="Human-friendly: build an opaque change plan for Direct (preview-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["operations"],
+                "properties": {
+                    "operations": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["op"],
+                            "properties": {
+                                "op": {"type": "string", "description": "keywords.add | negatives.merge | bids.set"},
+                                "adgroup_id": {"type": "integer"},
+                                "campaign_id": {"type": "integer"},
+                                "keyword_ids": {"type": "array", "items": {"type": "integer"}},
+                                "phrases": {"type": "array", "items": {"type": "string"}},
+                                "items": {"type": "array", "items": {"type": "string"}, "description": "Negatives items (tokens/phrases)."},
+                                "bid_rub": {"type": "number"},
+                                "max_phrases": {"type": "integer"},
+                                "dedupe_mode": {"type": "string", "description": "normalize|strict (default: normalize)."},
+                                "mode": {"type": "string", "description": "merge|replace for negatives (default: merge)."},
+                            },
+                        },
+                    },
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.apply_plan",
+            description="Human-friendly: apply a previously planned Direct change plan (pro-only, apply=true).",
+            inputSchema={
+                "type": "object",
+                "required": ["plan_id", "apply"],
+                "properties": {
+                    "plan_id": {"type": "string", "description": "Opaque plan id returned by direct.hf.plan_changes."},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # Direct HF (pro): bid sweep experiments (sandbox-only)
+        Tool(
+            name="direct.hf.bid_sweep_plan",
+            description="Human-friendly: build a bid sweep experiment plan (pro-only; execution is sandbox-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["bid_steps_rub"],
+                "properties": {
+                    "account_id": {"type": "string"},
+                    "campaign_id": {"type": "integer"},
+                    "campaign_name": {"type": "string"},
+                    "adgroup_id": {"type": "integer"},
+                    "keyword_ids": {"type": "array", "items": {"type": "integer"}},
+                    "include_autotargeting": {"type": "boolean", "description": "Include ---autotargeting pseudo-keywords (default: false)."},
+                    "bid_steps_rub": {"type": "array", "items": {"type": "number"}, "description": "Bid sweep steps in rubles (ordered)."},
+                    "restore_bid_rub": {"type": "number", "description": "Optional final restore bid in rubles."},
+                    "max_keywords": {"type": "integer", "description": "Safety cap (default: 20, max: 200)."},
+                    "max_steps": {"type": "integer", "description": "Safety cap (default: 6, max: 20)."},
+                    "notes": {"type": "string"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.bid_sweep_run",
+            description="Human-friendly: apply one bid sweep step (pro-only, apply=true, sandbox-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["plan_id", "step_index", "apply"],
+                "properties": {
+                    "plan_id": {"type": "string", "description": "Opaque plan id returned by direct.hf.bid_sweep_plan."},
+                    "step_index": {"type": "integer", "description": "0-based step index to apply."},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.bid_sweep_analyze",
+            description="Human-friendly: analyze a bid sweep plan using Direct keyword performance report (read-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["plan_id", "windows"],
+                "properties": {
+                    "plan_id": {"type": "string"},
+                    "windows": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["step_index", "date_from", "date_to"],
+                            "properties": {
+                                "step_index": {"type": "integer"},
+                                "date_from": {"type": "string"},
+                                "date_to": {"type": "string"},
+                            },
+                        },
+                    },
+                    "include_per_keyword": {"type": "boolean", "description": "Include per-keyword breakdown (default: false)."},
+                    "max_rows": {"type": "integer", "description": "Parse at most N report rows (default: 50000)."},
+                },
+            },
+        ),
+        # Wordstat HF
+        Tool(
+            name="wordstat.hf.suggest_keywords",
+            description="Human-friendly: suggest keyword candidates from seed phrases (resumable via cursor).",
+            inputSchema={
+                "type": "object",
+                "anyOf": [{"required": ["seed_phrases"]}, {"required": ["cursor"]}],
+                "properties": {
+                    "seed_phrases": {"type": "array", "items": {"type": "string"}},
+                    "cursor": {"type": "string", "description": "Opaque cursor (base64 JSON) to resume pending runs."},
+                    "regions": {"type": "array", "items": {"type": "integer"}},
+                    "devices": {"type": "array", "items": {"type": "string"}},
+                    "num_phrases": {"type": "integer", "description": "Per-seed numPhrases (default: 50, max: 2000)."},
+                    "max_seed_phrases_per_call": {"type": "integer", "description": "How many seeds to process per call (default: 8)."},
+                    "max_candidates": {"type": "integer", "description": "Max candidates to return (default: 200)."},
+                },
+            },
+        ),
+        Tool(
+            name="wordstat.hf.suggest_negative_keywords",
+            description="Human-friendly: suggest negative keyword tokens from phrases (lexicon-based).",
+            inputSchema={
+                "type": "object",
+                "required": ["phrases"],
+                "properties": {
+                    "phrases": {"type": "array", "items": {"type": "string"}},
+                    "language": {"type": "string", "description": "ru|en (default: ru)."},
+                    "max_candidates": {"type": "integer", "description": "Max tokens to return (default: 100)."},
+                },
+            },
+        ),
+        # Audience HF (public read-only + pro activation)
+        Tool(
+            name="audience.hf.find_segment",
+            description="Human-friendly: find Audience segments by name/type/status.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name_contains": {"type": "string"},
+                    "types": {"type": "array", "items": {"type": "string"}},
+                    "statuses": {"type": "array", "items": {"type": "string"}},
+                    "limit": {"type": "integer", "description": "Default: 20."},
+                    "include_raw": {"type": "boolean", "description": "Include raw response (default: false)."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.get_segment_summary",
+            description="Human-friendly: Audience segment summary card for UI/LLM.",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id"],
+                "properties": {
+                    "segment_id": {"type": "string"},
+                    "include_raw": {"type": "boolean", "description": "Include raw response (default: true)."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.segment_health",
+            description="Human-friendly: Audience segment health check.",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id"],
+                "properties": {
+                    "segment_id": {"type": "string"},
+                    "min_size": {"type": "integer", "description": "Default: 1000."},
+                    "max_age_days": {"type": "integer", "description": "Default: 30."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.overlap_matrix",
+            description="Human-friendly: overlap matrix (sparse) for segment ids.",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_ids"],
+                "properties": {
+                    "segment_ids": {"type": "array", "items": {"type": "string"}},
+                    "top_k": {"type": "integer", "description": "Default: 50."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.segment_perf",
+            description="Human-friendly: best-effort segment performance via Direct+Metrica.",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "counter_id": {"type": "integer"},
+                    "segment_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "grain": {"type": "string", "description": "day|week|month (default: day)."},
+                    "goal_ids": {"type": "array", "items": {"type": "integer"}},
+                    "include_raw_refs": {"type": "boolean", "description": "Include raw_refs (default: true)."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.catalog",
+            description="Human-friendly: audience segments catalog for dashboards.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "limit": {"type": "integer"},
+                    "offset": {"type": "integer"},
+                    "include_health": {"type": "boolean", "description": "Default: false."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.activation_plan",
+            description="Human-friendly: preview Direct activation plan for an Audience segment (pro-only apply tool is separate).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id", "targets"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "segment_id": {"type": "string"},
+                    "targets": {
+                        "type": "array",
+                        "description": "Activation targets (adgroup/campaign).",
+                        "items": {
+                            "type": "object",
+                            "required": ["type", "id"],
+                            "properties": {
+                                "type": {"type": "string", "description": "adgroup|campaign"},
+                                "id": {"type": "integer"},
+                                "bid_modifier_percent": {"type": "integer", "description": "Optional bid modifier (percent)."},
+                            },
+                        },
+                    },
+                    "apply": {"type": "boolean", "description": "Must be false for preview tool."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.hf.apply_activation_plan",
+            description="Human-friendly: apply activation plan for an Audience segment in Direct (pro-only, apply=true).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id", "targets", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "segment_id": {"type": "string"},
+                    "targets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["type", "id"],
+                            "properties": {
+                                "type": {"type": "string", "description": "adgroup|campaign"},
+                                "id": {"type": "integer"},
+                                "bid_modifier_percent": {"type": "integer"},
+                            },
+                        },
+                    },
+                    "apply": {"type": "boolean", "description": "Must be true to execute."},
+                    "dry_run": {"type": "boolean", "description": "Optional preview flag (default: true)."},
+                },
+            },
+        ),
         # Joins
         Tool(
             name="join.hf.direct_vs_metrica_by_utm",
@@ -412,12 +762,343 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                     "dashboard_slug": {"type": "string", "description": "Optional suffix for output file names."},
                     "output_dir": {"type": "string", "description": "When set, write HTML+JSON files to this directory."},
                     "include_raw_reports": {"type": "boolean", "description": "Include raw Direct/Metrica payloads in output data (default: true)."},
+                    "include_wordstat": {"type": "boolean", "description": "Include Wordstat suggestions block (default: false)."},
+                    "include_audience": {"type": "boolean", "description": "Include Audience segments blocks (default: false)."},
+                    "wordstat_max_campaigns": {"type": "integer", "description": "Max campaigns to analyze with Wordstat (default: 5)."},
+                    "wordstat_max_seed_phrases_per_campaign": {"type": "integer", "description": "Max seed phrases per campaign (default: 3)."},
+                    "wordstat_num_phrases": {"type": "integer", "description": "Wordstat numPhrases (default: 50, max: 2000)."},
+                    "wordstat_max_candidates_per_campaign": {"type": "integer", "description": "Max Wordstat candidates per campaign (default: 20)."},
+                    "wordstat_max_negatives_per_campaign": {"type": "integer", "description": "Max negative tokens per campaign (default: 25)."},
+                    "wordstat_language": {"type": "string", "description": "Negative lexicon language ru|en (default: ru)."},
+                    "wordstat_regions": {"type": "array", "items": {"type": "integer"}, "description": "Optional Wordstat region ids."},
+                    "wordstat_devices": {"type": "array", "items": {"type": "string"}, "description": "Optional Wordstat devices filter."},
                     "include_html": {"type": "boolean", "description": "Include HTML content in response (default: true if output_dir is not set)."},
                     "return_data": {
                         "type": "boolean",
                         "description": "Return the full data payload in response (default: false if output_dir is set, otherwise true).",
                     },
                 },
+            },
+        ),
+        Tool(
+            name="dashboard.schema",
+            description="BI Option 2: schema/version info for dashboard datasets.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="dashboard.dataset.audience_segments",
+            description="BI Option 2 dataset: Audience segments (flat rows).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer"},
+                    "offset": {"type": "integer"},
+                    "types": {"type": "array", "items": {"type": "string"}},
+                    "statuses": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.audience_overlap",
+            description="BI Option 2 dataset: Audience overlaps (top pairs).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_ids"],
+                "properties": {
+                    "segment_ids": {"type": "array", "items": {"type": "string"}},
+                    "mode": {"type": "string", "description": "matrix|top_pairs (default: top_pairs)."},
+                    "limit": {"type": "integer", "description": "Default: 50."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.audience_segment_perf_daily",
+            description="BI Option 2 dataset: Audience segment performance per day (best effort).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "counter_id": {"type": "integer"},
+                    "segment_id": {"type": "string"},
+                    "date_from": {"type": "string"},
+                    "date_to": {"type": "string"},
+                    "goal_ids": {"type": "array", "items": {"type": "integer"}},
+                    "max_targets": {"type": "integer", "description": "Bound number of adgroups/campaigns (default: 200)."},
+                },
+            },
+        ),
+        # BI Option 2 (Variant B): Direct datasets
+        Tool(
+            name="dashboard.dataset.direct_campaigns_dim",
+            description="BI Option 2 dataset: Direct campaigns catalog (dimensions).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "limit": {"type": "integer", "description": "Default: 500."},
+                    "offset": {"type": "integer", "description": "Default: 0."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_adgroups_dim",
+            description="BI Option 2 dataset: Direct ad groups catalog (dimensions).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "limit": {"type": "integer", "description": "Default: 500."},
+                    "offset": {"type": "integer", "description": "Default: 0."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_keywords_dim",
+            description="BI Option 2 dataset: Direct keywords catalog (dimensions).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "limit": {"type": "integer", "description": "Default: 500."},
+                    "offset": {"type": "integer", "description": "Default: 0."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_campaign_daily",
+            description="BI Option 2 dataset: Direct campaign daily performance (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_keyword_daily",
+            description="BI Option 2 dataset: Direct keyword daily performance (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_ads_daily",
+            description="BI Option 2 dataset: Direct ads daily performance (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_search_phrases_daily",
+            description="BI Option 2 dataset: Direct search phrases daily performance (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.direct_bids_snapshot",
+            description="BI Option 2 dataset: Direct bids snapshot (KeywordId -> Bid).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                    "limit": {"type": "integer", "description": "Default: 1000."},
+                    "offset": {"type": "integer", "description": "Default: 0."},
+                },
+            },
+        ),
+        # BI Option 2 (Variant B): Metrica datasets
+        Tool(
+            name="dashboard.dataset.metrica_daily",
+            description="BI Option 2 dataset: Metrica daily summary (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "goal_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.metrica_devices_daily",
+            description="BI Option 2 dataset: Metrica daily visits by device category (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.metrica_geo_daily",
+            description="BI Option 2 dataset: Metrica daily visits by geo (country/city) (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "level": {"type": "string", "description": "country|city (default: country)."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.metrica_goals_daily",
+            description="BI Option 2 dataset: Metrica daily goal reaches by goal_id (facts).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to", "goal_ids"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "goal_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.metrica_utm_campaigns_daily",
+            description="BI Option 2 dataset: Metrica daily top UTM campaigns (facts, bounded).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "limit_per_day": {"type": "integer", "description": "Default: 200."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.dataset.metrica_landing_pages_daily",
+            description="BI Option 2 dataset: Metrica daily top landing pages (facts, bounded).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "limit_per_day": {"type": "integer", "description": "Default: 200."},
+                },
+            },
+        ),
+        # BI Option 2: Wordstat dataset (manual/bounded)
+        Tool(
+            name="dashboard.dataset.wordstat_top_requests",
+            description="BI Option 2 dataset: Wordstat top requests for a seed phrase (manual, bounded).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "phrase": {"type": "string"},
+                    "phrases": {"type": "array", "items": {"type": "string"}},
+                    "regions": {"type": "array", "items": {"type": "integer"}},
+                    "devices": {"type": "array", "items": {"type": "string"}},
+                    "num_phrases": {"type": "integer", "description": "Default: 50 (max 2000)."},
+                },
+            },
+        ),
+        # BI Option 2: Join dataset (manual)
+        Tool(
+            name="dashboard.dataset.join_direct_vs_metrica_utm_daily",
+            description="BI Option 2 dataset: Join Direct daily metrics with Metrica visits by UTMCampaign (manual).",
+            inputSchema={
+                "type": "object",
+                "required": ["campaign_id", "counter_id", "date_from", "date_to"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_id": {"type": "integer"},
+                    "utm_campaign": {"type": "string", "description": "Optional override (defaults to Direct Campaign Name)."},
+                    "counter_id": {"type": "string"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.sync.start",
+            description="BI Option 2: start incremental dataset sync (returns cursor).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "datasets": {"type": "array", "items": {"type": "string"}},
+                    "account_ids": {"type": "array", "items": {"type": "string"}},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "counter_id": {"type": "string", "description": "Fallback default counter id when account_ids are not provided."},
+                    "goal_ids": {"type": "array", "items": {"type": "integer"}, "description": "Goal ids for metrica_goals_daily."},
+                    "segment_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional segment ids for overlap/perf datasets (when used).",
+                    },
+                    "mode": {"type": "string", "description": "Optional overlap mode (matrix|top_pairs)."},
+                    "limit": {"type": "integer", "description": "Optional overlap limit."},
+                    "date_from": {"type": "string"},
+                    "date_to": {"type": "string"},
+                    "chunk_days": {"type": "integer", "description": "Chunk size for *_daily datasets (default: 7)."},
+                    "limit_per_day": {"type": "integer", "description": "Bound per-day size for landing/UTM datasets (default: 200)."},
+                    "page_size": {"type": "integer", "description": "Default: 500."},
+                },
+            },
+        ),
+        Tool(
+            name="dashboard.sync.next",
+            description="BI Option 2: fetch next page for an incremental sync cursor (NDJSON-friendly).",
+            inputSchema={
+                "type": "object",
+                "required": ["cursor"],
+                "properties": {"cursor": {"type": "string"}},
             },
         ),
         Tool(
@@ -1178,6 +1859,225 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 },
             },
         ),
+        # Metrica goals (raw)
+        Tool(
+            name="metrica.goals.list",
+            description="Metrica: list goals for a counter.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id"],
+                "properties": {"counter_id": {"type": "string"}, "params": {"type": "object"}},
+            },
+        ),
+        Tool(
+            name="metrica.goals.get",
+            description="Metrica: get goal by id.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal_id"],
+                "properties": {"counter_id": {"type": "string"}, "goal_id": {"type": "string"}, "params": {"type": "object"}},
+            },
+        ),
+        Tool(
+            name="metrica.goals.create",
+            description="Metrica: create goal (pro-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "payload"],
+                "properties": {"counter_id": {"type": "string"}, "payload": {"type": "object"}},
+            },
+        ),
+        Tool(
+            name="metrica.goals.update",
+            description="Metrica: update goal (pro-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal_id", "payload"],
+                "properties": {"counter_id": {"type": "string"}, "goal_id": {"type": "string"}, "payload": {"type": "object"}},
+            },
+        ),
+        Tool(
+            name="metrica.goals.delete",
+            description="Metrica: delete goal (pro-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "goal_id"],
+                "properties": {"counter_id": {"type": "string"}, "goal_id": {"type": "string"}},
+            },
+        ),
+        # Audience (raw, read-only)
+        Tool(
+            name="audience.user_info",
+            description="Audience: user info (validate access).",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="audience.segments.list",
+            description="Audience: list segments.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer"},
+                    "offset": {"type": "integer"},
+                    "types": {"type": "array", "items": {"type": "string"}},
+                    "statuses": {"type": "array", "items": {"type": "string"}},
+                    "fields": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        ),
+        Tool(
+            name="audience.segments.get",
+            description="Audience: get segment by id.",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id"],
+                "properties": {"segment_id": {"type": "string"}, "fields": {"type": "array", "items": {"type": "string"}}},
+            },
+        ),
+        Tool(
+            name="audience.segments.stats",
+            description="Audience: segment stats (size/status) (best effort).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_id"],
+                "properties": {"segment_id": {"type": "string"}, "fields": {"type": "array", "items": {"type": "string"}}},
+            },
+        ),
+        Tool(
+            name="audience.segments.overlap",
+            description="Audience: overlap between segments (best effort).",
+            inputSchema={
+                "type": "object",
+                "required": ["segment_ids"],
+                "properties": {
+                    "segment_ids": {"type": "array", "items": {"type": "string"}},
+                    "mode": {"type": "string", "description": "matrix|top_pairs (default: top_pairs)."},
+                    "limit": {"type": "integer", "description": "Default: 50."},
+                },
+            },
+        ),
+        Tool(
+            name="audience.pixels.list",
+            description="Audience: list pixels.",
+            inputSchema={"type": "object", "properties": {"limit": {"type": "integer"}, "offset": {"type": "integer"}, "fields": {"type": "array", "items": {"type": "string"}}}},
+        ),
+        Tool(
+            name="audience.pixels.get",
+            description="Audience: get pixel by id.",
+            inputSchema={"type": "object", "required": ["pixel_id"], "properties": {"pixel_id": {"type": "string"}, "fields": {"type": "array", "items": {"type": "string"}}}},
+        ),
+        Tool(
+            name="audience.lookalikes.list",
+            description="Audience: list lookalikes (best effort).",
+            inputSchema={"type": "object", "properties": {"limit": {"type": "integer"}, "offset": {"type": "integer"}, "fields": {"type": "array", "items": {"type": "string"}}}},
+        ),
+        Tool(
+            name="audience.lookalikes.get",
+            description="Audience: get lookalike by id.",
+            inputSchema={"type": "object", "required": ["id"], "properties": {"id": {"type": "string"}, "fields": {"type": "array", "items": {"type": "string"}}}},
+        ),
+        # Audience (pro-only write + escape hatch)
+        Tool(
+            name="audience.segments.create",
+            description="Audience: create segment (pro-only).",
+            inputSchema={"type": "object", "required": ["payload"], "properties": {"payload": {"type": "object"}}},
+        ),
+        Tool(
+            name="audience.segments.update",
+            description="Audience: update segment (pro-only).",
+            inputSchema={"type": "object", "required": ["segment_id", "payload"], "properties": {"segment_id": {"type": "string"}, "payload": {"type": "object"}}},
+        ),
+        Tool(
+            name="audience.segments.delete",
+            description="Audience: delete segment (pro-only).",
+            inputSchema={"type": "object", "required": ["segment_id"], "properties": {"segment_id": {"type": "string"}}},
+        ),
+        Tool(
+            name="audience.upload.start",
+            description="Audience: start upload job (pro-only, may include PII).",
+            inputSchema={"type": "object", "required": ["segment_id", "payload"], "properties": {"segment_id": {"type": "string"}, "payload": {"type": "object"}}},
+        ),
+        Tool(
+            name="audience.upload.status",
+            description="Audience: upload job status (pro-only).",
+            inputSchema={"type": "object", "required": ["upload_id"], "properties": {"upload_id": {"type": "string"}}},
+        ),
+        Tool(
+            name="audience.upload.errors",
+            description="Audience: upload job errors (pro-only).",
+            inputSchema={"type": "object", "required": ["upload_id"], "properties": {"upload_id": {"type": "string"}}},
+        ),
+        Tool(
+            name="audience.raw_call",
+            description="Audience: raw API call (escape hatch, pro-only).",
+            inputSchema={
+                "type": "object",
+                "required": ["method", "path"],
+                "properties": {
+                    "method": {"type": "string", "description": "GET|POST|PUT|DELETE."},
+                    "path": {"type": "string", "description": "Path under /v1/management (e.g., /segments)."},
+                    "params": {"type": "object"},
+                    "payload": {"type": "object"},
+                },
+            },
+        ),
+        Tool(
+            name="wordstat.user_info",
+            description="Wordstat: userInfo (access check).",
+            inputSchema={"type": "object", "properties": {"params": {"type": "object"}}},
+        ),
+        Tool(
+            name="wordstat.get_regions_tree",
+            description="Wordstat: getRegionsTree (regions dictionary).",
+            inputSchema={"type": "object", "properties": {"params": {"type": "object"}}},
+        ),
+        Tool(
+            name="wordstat.top_requests",
+            description="Wordstat: topRequests (top queries by phrase).",
+            inputSchema={
+                "type": "object",
+                "anyOf": [{"required": ["phrase"]}, {"required": ["phrases"]}],
+                "properties": {
+                    "phrase": {"type": "string"},
+                    "phrases": {"type": "array", "items": {"type": "string"}, "description": "Up to 128 phrases."},
+                    "regions": {"type": "array", "items": {"type": "integer"}},
+                    "devices": {"type": "array", "items": {"type": "string"}},
+                    "num_phrases": {"type": "integer", "description": "Max: 2000."},
+                    "params": {"type": "object", "description": "Raw Wordstat payload override (advanced)."},
+                },
+            },
+        ),
+        Tool(
+            name="wordstat.dynamics",
+            description="Wordstat: dynamics (frequency dynamics by period).",
+            inputSchema={
+                "type": "object",
+                "required": ["phrase", "from_date"],
+                "properties": {
+                    "phrase": {"type": "string"},
+                    "from_date": {"type": "string", "description": "YYYY-MM (inclusive)."},
+                    "to_date": {"type": "string", "description": "YYYY-MM (inclusive). Optional."},
+                    "period": {"type": "string", "description": "monthly | weekly | daily (API-defined)."},
+                    "regions": {"type": "array", "items": {"type": "integer"}},
+                    "devices": {"type": "array", "items": {"type": "string"}},
+                    "params": {"type": "object", "description": "Raw Wordstat payload override (advanced)."},
+                },
+            },
+        ),
+        Tool(
+            name="wordstat.regions",
+            description="Wordstat: regions (frequency by region).",
+            inputSchema={
+                "type": "object",
+                "required": ["phrase"],
+                "properties": {
+                    "phrase": {"type": "string"},
+                    "region_type": {"type": "string", "description": "cities | regions | all (API-defined)."},
+                    "devices": {"type": "array", "items": {"type": "string"}},
+                    "params": {"type": "object", "description": "Raw Wordstat payload override (advanced)."},
+                },
+            },
+        ),
     ]
 
     hf = _hf_tools()
@@ -1185,11 +2085,36 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
     if config is not None and getattr(config, "public_readonly", False):
         # Hide write-capable tools from the published schema. Server-side guardrail still blocks any attempts.
         hide_prefixes = ("direct.create_", "direct.update_")
-        hide_exact = {"direct.raw_call", "metrica.raw_call"}
-        base = [t for t in base if not t.name.startswith(hide_prefixes) and t.name not in hide_exact]
+        hide_exact = {
+            "direct.raw_call",
+            "metrica.raw_call",
+            "audience.raw_call",
+            "join.hf.direct_vs_metrica_by_yclid",
+            "dashboard.schema",
+            "dashboard.sync.start",
+            "dashboard.sync.next",
+            "accounts.upsert",
+            "accounts.delete",
+            "audience.segments.create",
+            "audience.segments.update",
+            "audience.segments.delete",
+            "audience.upload.start",
+            "audience.upload.status",
+            "audience.upload.errors",
+            "metrica.goals.create",
+            "metrica.goals.update",
+            "metrica.goals.delete",
+        }
+        base = [
+            t
+            for t in base
+            if not t.name.startswith(hide_prefixes)
+            and t.name not in hide_exact
+            and not t.name.startswith("dashboard.dataset.")
+        ]
         # Keep only read-oriented HF tools (find/get/report). Write HF tools remain available in pro builds.
         allowed_hf_prefixes = ("direct.hf.find_", "direct.hf.get_", "direct.hf.report_")
-        allowed_hf_exact = {"direct.hf.get_bids_summary"}
+        allowed_hf_exact = {"direct.hf.get_bids_summary", "direct.hf.pressure_report"}
         hf = [
             t
             for t in hf
@@ -1197,6 +2122,10 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             or t.name.startswith(allowed_hf_prefixes)
             or t.name in allowed_hf_exact
         ]
+        # Join helpers: keep only pure read-only joins in public mode.
+        hf = [t for t in hf if t.name != "join.hf.direct_vs_metrica_by_yclid"]
+        hf = [t for t in hf if not t.name.startswith("audience.hf.apply_")]
+        hf = [t for t in hf if not t.name.startswith("metrica.hf.") or t.name.startswith("metrica.hf.report_") or t.name in {"metrica.hf.list_accessible_counters", "metrica.hf.counter_summary", "metrica.hf.logs_export_preset"}]
 
     direct_client_logins: list[str] = []
     if config is not None and getattr(config, "direct_client_logins", None):
@@ -1211,7 +2140,8 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             is_direct_or_join = tool.name.startswith(("direct.", "join.hf."))
             is_metrica = tool.name.startswith("metrica.")
             is_dashboard = tool.name.startswith("dashboard.")
-            if not (is_direct_or_join or is_metrica or is_dashboard):
+            is_audience_hf = tool.name.startswith("audience.hf.")
+            if not (is_direct_or_join or is_metrica or is_dashboard or is_audience_hf):
                 continue
             schema = tool.inputSchema or {"type": "object"}
             if not isinstance(schema, dict):
@@ -1243,7 +2173,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                     except Exception:
                         pass
 
-                if is_direct_or_join or is_dashboard:
+                if is_direct_or_join or is_dashboard or is_audience_hf:
                     direct_client_login_schema = dict(DIRECT_CLIENT_LOGIN_SCHEMA_BASE)
                     if direct_client_logins:
                         direct_client_login_schema["enum"] = direct_client_logins

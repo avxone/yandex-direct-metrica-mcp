@@ -3,6 +3,19 @@
 All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
+- (none yet)
+
+## 1.0.0 - 2026-02-03
+- BI Option 2 (PRO): expanded datasets to Variant B (Direct/Metrica/Wordstat/Join) and upgraded sync cursor/NDJSON to include `account_id`.
+- PRO write: added Metrica goals CRUD (raw + HF apply-guarded) and Direct plan/apply (`direct.hf.plan_changes` / `direct.hf.apply_plan`).
+- Public mode: removed BI Option 2 tools from the public surface and refreshed the public tools snapshot contract.
+- Added BI Option 2 (PRO) datasets+sync proposal doc.
+- `direct.hf.report_search_phrases`: implemented a Direct search query report preset.
+- Added Yandex Audience support (raw + HF + pro activation) plus BI Option 2 datasets/sync tools.
+- `dashboard.generate_option1`: added optional Audience blocks (`include_audience=true`) rendered in the Option 1 HTML template.
+- Drafted a competitors analysis + read-only market pressure tools proposal (A+D: server-fetch + Direct/Metrica pressure).
+- Added an LLM-oriented usage guide for the public read-only toolset (Direct + Metrica + Wordstat + joins + dashboard).
+- Drafted a Yandex Audience tool proposal (raw + HF + dashboard integration) for the minimal contour.
 - Bumped version to `0.1.1` and fixed CI install by adding `project.optional-dependencies.dev` (so `pip install -e ".[dev]"` works).
 - Docker publish workflow: removed optional Docker Hub image target from metadata generation to avoid failures when Docker Hub secrets are not configured.
 - Docker hardening: moved to `python:3.12-slim`, added OS package upgrades, upgraded `wheel`, and switched the runtime to a non-root user (fixes common Scout findings and reduces fixable CVEs).

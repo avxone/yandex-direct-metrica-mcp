@@ -32,3 +32,24 @@ The generated HTML contains an account selector and switches content client-side
 - “Today” data can be incomplete in Direct/Metrica; for daily use set `date_to` to yesterday.
 - Campaign-level CPL/leads can be “best-effort” and may be gated if Metrica attribution filters fail (to avoid misleading numbers).
 
+## Wordstat (optional)
+
+You can include Wordstat-based keyword suggestions:
+- `include_wordstat=true`
+- Optional tuning:
+  - `wordstat_max_campaigns`
+  - `wordstat_max_seed_phrases_per_campaign`
+  - `wordstat_num_phrases`
+  - `wordstat_max_candidates_per_campaign`
+  - `wordstat_max_negatives_per_campaign`
+  - `wordstat_language`
+  - `wordstat_regions`, `wordstat_devices`
+
+In multi-account mode (with `all_accounts=true` / `account_ids=[...]`) Wordstat suggestions are computed per selected account dataset and switch together with the account selector.
+
+## Audience (optional)
+
+You can include Audience segments + overlaps blocks:
+- `include_audience=true`
+
+In multi-account mode (with `all_accounts=true` / `account_ids=[...]`) Audience data is computed once per selected account dataset and switches together with the account selector.

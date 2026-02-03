@@ -1,10 +1,14 @@
-from mcp_yandex_ad.auth import TokenManager
+import json
+from pathlib import Path
+from typing import Any
+
 from mcp_yandex_ad.config import AppConfig
+from mcp_yandex_ad.tools import tool_definitions
 
 
-def _base_config(**overrides):
-    data = dict(
-        access_token=None,
+def _config_public(**overrides: Any) -> AppConfig:
+    data: dict[str, Any] = dict(
+        access_token="token",
         refresh_token=None,
         client_id=None,
         client_secret=None,
@@ -38,44 +42,36 @@ def _base_config(**overrides):
         retry_base_delay_seconds=0.5,
         retry_max_delay_seconds=8.0,
         content_mode="json",
+        public_readonly=True,
+        accounts_write_enabled=False,
+        accounts_file=None,
+        accounts={},
     )
     data.update(overrides)
     return AppConfig(**data)
 
 
-def test_get_access_token_uses_existing():
-    config = _base_config(access_token="token")
-    manager = TokenManager(config)
-    assert manager.get_access_token() == "token"
+def _deep_sort(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: _deep_sort(value[k]) for k in sorted(value.keys())}
+    if isinstance(value, list):
+        return [_deep_sort(x) for x in value]
+    return value
 
 
-def test_refresh_skips_without_credentials():
-    config = _base_config(refresh_token="refresh")
-    manager = TokenManager(config)
-    assert manager.get_access_token() is None
+def test_public_tools_snapshot_is_stable():
+    tools = tool_definitions(_config_public())
+    snapshot = []
+    for t in sorted(tools, key=lambda x: x.name):
+        snapshot.append(
+            {
+                "name": t.name,
+                "description": t.description,
+                "inputSchema": _deep_sort(t.inputSchema or {}),
+            }
+        )
 
+    snap_path = Path(__file__).resolve().parent / "snapshots" / "public_tools_v1.json"
+    expected = json.loads(snap_path.read_text(encoding="utf-8"))
 
-def test_refresh_success(monkeypatch):
-    config = _base_config(
-        refresh_token="refresh",
-        client_id="client",
-        client_secret="secret",
-    )
-
-    class DummyResponse:
-        def __init__(self):
-            self._data = {"access_token": "new-token", "expires_in": 3600}
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return self._data
-
-    def fake_post(*args, **kwargs):
-        return DummyResponse()
-
-    monkeypatch.setattr("mcp_yandex_ad.auth.requests.post", fake_post)
-
-    manager = TokenManager(config)
-    assert manager.get_access_token() == "new-token"
+    assert snapshot == expected

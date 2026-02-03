@@ -1,6 +1,7 @@
 """MCP server for Yandex Direct + Metrica (Python)."""
 
 import asyncio
+import importlib.metadata
 import logging
 import os
 import textwrap
@@ -9,7 +10,15 @@ import webbrowser
 import click
 from dotenv import load_dotenv
 
-__version__ = "0.1.0"
+
+def _pkg_version() -> str:
+    try:
+        return importlib.metadata.version("yandex-direct-metrica-mcp")
+    except Exception:
+        return "0.0.0"
+
+
+__version__ = _pkg_version()
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
 

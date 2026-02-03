@@ -127,6 +127,10 @@
     .rec-list { margin: 10px 0 0; padding-left: 18px; }
     .rec-list li { margin: 6px 0; }
     .note { color: var(--text-secondary); font-size: 12px; margin-top: 8px; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--grid-color); color: var(--text-secondary); font-size: 12px; background: rgba(0,0,0,.10); }
+    [data-theme="light"] .pill { background: rgba(17,24,39,.03); }
+    .pill .muted { color: var(--text-muted); }
     .alert-card { display: none; }
     .alert-list { margin: 0; padding-left: 18px; }
     .alert-list li { margin: 6px 0; }
@@ -325,6 +329,55 @@
         <div class="note" id="recNotes"></div>
       </section>
 
+      <section class="card col-12" id="wordstatCard" style="display:none;">
+        <div class="title">Wordstat: идеи ключей и минус-слов</div>
+        <div class="note" id="wordstatNote"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Кампания</th>
+              <th>Seed</th>
+              <th>Идеи (топ)</th>
+              <th>Минус-слова (кандидаты)</th>
+            </tr>
+          </thead>
+          <tbody id="wordstatRows"></tbody>
+        </table>
+        <div class="note">Блок строится на стороне сервера при <span class="mono">include_wordstat=true</span>. Для многопроектного режима данные переключаются вместе с аккаунтом.</div>
+      </section>
+
+      <section class="card col-12" id="audienceCard" style="display:none;">
+        <div class="title">Audience: сегменты и пересечения</div>
+        <div class="note" id="audienceNote"></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Сегмент</th>
+              <th>Тип</th>
+              <th>Статус</th>
+              <th>Размер</th>
+              <th>Обновлён</th>
+              <th>Health</th>
+            </tr>
+          </thead>
+          <tbody id="audienceRows"></tbody>
+        </table>
+        <div style="height:10px"></div>
+        <div class="note" style="margin-bottom:8px;">Top overlaps (best effort)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>A</th>
+              <th>B</th>
+              <th>Share</th>
+              <th>Abs</th>
+            </tr>
+          </thead>
+          <tbody id="audienceOverlapRows"></tbody>
+        </table>
+        <div class="note">Блок строится на стороне сервера при <span class="mono">include_audience=true</span>. Для многопроектного режима данные переключаются вместе с аккаунтом.</div>
+      </section>
+
       <section class="card col-12" id="metricaSourcesCard">
         <div class="title">Сквозная аналитика (Метрика): визиты по источникам</div>
         <div class="chart-wrap" style="height:260px;">
@@ -460,6 +513,8 @@
     let metricaDirectAllDaily = [];
     let metricaDirectSplit = {};
     let metricaDirectByCampaign = {};
+    let wordstat = {};
+    let audience = {};
     let rec = {};
     let REFERENCE_DATE = null;
 
@@ -475,6 +530,8 @@
       metricaDirectAllDaily = metricaDirect.daily || [];
       metricaDirectSplit = ((DATA.metrica || {}).direct_split) || {};
       metricaDirectByCampaign = ((DATA.metrica || {}).direct_by_campaign) || {};
+      wordstat = (DATA.wordstat || {});
+      audience = (DATA.audience || {});
       rec = DATA.recommendations || {};
       REFERENCE_DATE = getLatestDatasetDate();
     }
@@ -619,6 +676,7 @@
     const fmt2 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 });
 
     const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');
 
     // Theme toggle
     // Important: keep applyTheme() side-effect-free w.r.t. dashboard rendering to avoid TDZ issues
@@ -1749,6 +1807,88 @@
       ['flag-impressions','flag-clicks','flag-ctr','flag-cost','flag-cpc','flag-visits'].forEach(id => setText(id, ''));
     }
 
+    function renderWordstat(range) {
+      const card = document.getElementById('wordstatCard');
+      const note = document.getElementById('wordstatNote');
+      const tbody = document.getElementById('wordstatRows');
+      if (!card || !note || !tbody) return;
+
+      const ok = !!(wordstat && wordstat.available && Array.isArray(wordstat.campaigns) && wordstat.campaigns.length);
+      if (!ok) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = 'block';
+
+      const m = (wordstat.meta || {});
+      const periodTxt = (meta && meta.date_from && meta.date_to) ? `${meta.date_from} … ${meta.date_to}` : `${toYmd(range.start)} … ${toYmd(range.end)}`;
+      note.textContent = `Период seeds/идей: ${periodTxt}. Кампаний: ${wordstat.campaigns.length}. numPhrases=${m.num_phrases ?? '—'}.`;
+
+      const pills = (items, fmt) => {
+        const arr = Array.isArray(items) ? items : [];
+        if (!arr.length) return '—';
+        return `<div class="pills">` + arr.map(x => fmt(x)).join('') + `</div>`;
+      };
+
+      const rows = wordstat.campaigns.slice(0, 20).map(c => {
+        const cname = esc(c.campaign_name || `#${c.campaign_id}`);
+        const seeds = pills(c.seeds || [], (s) => `<span class="pill"><span class="mono">${esc(s)}</span></span>`);
+        const ideas = pills((c.candidates || []).slice(0, 12), (it) => {
+          const p = esc(it.phrase || '');
+          const score = Number(it.score ?? 0);
+          const scoreTxt = Number.isFinite(score) ? fmtInt.format(Math.round(score)) : '—';
+          return `<span class="pill"><span class="mono">${p}</span><span class="muted">· ${scoreTxt}</span></span>`;
+        });
+        const negs = pills((c.negatives || []).slice(0, 18), (it) => {
+          const t = esc(it.token || '');
+          const cnt = Number(it.count ?? 0);
+          const cntTxt = Number.isFinite(cnt) && cnt > 0 ? fmtInt.format(cnt) : '';
+          return `<span class="pill"><span class="mono">${t}</span>${cntTxt ? `<span class="muted">· ${cntTxt}</span>` : ''}</span>`;
+        });
+        return `<tr><td>${cname}</td><td>${seeds}</td><td>${ideas}</td><td>${negs}</td></tr>`;
+      }).join('');
+      tbody.innerHTML = rows || '<tr><td colspan="4" style="color: var(--text-muted)">Нет данных</td></tr>';
+    }
+
+    function renderAudience(range) {
+      const card = document.getElementById('audienceCard');
+      const note = document.getElementById('audienceNote');
+      const tbody = document.getElementById('audienceRows');
+      const otbody = document.getElementById('audienceOverlapRows');
+      if (!card || !note || !tbody || !otbody) return;
+
+      const ok = !!(audience && audience.available && Array.isArray(audience.segments) && audience.segments.length);
+      if (!ok) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = 'block';
+
+      const periodTxt = (meta && meta.date_from && meta.date_to) ? `${meta.date_from} … ${meta.date_to}` : `${toYmd(range.start)} … ${toYmd(range.end)}`;
+      note.textContent = `Сегментов: ${audience.segments.length}. Период дашборда: ${periodTxt}.`;
+
+      const rows = audience.segments.slice(0, 50).map(s => {
+        const name = esc(s.name || `#${s.id}`);
+        const type = esc(s.type || '—');
+        const status = esc(s.status || '—');
+        const size = (s.size !== null && s.size !== undefined) ? fmtInt.format(Number(s.size)) : '—';
+        const upd = esc(s.updated_at || '—');
+        const hs = (s.health && s.health.status) ? esc(s.health.status) : '—';
+        const hints = (s.health && Array.isArray(s.health.hints) && s.health.hints.length) ? ` (${esc(s.health.hints.join(','))})` : '';
+        return `<tr><td>${name}</td><td>${type}</td><td>${status}</td><td class="mono">${size}</td><td class="mono">${upd}</td><td>${hs}${hints}</td></tr>`;
+      }).join('');
+      tbody.innerHTML = rows || '<tr><td colspan="6" style="color: var(--text-muted)">Нет данных</td></tr>';
+
+      const ovs = Array.isArray(audience.top_overlaps) ? audience.top_overlaps : [];
+      const orows = ovs.slice(0, 50).map(p => {
+        const a = esc(p.a || ''); const b = esc(p.b || '');
+        const share = (p.overlap_share !== null && p.overlap_share !== undefined) ? esc(String(p.overlap_share)) : '—';
+        const abs = (p.overlap_abs !== null && p.overlap_abs !== undefined) ? esc(String(p.overlap_abs)) : '—';
+        return `<tr><td class="mono">${a}</td><td class="mono">${b}</td><td class="mono">${share}</td><td class="mono">${abs}</td></tr>`;
+      }).join('');
+      otbody.innerHTML = orows || '<tr><td colspan="4" style="color: var(--text-muted)">—</td></tr>';
+    }
+
     function updateAlerts(data, tableStats) {
       const card = document.getElementById('alertsCard');
       const listEl = document.getElementById('alertsList');
@@ -1854,6 +1994,8 @@
       updateDailyChart(data);
       const tableStats = updateCampaignTable(period);
       fillRecommendations();
+      renderWordstat(data.range);
+      renderAudience(data.range);
       updateAlerts(data, tableStats);
     }
 

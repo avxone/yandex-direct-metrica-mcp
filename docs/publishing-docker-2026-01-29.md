@@ -42,10 +42,14 @@ git push
 - pro образ пушится в `ghcr.io/<repo-owner>/yandex-direct-metrica-mcp-pro:<tag>` (write tools доступны при `MCP_WRITE_ENABLED=true`)
 
 Пояснение:
-- `MCP_PUBLIC_READONLY=true` — скрывает write tools из списка инструментов и блокирует любые попытки записи на уровне сервера.
+- Public image is **safe-by-default**:
+  - it contains a build marker (`/app/.mcp_edition=public`) and the server forces read-only even if runtime env vars are misconfigured.
+  - `MCP_PUBLIC_READONLY=true` remains a compatibility flag, but is not the only mechanism.
+- Pro image is the full build and can enable writes only with explicit guard flags (`MCP_WRITE_ENABLED=true`, `HF_WRITE_ENABLED=true`, etc.).
 
 Рекомендуемый релиз-флоу:
 - Для релиза: создать git tag `vX.Y.Z` и пушнуть его — workflow соберёт и запушит Docker image.
+  - При пуше тега также публикуется `:latest` (stable) для соответствующего image.
 
 ## 2.1) Ручная публикация в GHCR (buildx + multi-arch)
 
@@ -66,9 +70,10 @@ docker buildx inspect --bootstrap
 
 3) Собрать и запушить **public** (read-only):
 ```bash
-export VERSION="0.1.0"
+export VERSION="1.0.0"
 docker buildx build --platform linux/amd64,linux/arm64 \
   --build-arg MCP_PUBLIC_READONLY=true \
+  --build-arg MCP_EDITION=public \
   -t "ghcr.io/$GHCR_OWNER/yandex-direct-metrica-mcp:$VERSION" \
   -t "ghcr.io/$GHCR_OWNER/yandex-direct-metrica-mcp:latest" \
   --push .
@@ -78,6 +83,7 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 ```bash
 docker buildx build --platform linux/amd64,linux/arm64 \
   --build-arg MCP_PUBLIC_READONLY=false \
+  --build-arg MCP_EDITION=pro \
   -t "ghcr.io/$GHCR_OWNER/yandex-direct-metrica-mcp-pro:$VERSION" \
   -t "ghcr.io/$GHCR_OWNER/yandex-direct-metrica-mcp-pro:latest" \
   --push .

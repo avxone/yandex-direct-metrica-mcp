@@ -7,8 +7,29 @@ import time
 from typing import Any, Callable, TypeVar
 
 import requests
-from tapi_yandex_direct import exceptions as direct_exceptions
-from tapi_yandex_metrika import exceptions as metrica_exceptions
+try:
+    from tapi_yandex_direct import exceptions as direct_exceptions
+except ImportError:  # pragma: no cover - optional dependency (tests/dev)
+    class _DirectExceptions:
+        class YandexDirectRequestsLimitError(Exception):
+            pass
+
+        class YandexDirectNotEnoughUnitsError(Exception):
+            pass
+
+    direct_exceptions = _DirectExceptions()
+
+try:
+    from tapi_yandex_metrika import exceptions as metrica_exceptions
+except ImportError:  # pragma: no cover - optional dependency (tests/dev)
+    class _MetricaExceptions:
+        class YandexMetrikaLimitError(Exception):
+            pass
+
+        class YandexMetrikaDownloadReportError(Exception):
+            pass
+
+    metrica_exceptions = _MetricaExceptions()
 
 T = TypeVar("T")
 
@@ -75,4 +96,3 @@ def with_retries(
             sleep_fn(delay)
     assert last_exc is not None
     raise last_exc
-

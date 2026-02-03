@@ -10,10 +10,20 @@ def _config(**overrides):
         refresh_token=None,
         client_id=None,
         client_secret=None,
+        audience_access_token=None,
+        audience_refresh_token=None,
+        audience_client_id=None,
+        audience_client_secret=None,
+        wordstat_access_token=None,
+        wordstat_refresh_token=None,
+        wordstat_client_id=None,
+        wordstat_client_secret=None,
         direct_client_login=None,
         direct_client_logins=[],
         direct_api_version="v5",
         metrica_counter_ids=[],
+        audience_enabled=True,
+        wordstat_enabled=True,
         use_sandbox=False,
         write_enabled=False,
         write_sandbox_only=True,
@@ -24,6 +34,8 @@ def _config(**overrides):
         cache_ttl_seconds=300,
         direct_rate_limit_rps=0,
         metrica_rate_limit_rps=0,
+        audience_rate_limit_rps=0,
+        wordstat_rate_limit_rps=0,
         retry_max_attempts=3,
         retry_base_delay_seconds=0.5,
         retry_max_delay_seconds=8.0,
@@ -64,3 +76,47 @@ def test_write_guard_treats_raw_call_non_get_as_write():
 def test_write_guard_allows_raw_call_get():
     config = _config(write_enabled=False, use_sandbox=False)
     _enforce_write_guard(config, "direct.raw_call", {"resource": "campaigns", "method": "get"})
+
+
+def test_write_guard_treats_audience_raw_call_non_get_as_write():
+    config = _config(write_enabled=False, use_sandbox=True)
+    with pytest.raises(Exception, match="Write operations are disabled"):
+        _enforce_write_guard(config, "audience.raw_call", {"method": "POST", "path": "/segments"})
+
+
+def test_write_guard_blocks_audience_segment_create():
+    config = _config(write_enabled=False, use_sandbox=True)
+    with pytest.raises(Exception, match="Write operations are disabled"):
+        _enforce_write_guard(config, "audience.segments.create", {"payload": {"name": "x"}})
+
+
+def test_write_guard_blocks_metrica_goals_write_when_disabled():
+    config = _config(write_enabled=False, use_sandbox=True)
+    with pytest.raises(Exception, match="Write operations are disabled"):
+        _enforce_write_guard(config, "metrica.goals.create", {"counter_id": "1", "data": {"name": "x"}})
+
+
+def test_write_guard_treats_metrica_hf_apply_as_write():
+    config = _config(write_enabled=False, use_sandbox=True)
+    with pytest.raises(Exception, match="Write operations are disabled"):
+        _enforce_write_guard(config, "metrica.hf.create_goal", {"counter_id": "1", "goal": {"name": "x"}, "apply": True})
+
+
+def test_write_guard_allows_direct_plan_preview():
+    config = _config(write_enabled=False, use_sandbox=False)
+    _enforce_write_guard(config, "direct.hf.plan_changes", {"operations": [{"op": "keywords.add", "adgroup_id": 1, "phrases": ["x"]}]})
+
+
+def test_write_guard_treats_join_yclid_as_write_when_creating_logs():
+    config = _config(write_enabled=False, use_sandbox=True)
+    with pytest.raises(Exception, match="Write operations are disabled"):
+        _enforce_write_guard(config, "join.hf.direct_vs_metrica_by_yclid", {"counter_id": "1", "date_from": "2026-02-01", "date_to": "2026-02-02"})
+
+
+def test_write_guard_allows_join_yclid_read_only_with_existing_request_id_and_no_cleanup():
+    config = _config(write_enabled=False, use_sandbox=False)
+    _enforce_write_guard(
+        config,
+        "join.hf.direct_vs_metrica_by_yclid",
+        {"counter_id": "1", "date_from": "2026-02-01", "date_to": "2026-02-02", "request_id": "123", "cleanup": False},
+    )

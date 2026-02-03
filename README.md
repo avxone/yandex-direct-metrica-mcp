@@ -62,7 +62,7 @@ claude mcp add yandex-direct-metrica-mcp -- \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    docker.io/4georgyagaev/yandex-direct-metrica-mcp:v0.1.4
+    docker.io/4georgyagaev/yandex-direct-metrica-mcp:v1.0.0
 ```
 
 Using the published GHCR image (alternative):
@@ -72,7 +72,7 @@ claude mcp add yandex-direct-metrica-mcp -- \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v0.1.4
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v1.0.0
 ```
 
 Using a locally-built image (for development):
@@ -108,6 +108,7 @@ This MCP exposes two layers:
 The goal is to give the LLM **full access to raw reporting data** with minimal normalization:
 - `direct.*` — Yandex Direct API calls (reports, entities, dictionaries)
 - `metrica.*` — Yandex Metrica API calls (exports, reports)
+- `wordstat.*` — Yandex Wordstat API calls (keyword statistics)
 
 Output format is controlled by:
 - `MCP_CONTENT_MODE=json` (recommended for raw analysis)
@@ -117,6 +118,7 @@ Output format is controlled by:
 These tools focus on practical analytics workflows:
 - `direct.hf.*` — “human-friendly” helpers over Direct (find/report presets, convenience queries)
 - `join.hf.*` — best-effort joins between Direct + Metrica (UTM / yclid)
+- `wordstat.hf.*` — keyword suggestions helpers over Wordstat
 - `dashboard.generate_option1` — generates a self-contained BI dashboard (`HTML + JSON`)
 
 To see the full list of tools in your environment:
@@ -145,6 +147,9 @@ This repo supports a “public read-only” mode:
 - Publishing (Docker + registries): `docs/publishing-docker-2026-01-29.md`
 - Quickstart: `docs/quickstart.md`
 - Dashboard: `docs/dashboard-option1.md`
+- Audience: `docs/audience-2026-02-03.md`
+- BI Option 2 (proposal, PRO): `docs/bi-option2-proposal-2026-02-03.md`
+- LLM usage guide (public read-only): `docs/llm-usage-guide-2026-02-03.md`
 - Public vs Pro: `docs/public-vs-pro.md`
 - Claude Code prompt examples: `examples/claude-code-prompts.md`
 

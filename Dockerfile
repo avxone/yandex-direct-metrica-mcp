@@ -6,6 +6,8 @@ COPY pyproject.toml README.md /app/
 COPY src /app/src
 COPY docs/templates/dashboard-template-option1-2026-01-28.html /app/docs/templates/dashboard-template-option1-2026-01-28.html
 
+ARG MCP_EDITION=pro
+
 # Security: pull OS security updates and upgrade pip tooling (wheel has known CVEs).
 RUN apt-get update \
   && apt-get upgrade -y \
@@ -16,6 +18,10 @@ RUN apt-get update \
 ENV PYTHONUNBUFFERED=1
 ARG MCP_PUBLIC_READONLY=false
 ENV MCP_PUBLIC_READONLY=${MCP_PUBLIC_READONLY}
+ENV MCP_EDITION=${MCP_EDITION}
+
+# Build marker used by the runtime to force safe defaults for the public image.
+RUN echo "${MCP_EDITION}" > /app/.mcp_edition
 
 # Default to a non-root user (recommended for public images).
 # If you need to override (e.g. file permissions on mounted volumes), run with: `--user root`.

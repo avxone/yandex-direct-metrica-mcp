@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from .hf_common import HFError, ensure_hf_enabled, hf_payload
+from .hf_common import HFError, ensure_hf_enabled, ensure_hf_write_enabled, hf_payload, should_apply
 
 
 def _require_counter_id(args: dict[str, Any]) -> str:
@@ -231,5 +231,56 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         }
         return hf_payload(tool=tool, status="ok", preview=preview)
 
-    raise HFError(f"Unknown HF Metrica tool: {tool}")
+    if tool in {"metrica.hf.create_goal", "metrica.hf.update_goal", "metrica.hf.delete_goal"}:
+        ensure_hf_write_enabled(ctx.config)
+        counter_id = _require_counter_id(args)
+        goal_id = str(args.get("goal_id") or "").strip()
+        goal = args.get("goal")
 
+        if tool == "metrica.hf.create_goal":
+            if not isinstance(goal, dict):
+                raise HFError("goal (object) is required")
+            preview = {"tool": "metrica.goals.create", "counter_id": counter_id, "payload": {"goal": goal}}
+            if not should_apply(args):
+                return hf_payload(tool=tool, status="dry_run", preview=preview)
+            data = ctx._metrica_management_call(  # type: ignore[attr-defined]
+                resource="goals",
+                method="post",
+                params=args.get("params") or None,
+                data={"goal": goal},
+                path_args={"counterId": counter_id},
+            )
+            return hf_payload(tool=tool, status="ok", preview=preview, result=data)
+
+        if not goal_id:
+            raise HFError("goal_id is required")
+
+        if tool == "metrica.hf.update_goal":
+            if not isinstance(goal, dict):
+                raise HFError("goal (object) is required")
+            preview = {"tool": "metrica.goals.update", "counter_id": counter_id, "goal_id": goal_id, "payload": {"goal": goal}}
+            if not should_apply(args):
+                return hf_payload(tool=tool, status="dry_run", preview=preview)
+            data = ctx._metrica_management_call(  # type: ignore[attr-defined]
+                resource="goal",
+                method="put",
+                params=args.get("params") or None,
+                data={"goal": goal},
+                path_args={"counterId": counter_id, "goalId": goal_id},
+            )
+            return hf_payload(tool=tool, status="ok", preview=preview, result=data)
+
+        # delete
+        preview = {"tool": "metrica.goals.delete", "counter_id": counter_id, "goal_id": goal_id}
+        if not should_apply(args):
+            return hf_payload(tool=tool, status="dry_run", preview=preview)
+        data = ctx._metrica_management_call(  # type: ignore[attr-defined]
+            resource="goal",
+            method="delete",
+            params=args.get("params") or None,
+            data=None,
+            path_args={"counterId": counter_id, "goalId": goal_id},
+        )
+        return hf_payload(tool=tool, status="ok", preview=preview, result=data)
+
+    raise HFError(f"Unknown HF Metrica tool: {tool}")

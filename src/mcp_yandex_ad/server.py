@@ -26,9 +26,19 @@ from .hf_common import HFError, hf_payload
 from .hf_direct import handle as hf_direct_handle
 from .hf_join import handle as hf_join_handle
 from .hf_metrica import handle as hf_metrica_handle
+from .hf_wordstat import handle as hf_wordstat_handle
+from .hf_audience import handle as hf_audience_handle
 from .ratelimit import RateLimiter
 from .retry import with_retries
 from .tools import tool_definitions
+from .wordstat_client import WordstatClient
+from .audience_client import AudienceClient
+from .dashboard_option2 import (
+    dashboard_dataset_handle,
+    dashboard_option2_schema,
+    dashboard_sync_next,
+    dashboard_sync_start,
+)
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
 
@@ -400,10 +410,14 @@ _DASHBOARD_TEMPLATE_OPTION1_2026_01_28 = """<!doctype html>
 class AppContext:
     config: AppConfig
     tokens: TokenManager
+    audience_tokens: TokenManager | None
+    wordstat_tokens: TokenManager | None
     clients: YandexClients
     cache: TTLCache | None
     direct_rate_limiter: RateLimiter
     metrica_rate_limiter: RateLimiter
+    audience_rate_limiter: RateLimiter
+    wordstat_rate_limiter: RateLimiter
     direct_clients_cache: dict[str, object]
     direct_clients_cache_lock: threading.Lock
     direct_clients_cache_max_size: int = 8
@@ -412,14 +426,27 @@ class AppContext:
     accounts_registry_mtime: float | None = None
 
     # Convenience wrappers so HF modules don't have to import server internals.
-    def _direct_get(self, resource: str, params: dict[str, Any]) -> dict[str, Any]:
-        return _direct_get(self, resource, params)
+    def _direct_get(
+        self,
+        resource: str,
+        params: dict[str, Any],
+        *,
+        direct_client_login: str | None = None,
+    ) -> dict[str, Any]:
+        return _direct_get(self, resource, params, direct_client_login=direct_client_login)
 
-    def _direct_call(self, resource: str, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        return _direct_call(self, resource, method, params)
+    def _direct_call(
+        self,
+        resource: str,
+        method: str,
+        params: dict[str, Any],
+        *,
+        direct_client_login: str | None = None,
+    ) -> dict[str, Any]:
+        return _direct_call(self, resource, method, params, direct_client_login=direct_client_login)
 
-    def _direct_report(self, params: dict[str, Any]) -> dict[str, Any]:
-        return _direct_report(self, params)
+    def _direct_report(self, params: dict[str, Any], *, direct_client_login: str | None = None) -> dict[str, Any]:
+        return _direct_report(self, params, direct_client_login=direct_client_login)
 
     def _metrica_get_management(self, resource: str, params: dict[str, Any]) -> dict[str, Any]:
         return _metrica_get_management(self, resource, params)
@@ -448,6 +475,19 @@ class AppContext:
     ) -> dict[str, Any]:
         return _metrica_logs_call(self, action, path_args, params)
 
+    def _wordstat_post(self, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return _wordstat_post(self, path, payload)
+
+    def _audience_call(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return _audience_call(self, method, path, params=params, payload=payload)
+
 
 WRITE_TOOLS = {
     "direct.create_campaigns",
@@ -467,6 +507,14 @@ def _missing_envs(config: AppConfig) -> list[str]:
         missing.append("YANDEX_ACCESS_TOKEN or YANDEX_REFRESH_TOKEN")
     if config.refresh_token and not (config.client_id and config.client_secret):
         missing.append("YANDEX_CLIENT_ID/YANDEX_CLIENT_SECRET")
+    if getattr(config, "audience_enabled", False):
+        if config.audience_refresh_token and not (config.audience_client_id and config.audience_client_secret):
+            missing.append("YANDEX_AUDIENCE_CLIENT_ID/YANDEX_AUDIENCE_CLIENT_SECRET")
+    if getattr(config, "wordstat_enabled", False):
+        if not config.wordstat_access_token and not config.wordstat_refresh_token:
+            missing.append("YANDEX_WORDSTAT_ACCESS_TOKEN or YANDEX_WORDSTAT_REFRESH_TOKEN")
+        if config.wordstat_refresh_token and not (config.wordstat_client_id and config.wordstat_client_secret):
+            missing.append("YANDEX_WORDSTAT_CLIENT_ID/YANDEX_WORDSTAT_CLIENT_SECRET")
     return missing
 
 
@@ -521,14 +569,35 @@ def _error_response(tool: str, exc: Exception) -> list[TextContent]:
 def _is_write_tool(name: str, args: dict[str, Any] | None = None) -> bool:
     if name in WRITE_TOOLS:
         return True
+    if name == "join.hf.direct_vs_metrica_by_yclid":
+        # This join helper may create/clean Metrica Logs exports under the hood.
+        # Treat as write unless the caller provides an existing request_id and disables cleanup.
+        request_id = (args or {}).get("request_id")
+        cleanup = (args or {}).get("cleanup")
+        if request_id and cleanup is False:
+            return False
+        return True
     if name == "direct.raw_call":
         method = (args or {}).get("method") or "get"
         return str(method).lower() != "get"
     if name == "metrica.raw_call":
         method = (args or {}).get("method") or "get"
         return str(method).lower() != "get"
+    if name.startswith("metrica.goals.") and name not in {"metrica.goals.list", "metrica.goals.get"}:
+        return True
+    if name == "audience.raw_call":
+        method = (args or {}).get("method") or "GET"
+        return str(method).upper() != "GET"
+    if name.startswith("audience.segments.") and name not in {"audience.segments.list", "audience.segments.get", "audience.segments.stats", "audience.segments.overlap"}:
+        return True
+    if name.startswith("audience.upload."):
+        return True
+    if name == "audience.hf.apply_activation_plan":
+        return True
     # HF tools execute writes only when apply=true; enforce base write guardrails then.
     if name.startswith("direct.hf.") and (args or {}).get("apply"):
+        return True
+    if name.startswith("metrica.hf.") and (args or {}).get("apply"):
         return True
     return False
 
@@ -536,6 +605,11 @@ def _is_write_tool(name: str, args: dict[str, Any] | None = None) -> bool:
 def _enforce_write_guard(config: AppConfig, name: str, args: dict[str, Any] | None = None) -> None:
     if not _is_write_tool(name, args):
         return
+    provider = "direct"
+    if name.startswith(("audience.", "audience.hf.")) or name == "audience.raw_call":
+        provider = "audience"
+    if name.startswith("metrica."):
+        provider = "metrica"
     if getattr(config, "public_readonly", False):
         raise WriteGuardError(
             "public",
@@ -544,13 +618,13 @@ def _enforce_write_guard(config: AppConfig, name: str, args: dict[str, Any] | No
         )
     if not config.write_enabled:
         raise WriteGuardError(
-            "direct",
+            provider,
             "Write operations are disabled.",
             "Set MCP_WRITE_ENABLED=true to allow write operations.",
         )
     if config.write_sandbox_only and not config.use_sandbox:
         raise WriteGuardError(
-            "direct",
+            provider,
             "Write operations are allowed only in sandbox.",
             "Set YANDEX_DIRECT_SANDBOX=true or disable MCP_WRITE_SANDBOX_ONLY.",
         )
@@ -622,7 +696,7 @@ def _resolve_account_overrides(
     resolved = dict(args)
 
     # Direct: resolve Client-Login
-    if tool.startswith(("direct.", "direct.hf.", "join.hf.", "dashboard.")):
+    if tool.startswith(("direct.", "direct.hf.", "join.hf.", "dashboard.", "audience.hf.")):
         explicit_login = _normalize_direct_client_login(resolved.get("direct_client_login"))
         profile_login = _normalize_direct_client_login(profile.direct_client_login)
         if explicit_login and profile_login and explicit_login != profile_login:
@@ -635,8 +709,15 @@ def _resolve_account_overrides(
 
     # Metrica: resolve counter_id if the tool expects it
     needs_counter = tool.startswith(
-        ("metrica.report", "metrica.counter_info", "metrica.logs_export", "metrica.hf.", "join.hf.", "dashboard.")
-    )
+        (
+            "metrica.report",
+            "metrica.counter_info",
+            "metrica.logs_export",
+            "metrica.hf.",
+            "join.hf.",
+            "dashboard.",
+        )
+    ) or tool in {"audience.hf.segment_perf"}
     if needs_counter and not resolved.get("counter_id"):
         counters = [str(x).strip() for x in (profile.metrica_counter_ids or []) if str(x).strip()]
         if len(counters) == 1:
@@ -865,6 +946,21 @@ def _dashboard_build_recommendations(data: dict[str, Any]) -> dict[str, Any]:
             if m_last < d_first or d_last < m_first:
                 notes.append("Периоды Direct и Метрики не пересекаются — проверьте таймзону/период/доступ.")
 
+    wordstat_block = data.get("wordstat")
+    if isinstance(wordstat_block, dict) and wordstat_block.get("available") and isinstance(wordstat_block.get("campaigns"), list):
+        campaigns = [c for c in wordstat_block["campaigns"] if isinstance(c, dict)]
+        for c in campaigns[:3]:
+            cname = str(c.get("campaign_name") or c.get("campaign_id") or "").strip()
+            items = c.get("candidates")
+            if not cname or not isinstance(items, list) or not items:
+                continue
+            top = []
+            for it in items[:5]:
+                if isinstance(it, dict) and it.get("phrase"):
+                    top.append(str(it["phrase"]))
+            if top:
+                notes.append(f"Wordstat идеи для «{cname}»: " + ", ".join(top))
+
     while len(today_actions) < 3:
         today_actions.append("Уточнить, какие кампании/группы разрешено менять (sandbox vs live) и лимиты по ставкам.")
     while len(discussion_questions) < 3:
@@ -876,6 +972,294 @@ def _dashboard_build_recommendations(data: dict[str, Any]) -> dict[str, Any]:
         "today_actions": today_actions[:10],
         "discussion_questions": discussion_questions[:10],
         "notes": notes,
+    }
+
+
+def _dashboard_wordstat_clean_seed(value: str) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    # Basic cleanup for Direct keyword operators/syntax.
+    value = value.replace("!", " ").replace("+", " ").replace('"', " ").replace("'", " ")
+    value = re.sub(r"[\[\]\(\)\{\}]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value
+
+
+def _dashboard_build_wordstat_block(
+    ctx: AppContext,
+    *,
+    args: dict[str, Any],
+    campaign_data: dict[str, Any],
+    date_from: str,
+    date_to: str,
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not bool(args.get("include_wordstat")):
+        return None
+
+    if not getattr(ctx.config, "wordstat_enabled", False):
+        return {"available": False, "reason": "disabled"}
+    if ctx.wordstat_tokens is None or not ctx.wordstat_tokens.get_access_token():
+        return {"available": False, "reason": "not_configured"}
+
+    max_campaigns = int(args.get("wordstat_max_campaigns") or 5)
+    max_campaigns = max(1, min(20, max_campaigns))
+    max_seeds = int(args.get("wordstat_max_seed_phrases_per_campaign") or 3)
+    max_seeds = max(1, min(10, max_seeds))
+    num_phrases = int(args.get("wordstat_num_phrases") or 50)
+    if num_phrases <= 0 or num_phrases > 2000:
+        num_phrases = 50
+    max_candidates = int(args.get("wordstat_max_candidates_per_campaign") or 20)
+    max_candidates = max(5, min(200, max_candidates))
+    max_negatives = int(args.get("wordstat_max_negatives_per_campaign") or 25)
+    max_negatives = max(0, min(200, max_negatives))
+    language = str(args.get("wordstat_language") or "ru").strip().lower() or "ru"
+
+    regions = args.get("wordstat_regions")
+    devices = args.get("wordstat_devices")
+
+    # Pick top campaigns by clicks in the requested period.
+    scored: list[tuple[str, float]] = []
+    for cid, meta in (campaign_data or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        daily = meta.get("daily")
+        if not isinstance(daily, list):
+            continue
+        clicks = 0.0
+        for row in daily:
+            if not isinstance(row, dict):
+                continue
+            day = str(row.get("date") or "")
+            if not day or day < date_from or day > date_to:
+                continue
+            clicks += float(row.get("clicks") or 0.0)
+        if clicks > 0:
+            scored.append((str(cid), clicks))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top_campaign_ids = [cid for cid, _ in scored[:max_campaigns]]
+    if not top_campaign_ids:
+        return {"available": False, "reason": "no_campaigns"}
+
+    # Fetch keywords for these campaigns (best-effort, first page only to bound size).
+    kw_by_campaign: dict[str, list[str]] = {}
+    try:
+        kw_res = _direct_get(
+            ctx,
+            "keywords",
+            {
+                "SelectionCriteria": {"CampaignIds": [int(x) for x in top_campaign_ids]},
+                "FieldNames": ["CampaignId", "Keyword"],
+                "Page": {"Limit": 1000, "Offset": 0},
+            },
+            direct_client_login=args.get("direct_client_login"),
+        )
+        items = (kw_res.get("result") or {}).get("Keywords", []) if isinstance(kw_res, dict) else []
+        if isinstance(items, list):
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                cid = it.get("CampaignId")
+                kw = it.get("Keyword")
+                if cid is None or not isinstance(kw, str):
+                    continue
+                cid_s = str(cid)
+                kw_clean = _dashboard_wordstat_clean_seed(kw)
+                if not kw_clean:
+                    continue
+                kw_by_campaign.setdefault(cid_s, []).append(kw_clean)
+    except Exception as exc:
+        warnings.append(f"Wordstat seeds: failed to fetch Direct keywords: {exc.__class__.__name__}")
+
+    campaigns_out: list[dict[str, Any]] = []
+    for cid in top_campaign_ids:
+        meta = campaign_data.get(cid) if isinstance(campaign_data, dict) else None
+        cname = None
+        if isinstance(meta, dict):
+            cname = meta.get("name")
+        name = str(cname or f"#{cid}")
+
+        seeds: list[str] = []
+        seen: set[str] = set()
+        for kw in kw_by_campaign.get(cid, []):
+            if kw in seen:
+                continue
+            seen.add(kw)
+            seeds.append(kw)
+            if len(seeds) >= max_seeds:
+                break
+        if not seeds:
+            # Fallback: use campaign name as a seed (often worse than keywords, but better than nothing).
+            seeds = [_dashboard_wordstat_clean_seed(name)]
+            seeds = [s for s in seeds if s]
+
+        acc: dict[str, float] = {}
+        for seed in seeds:
+            try:
+                payload: dict[str, Any] = {"phrase": seed, "numPhrases": num_phrases}
+                if isinstance(regions, list) and regions:
+                    payload["regions"] = [int(x) for x in regions]
+                if isinstance(devices, list) and devices:
+                    payload["devices"] = [str(x) for x in devices if str(x).strip()]
+                resp = _wordstat_post(ctx, "topRequests", payload)
+                items = resp.get("topRequests")
+                if not isinstance(items, list):
+                    continue
+                for it in items:
+                    if not isinstance(it, dict):
+                        continue
+                    phrase = str(it.get("phrase") or "").strip()
+                    if not phrase:
+                        continue
+                    try:
+                        cnt = float(it.get("count") or 0.0)
+                    except Exception:
+                        continue
+                    if cnt <= 0:
+                        continue
+                    acc[phrase] = acc.get(phrase, 0.0) + cnt
+            except Exception as exc:
+                warnings.append(f"Wordstat topRequests failed for campaign {cid}: {exc.__class__.__name__}")
+
+        candidates = [{"phrase": p, "score": s} for p, s in sorted(acc.items(), key=lambda x: x[1], reverse=True)[:max_candidates]]
+        negatives: list[dict[str, Any]] = []
+        if max_negatives > 0 and candidates:
+            try:
+                neg_payload = hf_wordstat_handle(
+                    "wordstat.hf.suggest_negative_keywords",
+                    ctx,
+                    {
+                        "phrases": [c.get("phrase") for c in candidates if isinstance(c, dict) and c.get("phrase")],
+                        "language": language,
+                        "max_candidates": max_negatives,
+                    },
+                )
+                negs = (neg_payload.get("result") or {}).get("negatives") if isinstance(neg_payload, dict) else None
+                if isinstance(negs, list):
+                    negatives = [x for x in negs if isinstance(x, dict)]
+            except Exception:
+                negatives = []
+        campaigns_out.append(
+            {
+                "campaign_id": cid,
+                "campaign_name": name,
+                "seeds": seeds,
+                "candidates": candidates,
+                "negatives": negatives,
+            }
+        )
+
+    return {
+        "available": True,
+        "meta": {
+            "max_campaigns": max_campaigns,
+            "max_seeds_per_campaign": max_seeds,
+            "num_phrases": num_phrases,
+            "max_candidates_per_campaign": max_candidates,
+            "max_negatives_per_campaign": max_negatives,
+            "language": language,
+        },
+        "campaigns": campaigns_out,
+    }
+
+
+def _dashboard_build_audience_block(
+    ctx: AppContext,
+    *,
+    args: dict[str, Any],
+    warnings: list[str],
+) -> dict[str, Any] | None:
+    if not bool(args.get("include_audience")):
+        return None
+    if not getattr(ctx.config, "audience_enabled", False):
+        return {"available": False, "reason": "disabled"}
+    if ctx.audience_tokens is None or not ctx.audience_tokens.get_access_token():
+        return {"available": False, "reason": "not_configured"}
+
+    limit = 50
+    try:
+        raw = ctx._audience_call("GET", "/segments", params={"limit": limit, "offset": 0})
+    except Exception as exc:  # pragma: no cover
+        warnings.append(f"Audience: failed to list segments: {exc.__class__.__name__}")
+        return {"available": False, "reason": "error"}
+
+    seg_items = raw.get("segments")
+    if not isinstance(seg_items, list):
+        seg_items = raw.get("items") if isinstance(raw.get("items"), list) else []
+
+    segments: list[dict[str, Any]] = []
+    for s in seg_items:
+        if not isinstance(s, dict):
+            continue
+        seg_id = str(s.get("id") or s.get("segment_id") or "").strip()
+        if not seg_id:
+            continue
+        size = None
+        for k in ("size", "audience_size", "users", "count"):
+            if s.get(k) is not None:
+                try:
+                    size = int(s.get(k))
+                except Exception:
+                    size = None
+                break
+        updated_at = s.get("updated_at") or s.get("updated") or s.get("modified_at")
+        status = s.get("status")
+        hints: list[str] = []
+        if isinstance(size, int) and size < 1000:
+            hints.append("small_size")
+        if str(status or "").lower() not in {"ready", "active", "available", "ok"}:
+            hints.append("status_not_ready")
+        segments.append(
+            {
+                "id": seg_id,
+                "name": s.get("name"),
+                "type": s.get("type"),
+                "status": status,
+                "updated_at": updated_at,
+                "size": size,
+                "health": {"status": "ok" if not hints else "warning", "hints": hints},
+            }
+        )
+    segments = segments[:limit]
+
+    overlaps: list[dict[str, Any]] = []
+    seg_ids = [s["id"] for s in segments[:20] if isinstance(s.get("id"), str) and s.get("id")]
+    if len(seg_ids) >= 2:
+        try:
+            ov = ctx._audience_call(
+                "POST",
+                "/segments/overlap",
+                payload={"segment_ids": seg_ids, "mode": "top_pairs", "limit": 30},
+            )
+            pairs = ov.get("pairs")
+            if isinstance(pairs, list):
+                for p in pairs:
+                    if not isinstance(p, dict):
+                        continue
+                    a = p.get("a") or p.get("segment_a") or p.get("id_a")
+                    b = p.get("b") or p.get("segment_b") or p.get("id_b")
+                    if a is None or b is None:
+                        continue
+                    overlaps.append(
+                        {
+                            "a": str(a),
+                            "b": str(b),
+                            "overlap_share": p.get("overlap_share") or p.get("share"),
+                            "overlap_abs": p.get("overlap_abs") or p.get("count"),
+                        }
+                    )
+        except Exception:  # pragma: no cover
+            warnings.append("Audience: overlap computation failed (best effort).")
+
+    return {
+        "available": True,
+        "segments": segments,
+        "top_overlaps": overlaps,
+        "raw_refs": [
+            {"tool": "audience.segments.list", "limit": limit},
+            {"tool": "audience.segments.overlap", "segment_ids": seg_ids, "mode": "top_pairs"},
+        ],
     }
 
 
@@ -2681,6 +3065,16 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
         if profile is not None and profile.name:
             project_name = profile.name
 
+    wordstat_block = _dashboard_build_wordstat_block(
+        ctx,
+        args=args,
+        campaign_data=direct_campaign_data,
+        date_from=date_from_eff_s,
+        date_to=date_to_eff_s,
+        warnings=warnings,
+    )
+    audience_block = _dashboard_build_audience_block(ctx, args=args, warnings=warnings)
+
     data: dict[str, Any] = {
         "meta": {
             "generated_at": _dashboard_now_iso(),
@@ -2713,6 +3107,10 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
         },
         "warnings": warnings,
     }
+    if wordstat_block is not None:
+        data["wordstat"] = wordstat_block
+    if audience_block is not None:
+        data["audience"] = audience_block
     if include_raw:
         data["direct"]["raw_report"] = direct_report
         data["metrica"]["raw_report"] = metrica_report
@@ -3026,6 +3424,91 @@ def _metrica_logs_call(
     return payload
 
 
+def _wordstat_post(ctx: AppContext, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    if not getattr(ctx.config, "wordstat_enabled", False):
+        raise MissingClientError("wordstat", "Wordstat is disabled (MCP_WORDSTAT_ENABLED=false).")
+    if ctx.wordstat_tokens is None:
+        raise MissingClientError("wordstat", "Wordstat client not configured.")
+    access_token = ctx.wordstat_tokens.get_access_token()
+    if not access_token:
+        raise MissingClientError("wordstat", "Wordstat access token not configured.")
+
+    cacheable = path in {"userInfo", "getRegionsTree"} and ctx.cache is not None
+    cache_key = ""
+    if cacheable:
+        cache_key = f"wordstat:{path}:{json.dumps(payload or {}, sort_keys=True, ensure_ascii=True)}"
+        cached = ctx.cache.get(cache_key)
+        if isinstance(cached, dict):
+            return cached
+
+    client = WordstatClient(access_token=access_token)
+
+    def _call() -> dict[str, Any]:
+        ctx.wordstat_rate_limiter.acquire()
+        return client.post(path, payload)
+
+    data = with_retries(
+        _call,
+        max_attempts=ctx.config.retry_max_attempts,
+        base_delay_seconds=ctx.config.retry_base_delay_seconds,
+        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    )
+    if cacheable:
+        ctx.cache.set(cache_key, data)
+    return data
+
+
+def _audience_call(
+    ctx: AppContext,
+    method: str,
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if not getattr(ctx.config, "audience_enabled", False):
+        raise MissingClientError("audience", "Audience is disabled (MCP_AUDIENCE_ENABLED=false).")
+    if ctx.audience_tokens is None:
+        raise MissingClientError("audience", "Audience client not configured.")
+    access_token = ctx.audience_tokens.get_access_token()
+    if not access_token:
+        raise MissingClientError("audience", "Audience access token not configured.")
+
+    normalized_path = path.strip("/")
+    cacheable = method.strip().upper() == "GET" and normalized_path.lower() in {"user/info"} and ctx.cache is not None
+    cache_key = ""
+    if cacheable:
+        cache_key = f"audience:{normalized_path}:{json.dumps(params or {}, sort_keys=True, ensure_ascii=True)}"
+        cached = ctx.cache.get(cache_key)
+        if isinstance(cached, dict):
+            return cached
+
+    client = AudienceClient(access_token=access_token)
+
+    def _call() -> dict[str, Any]:
+        ctx.audience_rate_limiter.acquire()
+        m = method.strip().upper()
+        if m == "GET":
+            return client.get(normalized_path, params=params)
+        if m == "POST":
+            return client.post(normalized_path, payload, params=params)
+        if m == "PUT":
+            return client.put(normalized_path, payload, params=params)
+        if m == "DELETE":
+            return client.delete(normalized_path, params=params)
+        raise ValueError("Audience method must be GET|POST|PUT|DELETE")
+
+    data = with_retries(
+        _call,
+        max_attempts=ctx.config.retry_max_attempts,
+        base_delay_seconds=ctx.config.retry_base_delay_seconds,
+        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    )
+    if cacheable:
+        ctx.cache.set(cache_key, data)
+    return data
+
+
 def _direct_report(
     ctx: AppContext,
     params: dict[str, Any],
@@ -3308,6 +3791,120 @@ def _build_raw_metrica_args(
     return api, resource, method, path_args, data, params
 
 
+def _wordstat_int_list(value: Any) -> list[int] | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        out: list[int] = []
+        for item in value:
+            try:
+                out.append(int(item))
+            except Exception:
+                continue
+        return out or None
+    try:
+        return [int(value)]
+    except Exception:
+        return None
+
+
+def _wordstat_str_list(value: Any) -> list[str] | None:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        out = [str(x).strip() for x in value if str(x).strip()]
+        return out or None
+    s = str(value).strip()
+    return [s] if s else None
+
+
+def _build_wordstat_top_requests_payload(args: dict[str, Any]) -> dict[str, Any]:
+    if args.get("params"):
+        return args["params"]
+
+    phrase = args.get("phrase")
+    phrases = args.get("phrases")
+    payload: dict[str, Any] = {}
+
+    if phrase is not None and str(phrase).strip():
+        payload["phrase"] = str(phrase).strip()
+    if phrases is not None:
+        resolved = _wordstat_str_list(phrases)
+        if not resolved:
+            raise ValueError("phrases must be a non-empty array when provided")
+        if len(resolved) > 128:
+            raise ValueError("phrases must contain at most 128 items")
+        payload["phrases"] = resolved
+
+    if "phrase" not in payload and "phrases" not in payload:
+        raise ValueError("phrase or phrases is required")
+
+    regions = _wordstat_int_list(args.get("regions"))
+    if regions:
+        payload["regions"] = regions
+    devices = _wordstat_str_list(args.get("devices"))
+    if devices:
+        payload["devices"] = devices
+
+    num_phrases = args.get("num_phrases")
+    if num_phrases is not None:
+        n = int(num_phrases)
+        if n <= 0 or n > 2000:
+            raise ValueError("num_phrases must be between 1 and 2000")
+        payload["numPhrases"] = n
+
+    return payload
+
+
+def _build_wordstat_dynamics_payload(args: dict[str, Any]) -> dict[str, Any]:
+    if args.get("params"):
+        return args["params"]
+
+    phrase = str(args.get("phrase") or "").strip()
+    if not phrase:
+        raise ValueError("phrase is required")
+    from_date = str(args.get("from_date") or "").strip()
+    if not from_date:
+        raise ValueError("from_date is required")
+
+    payload: dict[str, Any] = {"phrase": phrase, "fromDate": from_date}
+
+    to_date = args.get("to_date")
+    if to_date is not None and str(to_date).strip():
+        payload["toDate"] = str(to_date).strip()
+
+    period = args.get("period")
+    if period is not None and str(period).strip():
+        payload["period"] = str(period).strip()
+
+    regions = _wordstat_int_list(args.get("regions"))
+    if regions:
+        payload["regions"] = regions
+    devices = _wordstat_str_list(args.get("devices"))
+    if devices:
+        payload["devices"] = devices
+
+    return payload
+
+
+def _build_wordstat_regions_payload(args: dict[str, Any]) -> dict[str, Any]:
+    if args.get("params"):
+        return args["params"]
+
+    phrase = str(args.get("phrase") or "").strip()
+    if not phrase:
+        raise ValueError("phrase is required")
+
+    payload: dict[str, Any] = {"phrase": phrase}
+    region_type = args.get("region_type")
+    if region_type is not None and str(region_type).strip():
+        payload["regionType"] = str(region_type).strip()
+    devices = _wordstat_str_list(args.get("devices"))
+    if devices:
+        payload["devices"] = devices
+    return payload
+
+
 def _build_items_params(args: dict[str, Any], *, key: str) -> dict[str, Any]:
     if args.get("params"):
         return args["params"]
@@ -3427,6 +4024,28 @@ async def server_lifespan(server: Server) -> AsyncIterator[AppContext]:  # noqa:
     access_token = tokens.get_access_token()
     clients = build_clients(config, access_token)
 
+    audience_tokens: TokenManager | None = None
+    if getattr(config, "audience_enabled", False):
+        audience_tokens = TokenManager(
+            config,
+            access_token=config.audience_access_token,
+            refresh_token=config.audience_refresh_token,
+            client_id=config.audience_client_id,
+            client_secret=config.audience_client_secret,
+            provider="audience",
+        )
+
+    wordstat_tokens: TokenManager | None = None
+    if getattr(config, "wordstat_enabled", False):
+        wordstat_tokens = TokenManager(
+            config,
+            access_token=config.wordstat_access_token,
+            refresh_token=config.wordstat_refresh_token,
+            client_id=config.wordstat_client_id,
+            client_secret=config.wordstat_client_secret,
+            provider="wordstat",
+        )
+
     cache: TTLCache | None = None
     if config.cache_enabled and config.cache_ttl_seconds > 0:
         cache = TTLCache(config.cache_ttl_seconds)
@@ -3434,10 +4053,14 @@ async def server_lifespan(server: Server) -> AsyncIterator[AppContext]:  # noqa:
     yield AppContext(
         config=config,
         tokens=tokens,
+        audience_tokens=audience_tokens,
+        wordstat_tokens=wordstat_tokens,
         clients=clients,
         cache=cache,
         direct_rate_limiter=RateLimiter(config.direct_rate_limit_rps),
         metrica_rate_limiter=RateLimiter(config.metrica_rate_limit_rps),
+        audience_rate_limiter=RateLimiter(getattr(config, "audience_rate_limit_rps", 0)),
+        wordstat_rate_limiter=RateLimiter(getattr(config, "wordstat_rate_limit_rps", 0)),
         direct_clients_cache={},
         direct_clients_cache_lock=threading.Lock(),
     )
@@ -3475,6 +4098,12 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                     name,
                     {"result": {"path": ctx.config.accounts_file, "count": len(accounts), "account_ids": sorted(accounts.keys())}},
                 )
+            if name in {"accounts.upsert", "accounts.delete"} and getattr(ctx.config, "public_readonly", False):
+                raise WriteGuardError(
+                    "public",
+                    "Accounts registry write operations are disabled in public read-only mode.",
+                    "Use the pro edition or run without MCP_PUBLIC_READONLY=true.",
+                )
             if name in {"accounts.upsert", "accounts.delete"} and not ctx.config.accounts_write_enabled:
                 raise WriteGuardError(
                     "accounts",
@@ -3506,6 +4135,20 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         or ctx.clients.metrica_logs is not None
     ) and name.startswith("metrica."):
         return _error_response(name, MissingClientError("metrica", "Metrica client not configured."))
+    if name.startswith("audience."):
+        if not getattr(ctx.config, "audience_enabled", False):
+            return _error_response(
+                name, MissingClientError("audience", "Audience is disabled (MCP_AUDIENCE_ENABLED=false).")
+            )
+        if ctx.audience_tokens is None or not ctx.audience_tokens.get_access_token():
+            return _error_response(name, MissingClientError("audience", "Audience client not configured."))
+    if name.startswith("wordstat."):
+        if not getattr(ctx.config, "wordstat_enabled", False):
+            return _error_response(
+                name, MissingClientError("wordstat", "Wordstat is disabled (MCP_WORDSTAT_ENABLED=false).")
+            )
+        if ctx.wordstat_tokens is None or not ctx.wordstat_tokens.get_access_token():
+            return _error_response(name, MissingClientError("wordstat", "Wordstat client not configured."))
 
     try:
         args = _resolve_account_overrides(ctx, name, args)
@@ -3546,9 +4189,263 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         except Exception as exc:  # pragma: no cover
             return _error_response(name, exc)
 
+    if name.startswith("wordstat.hf."):
+        try:
+            data = hf_wordstat_handle(name, ctx, args)
+            return _ok_result(ctx, name, data)
+        except HFError as exc:
+            return _text_response(hf_payload(tool=name, status="error", message=str(exc)))
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name.startswith("audience.hf."):
+        try:
+            data = hf_audience_handle(name, ctx, args)
+            return _ok_result(ctx, name, data)
+        except HFError as exc:
+            return _text_response(hf_payload(tool=name, status="error", message=str(exc)))
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
     if name == "dashboard.generate_option1":
         try:
             data = _dashboard_generate_option1(ctx, args)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "dashboard.schema":
+        try:
+            data = dashboard_option2_schema()
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name.startswith("dashboard.dataset."):
+        try:
+            data = dashboard_dataset_handle(ctx, name, args)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "dashboard.sync.start":
+        try:
+            data = dashboard_sync_start(ctx, args)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "dashboard.sync.next":
+        try:
+            data = dashboard_sync_next(ctx, args)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "wordstat.user_info":
+        try:
+            data = _wordstat_post(ctx, "userInfo", args.get("params") or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "audience.user_info":
+        try:
+            data = ctx._audience_call("GET", "/user/info")
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.list":
+        try:
+            params = {k: v for k, v in (args or {}).items() if k in {"limit", "offset", "types", "statuses", "fields"} and v is not None}
+            data = ctx._audience_call("GET", "/segments", params=params)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.get":
+        try:
+            seg_id = str(args.get("segment_id") or "")
+            if not seg_id:
+                raise ValueError("segment_id is required")
+            params = {}
+            if args.get("fields") is not None:
+                params["fields"] = args.get("fields")
+            data = ctx._audience_call("GET", f"/segments/{seg_id}", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.stats":
+        try:
+            seg_id = str(args.get("segment_id") or "")
+            if not seg_id:
+                raise ValueError("segment_id is required")
+            params = {}
+            if args.get("fields") is not None:
+                params["fields"] = args.get("fields")
+            # Best effort: API may not expose a dedicated stats endpoint; try /stats then fallback to /segments/{id}.
+            try:
+                data = ctx._audience_call("GET", f"/segments/{seg_id}/stats", params=params or None)
+            except Exception:
+                data = ctx._audience_call("GET", f"/segments/{seg_id}", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.overlap":
+        try:
+            seg_ids = args.get("segment_ids")
+            if not isinstance(seg_ids, list) or not seg_ids:
+                raise ValueError("segment_ids is required")
+            payload = {"segment_ids": [str(x) for x in seg_ids]}
+            if args.get("mode") is not None:
+                payload["mode"] = str(args.get("mode"))
+            if args.get("limit") is not None:
+                payload["limit"] = int(args.get("limit"))
+            data = ctx._audience_call("POST", "/segments/overlap", payload=payload)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.pixels.list":
+        try:
+            params = {k: v for k, v in (args or {}).items() if k in {"limit", "offset", "fields"} and v is not None}
+            data = ctx._audience_call("GET", "/pixels", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.pixels.get":
+        try:
+            pixel_id = str(args.get("pixel_id") or "")
+            if not pixel_id:
+                raise ValueError("pixel_id is required")
+            params = {}
+            if args.get("fields") is not None:
+                params["fields"] = args.get("fields")
+            data = ctx._audience_call("GET", f"/pixels/{pixel_id}", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.lookalikes.list":
+        try:
+            params = {k: v for k, v in (args or {}).items() if k in {"limit", "offset", "fields"} and v is not None}
+            data = ctx._audience_call("GET", "/lookalikes", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.lookalikes.get":
+        try:
+            look_id = str(args.get("id") or "")
+            if not look_id:
+                raise ValueError("id is required")
+            params = {}
+            if args.get("fields") is not None:
+                params["fields"] = args.get("fields")
+            data = ctx._audience_call("GET", f"/lookalikes/{look_id}", params=params or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.create":
+        try:
+            data = ctx._audience_call("POST", "/segments", payload=args.get("payload") or {})
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.update":
+        try:
+            seg_id = str(args.get("segment_id") or "")
+            if not seg_id:
+                raise ValueError("segment_id is required")
+            data = ctx._audience_call("PUT", f"/segments/{seg_id}", payload=args.get("payload") or {})
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.segments.delete":
+        try:
+            seg_id = str(args.get("segment_id") or "")
+            if not seg_id:
+                raise ValueError("segment_id is required")
+            data = ctx._audience_call("DELETE", f"/segments/{seg_id}")
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.upload.start":
+        try:
+            seg_id = str(args.get("segment_id") or "")
+            if not seg_id:
+                raise ValueError("segment_id is required")
+            data = ctx._audience_call("POST", f"/segments/{seg_id}/upload", payload=args.get("payload") or {})
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.upload.status":
+        try:
+            upload_id = str(args.get("upload_id") or "")
+            if not upload_id:
+                raise ValueError("upload_id is required")
+            data = ctx._audience_call("GET", f"/uploads/{upload_id}")
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.upload.errors":
+        try:
+            upload_id = str(args.get("upload_id") or "")
+            if not upload_id:
+                raise ValueError("upload_id is required")
+            data = ctx._audience_call("GET", f"/uploads/{upload_id}/errors")
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "audience.raw_call":
+        try:
+            method = str(args.get("method") or "GET")
+            path = str(args.get("path") or "")
+            if not path:
+                raise ValueError("path is required")
+            data = ctx._audience_call(method, path, params=args.get("params") or None, payload=args.get("payload") or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "wordstat.get_regions_tree":
+        try:
+            data = _wordstat_post(ctx, "getRegionsTree", args.get("params") or None)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "wordstat.top_requests":
+        try:
+            payload = _build_wordstat_top_requests_payload(args)
+            data = _wordstat_post(ctx, "topRequests", payload)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "wordstat.dynamics":
+        try:
+            payload = _build_wordstat_dynamics_payload(args)
+            data = _wordstat_post(ctx, "dynamics", payload)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "wordstat.regions":
+        try:
+            payload = _build_wordstat_regions_payload(args)
+            data = _wordstat_post(ctx, "regions", payload)
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)
@@ -3764,6 +4661,108 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             data = _metrica_get_stats(ctx, params)
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "metrica.goals.list":
+        try:
+            counter_id = str(args.get("counter_id") or "").strip()
+            if not counter_id:
+                raise ValueError("counter_id is required")
+            params = args.get("params") or None
+            data = _metrica_management_call(
+                ctx,
+                resource="goals",
+                method="get",
+                params=params,
+                data=None,
+                path_args={"counterId": counter_id},
+            )
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "metrica.goals.get":
+        try:
+            counter_id = str(args.get("counter_id") or "").strip()
+            goal_id = str(args.get("goal_id") or "").strip()
+            if not counter_id:
+                raise ValueError("counter_id is required")
+            if not goal_id:
+                raise ValueError("goal_id is required")
+            params = args.get("params") or None
+            data = _metrica_management_call(
+                ctx,
+                resource="goal",
+                method="get",
+                params=params,
+                data=None,
+                path_args={"counterId": counter_id, "goalId": goal_id},
+            )
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "metrica.goals.create":
+        try:
+            counter_id = str(args.get("counter_id") or "").strip()
+            if not counter_id:
+                raise ValueError("counter_id is required")
+            payload = args.get("payload")
+            if not isinstance(payload, dict):
+                raise ValueError("payload must be an object")
+            data = _metrica_management_call(
+                ctx,
+                resource="goals",
+                method="post",
+                params=None,
+                data=payload,
+                path_args={"counterId": counter_id},
+            )
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "metrica.goals.update":
+        try:
+            counter_id = str(args.get("counter_id") or "").strip()
+            goal_id = str(args.get("goal_id") or "").strip()
+            if not counter_id:
+                raise ValueError("counter_id is required")
+            if not goal_id:
+                raise ValueError("goal_id is required")
+            payload = args.get("payload")
+            if not isinstance(payload, dict):
+                raise ValueError("payload must be an object")
+            data = _metrica_management_call(
+                ctx,
+                resource="goal",
+                method="put",
+                params=None,
+                data=payload,
+                path_args={"counterId": counter_id, "goalId": goal_id},
+            )
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "metrica.goals.delete":
+        try:
+            counter_id = str(args.get("counter_id") or "").strip()
+            goal_id = str(args.get("goal_id") or "").strip()
+            if not counter_id:
+                raise ValueError("counter_id is required")
+            if not goal_id:
+                raise ValueError("goal_id is required")
+            data = _metrica_management_call(
+                ctx,
+                resource="goal",
+                method="delete",
+                params=None,
+                data=None,
+                path_args={"counterId": counter_id, "goalId": goal_id},
+            )
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover
             return _error_response(name, exc)
 
     if name == "metrica.logs_export":

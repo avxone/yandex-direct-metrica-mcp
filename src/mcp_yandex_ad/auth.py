@@ -21,14 +21,27 @@ class AccessToken:
 
 
 class TokenManager:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        *,
+        access_token: str | None = None,
+        refresh_token: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        provider: str = "yandex",
+    ) -> None:
         self._config = config
-        self._access_token: str | None = config.access_token
+        self._provider = provider
+        self._access_token: str | None = access_token if access_token is not None else config.access_token
+        self._refresh_token: str | None = refresh_token if refresh_token is not None else config.refresh_token
+        self._client_id: str | None = client_id if client_id is not None else config.client_id
+        self._client_secret: str | None = client_secret if client_secret is not None else config.client_secret
 
     def get_access_token(self) -> str | None:
         if self._access_token:
             return self._access_token
-        if not self._config.refresh_token:
+        if not self._refresh_token:
             return None
         refreshed = self._refresh_access_token()
         if refreshed:
@@ -37,24 +50,22 @@ class TokenManager:
         return None
 
     def _refresh_access_token(self) -> AccessToken | None:
-        if not all(
-            [self._config.client_id, self._config.client_secret, self._config.refresh_token]
-        ):
-            logger.warning("Missing OAuth client credentials for token refresh")
+        if not all([self._client_id, self._client_secret, self._refresh_token]):
+            logger.warning("Missing OAuth client credentials for token refresh (%s)", self._provider)
             return None
 
         data = {
             "grant_type": "refresh_token",
-            "refresh_token": self._config.refresh_token,
-            "client_id": self._config.client_id,
-            "client_secret": self._config.client_secret,
+            "refresh_token": self._refresh_token,
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
         }
 
         try:
             response = requests.post(TOKEN_URL, data=data, timeout=30)
             response.raise_for_status()
         except requests.RequestException as exc:
-            logger.error("Failed to refresh token: %s", exc)
+            logger.error("Failed to refresh token (%s): %s", self._provider, exc)
             return None
 
         payload: dict[str, Any] = response.json()

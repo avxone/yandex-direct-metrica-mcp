@@ -6,8 +6,55 @@ import json
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-from tapi_yandex_direct import exceptions as direct_exceptions
-from tapi_yandex_metrika import exceptions as metrica_exceptions
+try:
+    from tapi_yandex_direct import exceptions as direct_exceptions
+except ImportError:  # pragma: no cover - optional dependency (tests/dev)
+    class _DirectExceptions:
+        class YandexDirectClientError(Exception):
+            error_code: str | None = None
+            request_id: str | None = None
+            error_string: str | None = None
+            error_detail: str | None = None
+
+        class YandexDirectTokenError(YandexDirectClientError):
+            pass
+
+        class YandexDirectRequestsLimitError(YandexDirectClientError):
+            pass
+
+        class YandexDirectNotEnoughUnitsError(YandexDirectClientError):
+            pass
+
+        class YandexDirectApiError(Exception):
+            data: Any | None = None
+
+    direct_exceptions = _DirectExceptions()
+
+try:
+    from tapi_yandex_metrika import exceptions as metrica_exceptions
+except ImportError:  # pragma: no cover - optional dependency (tests/dev)
+    class _MetricaExceptions:
+        class YandexMetrikaClientError(Exception):
+            code: str | None = None
+            message: str | None = None
+            errors: Any | None = None
+
+        class YandexMetrikaTokenError(YandexMetrikaClientError):
+            pass
+
+        class YandexMetrikaLimitError(YandexMetrikaClientError):
+            pass
+
+        class YandexMetrikaDownloadReportError(YandexMetrikaClientError):
+            pass
+
+        class YandexMetrikaApiError(Exception):
+            data: Any | None = None
+
+    metrica_exceptions = _MetricaExceptions()
+
+from .wordstat_client import WordstatError
+from .audience_client import AudienceError
 
 HINT_RATE_LIMIT = "Rate limit exceeded; retry with backoff."
 HINT_TOKEN = "Check access/refresh token and API permissions."
@@ -114,6 +161,26 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
     elif isinstance(exc, metrica_exceptions.YandexMetrikaApiError):
         payload["provider"] = "metrica"
         payload["message"] = exc.message or "Metrica API error"
+    elif isinstance(exc, WordstatError):
+        payload["provider"] = "wordstat"
+        payload["message"] = str(exc) or "Wordstat API error"
+        http_status = payload.get("http_status")
+        if http_status == 401 or http_status == 403:
+            payload["hint"] = HINT_TOKEN
+        elif http_status == 429:
+            payload["hint"] = HINT_RATE_LIMIT
+        elif isinstance(http_status, int) and 500 <= http_status <= 599:
+            payload["hint"] = HINT_RATE_LIMIT
+    elif isinstance(exc, AudienceError):
+        payload["provider"] = "audience"
+        payload["message"] = str(exc) or "Audience API error"
+        http_status = payload.get("http_status")
+        if http_status == 401 or http_status == 403:
+            payload["hint"] = HINT_TOKEN
+        elif http_status == 429:
+            payload["hint"] = HINT_RATE_LIMIT
+        elif isinstance(http_status, int) and 500 <= http_status <= 599:
+            payload["hint"] = HINT_RATE_LIMIT
     elif isinstance(exc, ValueError):
         payload["message"] = str(exc)
         payload["hint"] = HINT_PARAMS

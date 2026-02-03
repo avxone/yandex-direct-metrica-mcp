@@ -1,0 +1,2313 @@
+[
+  {
+    "name": "accounts.list",
+    "description": "List configured project profiles from the accounts registry file.",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "accounts.reload",
+    "description": "Reload accounts registry from disk (updates server cache).",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.activation_plan",
+    "description": "Human-friendly: preview Direct activation plan for an Audience segment (pro-only apply tool is separate).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "apply": {
+          "description": "Must be false for preview tool.",
+          "type": "boolean"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "segment_id": {
+          "type": "string"
+        },
+        "targets": {
+          "description": "Activation targets (adgroup/campaign).",
+          "items": {
+            "properties": {
+              "bid_modifier_percent": {
+                "description": "Optional bid modifier (percent).",
+                "type": "integer"
+              },
+              "id": {
+                "type": "integer"
+              },
+              "type": {
+                "description": "adgroup|campaign",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_id",
+        "targets"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.catalog",
+    "description": "Human-friendly: audience segments catalog for dashboards.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "include_health": {
+          "description": "Default: false.",
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.find_segment",
+    "description": "Human-friendly: find Audience segments by name/type/status.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "include_raw": {
+          "description": "Include raw response (default: false).",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Default: 20.",
+          "type": "integer"
+        },
+        "name_contains": {
+          "type": "string"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.get_segment_summary",
+    "description": "Human-friendly: Audience segment summary card for UI/LLM.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "include_raw": {
+          "description": "Include raw response (default: true).",
+          "type": "boolean"
+        },
+        "segment_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.overlap_matrix",
+    "description": "Human-friendly: overlap matrix (sparse) for segment ids.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "segment_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "top_k": {
+          "description": "Default: 50.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "segment_ids"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.segment_health",
+    "description": "Human-friendly: Audience segment health check.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "max_age_days": {
+          "description": "Default: 30.",
+          "type": "integer"
+        },
+        "min_size": {
+          "description": "Default: 1000.",
+          "type": "integer"
+        },
+        "segment_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.hf.segment_perf",
+    "description": "Human-friendly: best-effort segment performance via Direct+Metrica.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "integer"
+        },
+        "date_from": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "goal_ids": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "grain": {
+          "description": "day|week|month (default: day).",
+          "type": "string"
+        },
+        "include_raw_refs": {
+          "description": "Include raw_refs (default: true).",
+          "type": "boolean"
+        },
+        "segment_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id",
+        "date_from",
+        "date_to"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.lookalikes.get",
+    "description": "Audience: get lookalike by id.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.lookalikes.list",
+    "description": "Audience: list lookalikes (best effort).",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.pixels.get",
+    "description": "Audience: get pixel by id.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pixel_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "pixel_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.pixels.list",
+    "description": "Audience: list pixels.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.segments.get",
+    "description": "Audience: get segment by id.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "segment_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.segments.list",
+    "description": "Audience: list segments.",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.segments.overlap",
+    "description": "Audience: overlap between segments (best effort).",
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "description": "Default: 50.",
+          "type": "integer"
+        },
+        "mode": {
+          "description": "matrix|top_pairs (default: top_pairs).",
+          "type": "string"
+        },
+        "segment_ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_ids"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.segments.stats",
+    "description": "Audience: segment stats (size/status) (best effort).",
+    "inputSchema": {
+      "properties": {
+        "fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "segment_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "segment_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "audience.user_info",
+    "description": "Audience: user info (validate access).",
+    "inputSchema": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "dashboard.generate_option1",
+    "description": "Generate a simple HTML+JSON dashboard from Direct+Metrica data (Option 1).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "account_ids": {
+          "description": "Optional explicit list of account profile ids to include in a multi-account dashboard.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "all_accounts": {
+          "description": "When true, generate one dashboard containing data for all configured account profiles (account switcher in UI).",
+          "type": "boolean"
+        },
+        "counter_id": {
+          "description": "Metrica counter id (optional if account profile has exactly one).",
+          "type": "string"
+        },
+        "dashboard_slug": {
+          "description": "Optional suffix for output file names.",
+          "type": "string"
+        },
+        "date_from": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "goal_ids": {
+          "description": "Optional Metrica goal IDs. When set, dashboard will include leads based on goal{ID}reaches (best effort).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_audience": {
+          "description": "Include Audience segments blocks (default: false).",
+          "type": "boolean"
+        },
+        "include_html": {
+          "description": "Include HTML content in response (default: true if output_dir is not set).",
+          "type": "boolean"
+        },
+        "include_raw_reports": {
+          "description": "Include raw Direct/Metrica payloads in output data (default: true).",
+          "type": "boolean"
+        },
+        "include_wordstat": {
+          "description": "Include Wordstat suggestions block (default: false).",
+          "type": "boolean"
+        },
+        "output_dir": {
+          "description": "When set, write HTML+JSON files to this directory.",
+          "type": "string"
+        },
+        "return_data": {
+          "description": "Return the full data payload in response (default: false if output_dir is set, otherwise true).",
+          "type": "boolean"
+        },
+        "wordstat_devices": {
+          "description": "Optional Wordstat devices filter.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "wordstat_language": {
+          "description": "Negative lexicon language ru|en (default: ru).",
+          "type": "string"
+        },
+        "wordstat_max_campaigns": {
+          "description": "Max campaigns to analyze with Wordstat (default: 5).",
+          "type": "integer"
+        },
+        "wordstat_max_candidates_per_campaign": {
+          "description": "Max Wordstat candidates per campaign (default: 20).",
+          "type": "integer"
+        },
+        "wordstat_max_negatives_per_campaign": {
+          "description": "Max negative tokens per campaign (default: 25).",
+          "type": "integer"
+        },
+        "wordstat_max_seed_phrases_per_campaign": {
+          "description": "Max seed phrases per campaign (default: 3).",
+          "type": "integer"
+        },
+        "wordstat_num_phrases": {
+          "description": "Wordstat numPhrases (default: 50, max: 2000).",
+          "type": "integer"
+        },
+        "wordstat_regions": {
+          "description": "Optional Wordstat region ids.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "date_from",
+        "date_to"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.get_changes",
+    "description": "Get changes since a given timestamp.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Fields for changes response (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "timestamp": {
+          "description": "Timestamp string as required by Direct Changes.checkCampaigns.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "timestamp"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_adgroups",
+    "description": "Human-friendly: find ad groups by campaign and name.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "name_contains": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_ads",
+    "description": "Human-friendly: find ads by campaign/adgroup and title/href filters.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "adgroup_id": {
+          "type": "integer"
+        },
+        "adgroup_name": {
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "href_contains": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title_contains": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_campaigns",
+    "description": "Human-friendly: find campaigns by name/status/type.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "name_contains": {
+          "type": "string"
+        },
+        "states": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "statuses": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_keywords",
+    "description": "Human-friendly: find keywords by campaign/adgroup and substring.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "adgroup_id": {
+          "type": "integer"
+        },
+        "adgroup_name": {
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "contains": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.get_bids_summary",
+    "description": "Human-friendly: summarize bids in a campaign (min/avg/max).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.get_campaign_assets",
+    "description": "Human-friendly: show sitelinks/callouts/vcards attached in campaign.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.get_campaign_summary",
+    "description": "Human-friendly: summarize campaigns with counts (adgroups/ads/keywords).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.pressure_report",
+    "description": "Human-friendly: market pressure report by semantic clusters (best effort, read-only).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "adgroup_ids": {
+          "description": "Optional ad group filter.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "campaign_ids": {
+          "description": "Optional campaign filter.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "clusters": {
+          "description": "Optional semantic clusters input. When omitted, returns one __all__ cluster.",
+          "items": {
+            "properties": {
+              "cluster_id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "phrases": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "cluster_id"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "date_from": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "devices": {
+          "description": "Optional Direct devices filter (best effort).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "grain": {
+          "description": "day|week|month (default: day).",
+          "type": "string"
+        },
+        "include_breakdown": {
+          "description": "Try to include placement/device/region breakdown when supported.",
+          "type": "boolean"
+        },
+        "max_rows": {
+          "description": "Parse at most N report rows (default: 50000).",
+          "type": "integer"
+        },
+        "placement": {
+          "description": "search|rsya|all (default: all).",
+          "type": "string"
+        },
+        "regions": {
+          "description": "Optional Direct regions filter (best effort).",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "date_from",
+        "date_to"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_adgroups",
+    "description": "Human-friendly: Direct adgroups report preset.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_ads",
+    "description": "Human-friendly: Direct ads report preset.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_keywords",
+    "description": "Human-friendly: Direct keyword report preset.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_performance",
+    "description": "Human-friendly: Direct performance report preset (day/week/month).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "campaign_name": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "granularity": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_search_phrases",
+    "description": "Human-friendly: Direct search phrases report preset (optional).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "integer"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_adextensions",
+    "description": "List ad extensions.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Ad extension field names (default: Id).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_adgroups",
+    "description": "List ad groups from Yandex Direct.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Ad group field names (default: Id, Name).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_ads",
+    "description": "List ads from Yandex Direct.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Ad field names (default: Id, AdGroupId).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_bidmodifiers",
+    "description": "List bid modifiers.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Bid modifier field names (default: CampaignId).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_bids",
+    "description": "List bids.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Bid field names (default: CampaignId, KeywordId).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_campaigns",
+    "description": "List campaigns from Yandex Direct.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "cpm_banner_campaign_field_names": {
+          "description": "CpmBannerCampaignFieldNames (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "dynamic_text_campaign_field_names": {
+          "description": "DynamicTextCampaignFieldNames (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "field_names": {
+          "description": "Campaign field names (default: Id, Name).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "mobile_app_campaign_field_names": {
+          "description": "MobileAppCampaignFieldNames (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        },
+        "smart_campaign_field_names": {
+          "description": "SmartCampaignFieldNames (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text_campaign_field_names": {
+          "description": "TextCampaignFieldNames (optional).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_clients",
+    "description": "List Direct clients (agency use).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Client field names (default: ClientId, Login).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_dictionaries",
+    "description": "Get Direct dictionaries.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "dictionary_names": {
+          "description": "Dictionary names to fetch (required by API).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        }
+      },
+      "required": [
+        "dictionary_names"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_keywords",
+    "description": "List keywords from Yandex Direct.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Keyword field names (default: Id, Keyword).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_sitelinks",
+    "description": "List sitelinks sets.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Sitelinks field names (default: Id, Sitelinks).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ids": {
+          "description": "Sitelinks set Ids (required unless using params override).",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.list_vcards",
+    "description": "List vCards.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "VCard field names (default: Id).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "ids": {
+          "description": "vCard Ids (required unless using params override).",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "page": {
+          "description": "Pagination: {\"limit\": int, \"offset\": int}.",
+          "properties": {
+            "limit": {
+              "type": "integer"
+            },
+            "offset": {
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        },
+        "params": {
+          "description": "Raw Direct params override (advanced).",
+          "type": "object"
+        },
+        "selection_criteria": {
+          "description": "Direct API SelectionCriteria object (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.report",
+    "description": "Run a Direct report (raw output).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "attribution_models": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_range_type": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "field_names": {
+          "description": "Report fields (required by Direct API).",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "format": {
+          "type": "string"
+        },
+        "goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_discount": {
+          "type": "string"
+        },
+        "include_vat": {
+          "type": "string"
+        },
+        "order_by": {
+          "description": "OrderBy array for reports.",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "params": {
+          "description": "Raw Direct report params override (advanced).",
+          "type": "object"
+        },
+        "report_name": {
+          "type": "string"
+        },
+        "report_type": {
+          "type": "string"
+        },
+        "selection_criteria": {
+          "description": "Direct report SelectionCriteria (optional).",
+          "type": "object"
+        }
+      },
+      "required": [
+        "field_names",
+        "report_type"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join.hf.direct_vs_metrica_by_utm",
+    "description": "Human-friendly: join Direct daily performance with Metrica daily visits using a stable UTMCampaign value.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "campaign_id": {
+          "description": "Direct campaign id.",
+          "type": "integer"
+        },
+        "campaign_name": {
+          "description": "Optional campaign name (used to infer utm_campaign).",
+          "type": "string"
+        },
+        "counter_id": {
+          "description": "Metrica counter id.",
+          "type": "string"
+        },
+        "date_from": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "date_to": {
+          "description": "YYYY-MM-DD.",
+          "type": "string"
+        },
+        "direct_client_login": {
+          "description": "Override Direct Client-Login for this call (agency multi-project support).",
+          "type": "string"
+        },
+        "utm_campaign": {
+          "description": "Explicit ym:s:UTMCampaign value to match in Metrica.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.counter_info",
+    "description": "Get details of a Metrica counter.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "description": "Metrica counter ID (required).",
+          "type": "string"
+        },
+        "params": {
+          "description": "Raw Metrica management params override (optional).",
+          "type": "object"
+        }
+      },
+      "required": [
+        "counter_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.goals.get",
+    "description": "Metrica: get goal by id.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "goal_id": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "counter_id",
+        "goal_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.goals.list",
+    "description": "Metrica: list goals for a counter.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "counter_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.counter_summary",
+    "description": "Human-friendly: counter summary.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.list_accessible_counters",
+    "description": "Human-friendly: list accessible counters.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.logs_export_preset",
+    "description": "Human-friendly: logs export preset (optional).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_devices",
+    "description": "Human-friendly: device report.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_geo",
+    "description": "Human-friendly: geo report (country/city).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_landing_pages",
+    "description": "Human-friendly: landing pages report.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_time_series",
+    "description": "Human-friendly: time series report (day/week/month/quarter/year).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "granularity": {
+          "type": "string"
+        },
+        "metric": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_utm_campaigns",
+    "description": "Human-friendly: UTM campaigns report.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.list_counters",
+    "description": "List available Metrica counters.",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "params": {
+          "description": "Raw Metrica management params override (optional).",
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.logs_export",
+    "description": "Logs API export (optional).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "action": {
+          "description": "Logs API action: allinfo, info, download, clean, cancel, create, evaluate.",
+          "type": "string"
+        },
+        "counter_id": {
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "string"
+        },
+        "params": {
+          "description": "Raw Logs API params override (advanced).",
+          "type": "object"
+        },
+        "part_number": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "counter_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.report",
+    "description": "Run a Metrica report (raw output).",
+    "inputSchema": {
+      "properties": {
+        "account_id": {
+          "description": "Project profile id (resolves to Direct Client-Login and optional Metrica counter defaults).",
+          "type": "string"
+        },
+        "accuracy": {
+          "type": "string"
+        },
+        "counter_id": {
+          "description": "Metrica counter ID (required).",
+          "type": "string"
+        },
+        "date_from": {
+          "type": "string"
+        },
+        "date_to": {
+          "type": "string"
+        },
+        "dimensions": {
+          "description": "Dimensions string, e.g. ym:s:date.",
+          "type": "string"
+        },
+        "filters": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "metrics": {
+          "description": "Metrics string, e.g. ym:s:visits.",
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "params": {
+          "description": "Raw Metrica stats params override (advanced).",
+          "type": "object"
+        },
+        "sort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "counter_id",
+        "metrics"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.dynamics",
+    "description": "Wordstat: dynamics (frequency dynamics by period).",
+    "inputSchema": {
+      "properties": {
+        "devices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "from_date": {
+          "description": "YYYY-MM (inclusive).",
+          "type": "string"
+        },
+        "params": {
+          "description": "Raw Wordstat payload override (advanced).",
+          "type": "object"
+        },
+        "period": {
+          "description": "monthly | weekly | daily (API-defined).",
+          "type": "string"
+        },
+        "phrase": {
+          "type": "string"
+        },
+        "regions": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "to_date": {
+          "description": "YYYY-MM (inclusive). Optional.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "phrase",
+        "from_date"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.get_regions_tree",
+    "description": "Wordstat: getRegionsTree (regions dictionary).",
+    "inputSchema": {
+      "properties": {
+        "params": {
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.hf.suggest_keywords",
+    "description": "Human-friendly: suggest keyword candidates from seed phrases (resumable via cursor).",
+    "inputSchema": {
+      "anyOf": [
+        {
+          "required": [
+            "seed_phrases"
+          ]
+        },
+        {
+          "required": [
+            "cursor"
+          ]
+        }
+      ],
+      "properties": {
+        "cursor": {
+          "description": "Opaque cursor (base64 JSON) to resume pending runs.",
+          "type": "string"
+        },
+        "devices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "max_candidates": {
+          "description": "Max candidates to return (default: 200).",
+          "type": "integer"
+        },
+        "max_seed_phrases_per_call": {
+          "description": "How many seeds to process per call (default: 8).",
+          "type": "integer"
+        },
+        "num_phrases": {
+          "description": "Per-seed numPhrases (default: 50, max: 2000).",
+          "type": "integer"
+        },
+        "regions": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "seed_phrases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.hf.suggest_negative_keywords",
+    "description": "Human-friendly: suggest negative keyword tokens from phrases (lexicon-based).",
+    "inputSchema": {
+      "properties": {
+        "language": {
+          "description": "ru|en (default: ru).",
+          "type": "string"
+        },
+        "max_candidates": {
+          "description": "Max tokens to return (default: 100).",
+          "type": "integer"
+        },
+        "phrases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "phrases"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.regions",
+    "description": "Wordstat: regions (frequency by region).",
+    "inputSchema": {
+      "properties": {
+        "devices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "params": {
+          "description": "Raw Wordstat payload override (advanced).",
+          "type": "object"
+        },
+        "phrase": {
+          "type": "string"
+        },
+        "region_type": {
+          "description": "cities | regions | all (API-defined).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "phrase"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.top_requests",
+    "description": "Wordstat: topRequests (top queries by phrase).",
+    "inputSchema": {
+      "anyOf": [
+        {
+          "required": [
+            "phrase"
+          ]
+        },
+        {
+          "required": [
+            "phrases"
+          ]
+        }
+      ],
+      "properties": {
+        "devices": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "num_phrases": {
+          "description": "Max: 2000.",
+          "type": "integer"
+        },
+        "params": {
+          "description": "Raw Wordstat payload override (advanced).",
+          "type": "object"
+        },
+        "phrase": {
+          "type": "string"
+        },
+        "phrases": {
+          "description": "Up to 128 phrases.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  {
+    "name": "wordstat.user_info",
+    "description": "Wordstat: userInfo (access check).",
+    "inputSchema": {
+      "properties": {
+        "params": {
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
+]
