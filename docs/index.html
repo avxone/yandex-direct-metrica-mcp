@@ -11,31 +11,42 @@
       <header class="hero">
         <h1>yandex-direct-metrica-mcp</h1>
         <p class="subtitle">
-          MCP server for Yandex Direct + Yandex Metrica — reporting, joins, and a practical BI dashboard.
+          MCP server for Yandex Direct + Metrica + Wordstat + Audience — raw data, HF tools, joins, and dashboards (public + pro).
         </p>
         <p class="hint">
-          This project is not affiliated with, endorsed by, or sponsored by Yandex. Yandex, Yandex.Direct, Yandex.Metrica are trademarks of their respective owners.
+          This project is not affiliated with, endorsed by, or sponsored by Yandex. Yandex, Yandex.Direct, Yandex.Metrica, Yandex Wordstat, Yandex Audience are trademarks of their respective owners.
         </p>
       </header>
 
       <section class="card">
         <h2>What you get</h2>
         <ul>
-          <li>Direct reporting (impressions/clicks/spend, campaign breakdowns)</li>
-          <li>Metrica exports (visits, goals/leads, sources)</li>
-          <li>Human-friendly joins: Direct vs Metrica by UTM / yclid (best-effort)</li>
-          <li>Dashboard generator (Option 1): HTML + JSON, including multi-account dashboards</li>
+          <li>Direct: raw reporting and entity reads, plus HF report presets</li>
+          <li>Metrica: raw reports + Logs API exports, plus HF reports</li>
+          <li>Wordstat: keyword intelligence (raw + HF suggestions)</li>
+          <li>Audience: segments catalog/overlaps/perf proxy (raw + HF)</li>
+          <li>Joins: Direct vs Metrica by UTM / yclid (best-effort)</li>
+          <li>Dashboard (Option 1): HTML + JSON, including multi-account dashboards</li>
+          <li>BI Option 2 (PRO): datasets + incremental sync (NDJSON-friendly)</li>
         </ul>
       </section>
 
       <section class="card">
         <h2>Install (Claude Code)</h2>
+        <p class="hint">Public (read-only, safe-by-default):</p>
         <pre><code>claude mcp add yandex-direct-metrica-mcp -- \
   docker run --rm -i \
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
     ghcr.io/&lt;owner&gt;/yandex-direct-metrica-mcp:latest</code></pre>
+        <p class="hint">Pro (separate artifact; write tools require explicit guard flags):</p>
+        <pre><code>claude mcp add yandex-direct-metrica-mcp-pro -- \
+  docker run --rm -i \
+    --env-file /path/to/your/.env \
+    -e MCP_ACCOUNTS_FILE=/data/accounts.json \
+    -v /path/to/your/state:/data \
+    ghcr.io/&lt;owner&gt;/yandex-direct-metrica-mcp-pro:latest</code></pre>
         <p class="hint">
           Tip: for daily usage set <code>date_to</code> to <strong>yesterday</strong> (Direct/Metrica data for “today” is often incomplete).
         </p>
@@ -47,7 +58,13 @@
           <li><a href="../README.md">README</a></li>
           <li><a href="quickstart.md">Quickstart</a></li>
           <li><a href="dashboard-option1.md">Dashboard (Option 1)</a></li>
+          <li><a href="audience-2026-02-03.md">Audience</a></li>
+          <li><a href="bi-option2-proposal-2026-02-03.md">BI Option 2 (PRO)</a></li>
           <li><a href="public-vs-pro.md">Public vs Pro</a></li>
+          <li><a href="public-mode.md">Public mode (1.0.0 contract)</a></li>
+          <li><a href="compatibility-semver.md">Compatibility / SemVer</a></li>
+          <li><a href="llm-usage-guide-2026-02-03.md">LLM usage guide (public)</a></li>
+          <li><a href="llm-usage-guide-pro-2026-02-03.md">LLM usage guide (pro)</a></li>
         </ul>
       </section>
 
