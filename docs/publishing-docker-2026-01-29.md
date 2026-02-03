@@ -1,80 +1,54 @@
-# Публикация (Option B): GitHub + Docker registry (GHCR / Docker Hub)
+# Publishing (Docker + GHCR) — 2026-01-29 (updated for v1.0.0)
 
-## 1) GitHub репозиторий
-1) Создайте репозиторий (например: `yandex-direct-metrica-mcp`).
-2) Залейте текущие файлы проекта в `main`.
-3) Проверьте, что секреты **не** попадают в git:
-   - `.env` и любые токены не должны быть закоммичены.
+This project publishes Docker images to **GHCR** (GitHub Container Registry).
 
-В проект добавлены:
-- CI: `.github/workflows/ci.yml` (pytest)
-- Docker publish: `.github/workflows/docker-publish.yml` (linux/amd64 + linux/arm64)
+## Artifacts (Public vs Pro)
 
-## 1.1) Landing page (GitHub Pages)
+Public (read-only, safe-by-default):
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<tag>`
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest` (stable public)
 
-В репозитории есть простая посадочная страница:
-- `docs/index.html`
+Pro (separate artifact; intended for paid subscribers; keep GHCR package private):
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<tag>`
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest` (only when you explicitly publish PRO)
 
-Чтобы включить GitHub Pages:
-1) Repo Settings → Pages
-2) Source: `Deploy from a branch`
-3) Branch: `main` / Folder: `/docs`
+## CI / Workflows
 
-После этого лендинг будет доступен по URL GitHub Pages для репозитория.
+- Tests: `.github/workflows/ci.yml` (pytest, blocking)
+- Docker publish (public): `.github/workflows/docker-publish-public.yml`
+  - triggers: push to `main` and tags `v*`
+  - publishes `:latest` only when pushing a tag
+- Docker publish (pro): `.github/workflows/docker-publish-pro.yml`
+  - triggers: manual `workflow_dispatch` or tags `pro-v*`
 
-### Если GitHub Pages падает из-за submodules
+## How to release public
 
-Если в репозитории остались “висячие” git submodules (gitlink entries) без `.gitmodules`, Pages build может падать с ошибкой вида:
-`No url found for submodule path ... in .gitmodules`.
+1) Ensure CI is green on `main`.
+2) Create and push a tag:
+   - `vX.Y.Z`
+3) The public publish workflow builds and pushes:
+   - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:vX.Y.Z`
+   - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest`
 
-Решение: удалить submodules из репозитория (мы используем папку `repos/` только локально):
+## How to release PRO (restricted)
+
+Recommended:
+- Keep `yandex-direct-metrica-mcp-pro` package **private** in GHCR.
+- Publish PRO only on demand:
+  - manual run (`workflow_dispatch`), or
+  - a `pro-vX.Y.Z` tag.
+
+## Manual publish (optional)
+
+If you need to publish manually from your machine, use `docker buildx`:
+
+Public:
 ```bash
-git rm --cached -f repos/tapi-yandex-direct repos/tapi-yandex-metrika repos/yandex-mcp repos/yandex-tools-mcp
-git add .gitignore
-git commit -m "Remove orphaned submodules (repos/)"
-git push
-```
-
-## 2) GHCR (GitHub Container Registry)
-Ничего дополнительно настраивать не нужно:
-- workflow логинится в GHCR через `GITHUB_TOKEN`
-- public образ пушится в `ghcr.io/<repo-owner>/yandex-direct-metrica-mcp:<tag>` (read-only, `MCP_PUBLIC_READONLY=true`)
-- pro образ предназначен для платного доступа и публикуется отдельным workflow/тегом (см. ниже)
-
-Пояснение:
-- Public image is **safe-by-default**:
-  - it contains a build marker (`/app/.mcp_edition=public`) and the server forces read-only even if runtime env vars are misconfigured.
-  - `MCP_PUBLIC_READONLY=true` remains a compatibility flag, but is not the only mechanism.
-- Pro image is the full build and can enable writes only with explicit guard flags (`MCP_WRITE_ENABLED=true`, `HF_WRITE_ENABLED=true`, etc.).
-
-Рекомендуемый релиз-флоу:
-- Для релиза: создать git tag `vX.Y.Z` и пушнуть его — workflow соберёт и запушит Docker image.
-  - При пуше тега также публикуется `:latest` (stable) для соответствующего image.
-
-PRO релиз-флоу (ручной / закрытый):
-- Публиковать PRO image только при необходимости (например, `pro-vX.Y.Z`) или через `workflow_dispatch`.
-- Сделать GHCR package `yandex-direct-metrica-mcp-pro` **private** и выдавать доступ подписчикам через GHCR credentials.
-
-## 2.1) Ручная публикация в GHCR (buildx + multi-arch)
-
-Если нужно запушить образ вручную (без GitHub Actions):
-
-1) Логин в GHCR (нужен GitHub PAT с правами на packages):
-```bash
-export GHCR_OWNER="<OWNER>"   # user or org
-export GHCR_TOKEN="<TOKEN>"   # GitHub PAT
-echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
-```
-
-2) Подготовить buildx (один раз):
-```bash
-docker buildx create --use --name ydm-builder || docker buildx use ydm-builder
-docker buildx inspect --bootstrap
-```
-
-3) Собрать и запушить **public** (read-only):
-```bash
+export GHCR_OWNER="<OWNER>"
 export VERSION="1.0.0"
+
+echo "<GITHUB_PAT>" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
+
 docker buildx build --platform linux/amd64,linux/arm64 \
   --build-arg MCP_PUBLIC_READONLY=true \
   --build-arg MCP_EDITION=public \
@@ -83,8 +57,13 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push .
 ```
 
-4) Собрать и запушить **pro** (full):
+Pro:
 ```bash
+export GHCR_OWNER="<OWNER>"
+export VERSION="1.0.0"
+
+echo "<GITHUB_PAT>" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
+
 docker buildx build --platform linux/amd64,linux/arm64 \
   --build-arg MCP_PUBLIC_READONLY=false \
   --build-arg MCP_EDITION=pro \
@@ -93,38 +72,25 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   --push .
 ```
 
-## 3) Docker Hub (опционально)
-Если хотите пушить также в Docker Hub, добавьте secrets в GitHub repo и расширьте workflow:
-- `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN`
+## Connecting images to Claude Code
 
-Примечание: текущий workflow пушит только в GHCR (для надёжности релиза v0.1.x). Docker Hub можно добавить отдельным шагом/джобой позже.
-
-## 4) Как подключить образ к Claude Code
-
-Пример (stdio транспорт):
+Public:
 ```bash
-claude mcp add yandex-direct-metrica-mcp --transport stdio -s local -- \
+claude mcp add yandex-direct-metrica-mcp -- \
   docker run --rm -i \
-    --env-file /Users/georgyagaev/mcp/state/yandex.ad/.env \
+    --env-file /path/to/your/state/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
-    -e MCP_ACCOUNTS_WRITE_ENABLED=true \
-    -v /Users/georgyagaev/mcp/state/yandex.ad:/data \
-    ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<TAG>
+    -v /path/to/your/state:/data \
+    ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest
 ```
 
-Pro (если нужен create/update, Direct write tools):
+Pro:
 ```bash
-claude mcp add yandex-direct-metrica-mcp-pro --transport stdio -s local -- \
+claude mcp add yandex-direct-metrica-mcp-pro -- \
   docker run --rm -i \
-    --env-file /Users/georgyagaev/mcp/state/yandex.ad/.env \
+    --env-file /path/to/your/state/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
-    -e MCP_ACCOUNTS_WRITE_ENABLED=true \
-    -e MCP_WRITE_ENABLED=true \
-    -v /Users/georgyagaev/mcp/state/yandex.ad:/data \
+    -v /path/to/your/state:/data \
     ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<TAG>
 ```
 
-Примечания:
-- Для read-only режима можно добавить `:ro` к volume mount.
-- Если используете multi-account dashboard, убедитесь что `MCP_ACCOUNTS_FILE` указывает на корректный `accounts.json` внутри контейнера.

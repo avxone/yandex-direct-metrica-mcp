@@ -220,7 +220,14 @@ Run locally (without Docker):
 
 CI and publishing:
 - CI: `.github/workflows/ci.yml`
-- Docker publish: `.github/workflows/docker-publish.yml`
+- Docker publish (public): `.github/workflows/docker-publish-public.yml`
+- Docker publish (pro, gated): `.github/workflows/docker-publish-pro.yml`
+
+## Documentation languages
+
+- English docs live in `docs/` (this branch).
+- Russian docs are maintained in a separate branch:
+  - `docs-ru`: `https://github.com/georgy-agaev/yandex-direct-metrica-mcp/tree/docs-ru/docs`
 
 ## Disclaimer (affiliation / trademarks)
 

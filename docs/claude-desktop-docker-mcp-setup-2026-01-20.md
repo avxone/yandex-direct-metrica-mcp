@@ -5,7 +5,7 @@
 ## 1) Где лежат креды
 
 Креденшиалсы хранятся вне репозитория:
-- `/Users/georgyagaev/mcp/state/yandex.ad/.env`
+- `/path/to/your/state/.env`
 
 Важно: `.env` не должен попадать в Docker image. Он подаётся только как переменные окружения контейнеру.
 
@@ -17,13 +17,13 @@ services:
   yandex-direct-metrica-mcp:
     build: .
     env_file:
-      - /Users/georgyagaev/mcp/state/yandex.ad/.env
+      - /path/to/your/state/.env
     environment:
       - MCP_ACCOUNTS_FILE=/data/accounts.json
       - MCP_ACCOUNTS_WRITE_ENABLED=true
     volumes:
-      - /Users/georgyagaev/mcp/state/yandex.ad:/data:ro
-      - /Users/georgyagaev/mcp/state/yandex.ad/accounts.json:/data/accounts.json:rw
+      - /path/to/your/state:/data:ro
+      - /path/to/your/state/accounts.json:/data/accounts.json:rw
     command: ["yandex-direct-metrica-mcp", "--transport", "sse", "--port", "8000"]
     ports:
       - "8000:8000"

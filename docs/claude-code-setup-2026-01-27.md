@@ -2,16 +2,16 @@
 
 Goal: подключить `yandex-direct-metrica-mcp` (legacy alias: `mcp-yandex-ad`) в Claude Code как MCP server и быстро проверить UX (tools + dashboard).
 
-## Option A (recommended): use `.mcp.json` in `~/crew_a`
+## Option A (recommended): use `.mcp.json` in your Claude Code project folder
 
-1) Add a new server entry to `~/crew_a/.mcp.json`:
+1) Add a new server entry to your project `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "yandexad": {
-      "command": "/Users/georgyagaev/mcp/yandex.ad/.venv/bin/yandex-direct-metrica-mcp",
-      "args": ["--env-file", "/Users/georgyagaev/mcp/yandex.ad/.env"]
+      "command": "/path/to/venv/bin/yandex-direct-metrica-mcp",
+      "args": ["--env-file", "/path/to/your/.env"]
     }
   }
 }
@@ -21,10 +21,10 @@ Notes:
 - Default transport is `stdio`, which is what Claude Code expects for local MCP servers.
 - Prefer pointing to an env file; do not inline secrets into JSON.
 
-2) Enable the server in `~/crew_a/.claude/settings.local.json`:
+2) Enable the server in your Claude Code settings file:
 - add `"yandexad"` to `enabledMcpjsonServers`.
 
-3) Allow tool calls in `~/crew_a/.claude/settings.local.json`:
+3) Allow tool calls in your Claude Code settings file:
 - add the minimal set first (and extend as needed):
   - `mcp__yandexad__direct.list_campaigns`
   - `mcp__yandexad__direct.report`
@@ -41,7 +41,7 @@ If Claude Code shows a “tool not allowed” name, copy that exact name into th
 
 If you prefer CLI-managed config:
 ```bash
-claude mcp add yandex-direct-metrica-mcp -s user -- /Users/georgyagaev/mcp/yandex.ad/.venv/bin/yandex-direct-metrica-mcp --env-file /Users/georgyagaev/mcp/yandex.ad/.env
+claude mcp add yandex-direct-metrica-mcp -s user -- /path/to/venv/bin/yandex-direct-metrica-mcp --env-file /path/to/your/.env
 claude mcp list
 ```
 Then update `~/crew_a/.claude/settings.local.json` allow-list similarly.
@@ -62,16 +62,16 @@ Then update `~/crew_a/.claude/settings.local.json` allow-list similarly.
 Generate HTML+JSON locally:
 - Option A (local script): this is **not** an MCP tool; it calls MCP over SSE (`http://localhost:8000/sse` by default), so start the server with SSE transport first (e.g. via `docker-compose.yml`).
 ```bash
-/Users/georgyagaev/mcp/yandex.ad/.venv/bin/python /Users/georgyagaev/mcp/yandex.ad/scripts/generate_dashboard_option1.py \
+/path/to/venv/bin/python /path/to/project/scripts/generate_dashboard_option1.py \
   --account-id voicexpert \
   --date-from 2026-01-01 \
   --date-to 2026-01-31 \
-  --output-dir /Users/georgyagaev/crew_a/voicexpert/dashboard
+  --output-dir /path/to/output/dashboard
 ```
 
 Then open the HTML:
 ```bash
-open /Users/georgyagaev/crew_a/voicexpert/dashboard/yandexad_dashboard__voicexpert__2026-01-01_2026-01-31.html
+open /path/to/output/dashboard/yandexad_dashboard__account__2026-01-01_2026-01-31.html
 ```
 
 Option B (MCP tool): call `dashboard.generate_option1` (no SSE needed; uses the same server runtime).

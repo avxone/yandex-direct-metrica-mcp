@@ -5,7 +5,7 @@
 Prompt:
 
 “Generate `dashboard.generate_option1` for **all accounts** for the last 30 days **to yesterday** (inclusive).  
-Save to `/Users/<you>/dashboards` with `dashboard_slug=all_accounts`, `all_accounts=true`, `return_data=false`.  
+Save to `/path/to/your/dashboards` with `dashboard_slug=all_accounts`, `all_accounts=true`, `return_data=false`.  
 Then, **analyze the generated JSON** (KPI, funnels, campaigns, coverage/warnings) and ensure the dashboard contains **non-template, data-driven recommendations**:
 - “Сделать сегодня” — 3–7 bullets tied to конкретным метрикам (CPL/CTR/отказы/лиды/расход/аномалии).
 - “Вопросы для обсуждения” — 3–7 bullets with hypotheses/next checks.
@@ -19,7 +19,7 @@ Return the path to the generated HTML file.”
 Prompt:
 
 “Generate `dashboard.generate_option1` for `account_id=<your_account_id>` for the last 30 days **to yesterday**.  
-Save to `/Users/<you>/dashboards` with `dashboard_slug=<slug>`, `return_data=false`.  
+Save to `/path/to/your/dashboards` with `dashboard_slug=<slug>`, `return_data=false`.  
 Then, analyze the generated JSON and write **data-driven recommendations** (not boilerplate) into the dashboard:
 - Today actions (3–7)
 - Discussion questions (3–7)

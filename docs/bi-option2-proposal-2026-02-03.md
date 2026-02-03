@@ -1,185 +1,113 @@
-# BI Option 2 (PRO): datasets + incremental sync — proposal — 2026-02-03
+# BI Option 2 (PRO): datasets + incremental sync — proposal/status — 2026-02-03
 
-Цель: дать PRO-пользователю “BI-ready” контур **Direct + Metrica + Wordstat + Audience** в виде:
-- стабильных **датасетов** (таблицы/строки),
-- **инкрементального sync** (cursor/watermark, NDJSON-friendly),
-- минимальной нормализации (raw-first, но с полезными ключами/полями).
+Goal: provide a **BI-ready** contour for **Direct + Metrica + Wordstat + Audience** as:
+- stable **datasets** (tables/rows),
+- **incremental sync** (cursor/watermark, NDJSON-friendly),
+- minimal normalization (raw-first, but with useful keys/columns).
 
-## Для кого (практические задачи)
+Status:
+- Variant **B (Standard)** is implemented as the current PRO baseline (datasets + sync).
 
-### SEO-аналитик
-- Поисковые запросы (search phrases) → посадочные/конверсии.
-- Сегментация по регионам/устройствам, динамика по времени.
-- Идеи ключей/минус-слов (Wordstat) как вход в план контента/семантики.
+## Who is this for?
 
-### Performance/маркетолог
-- Ежедневная эффективность кампаний/групп/объявлений/ключей (CPC/CTR/CPA/CPL).
-- Сквозная аналитика: сопоставление Direct расходов/кликов с Metrica визитами/целями.
-- Аудитории/ретаргетинг (Audience): каталог сегментов, пересечения, “где применено” и best-effort perf.
+### SEO analyst
+- Search queries → landing pages / conversions.
+- Segmentation by geo / devices, time dynamics.
+- Keyword ideas and negatives (Wordstat) as a semantic planning input.
 
-## Принципы дизайна датасетов
+### Performance marketer
+- Daily performance by campaign/adgroup/ad/keyword (CPC/CTR/CPA/CPL).
+- Cross-check Direct spend/clicks with Metrica visits/goals.
+- Audiences/retargeting (Audience): segments catalog + overlaps + best-effort perf proxy.
 
-1) **Разделяем “dimensions” и “facts”**
-   - Dimensions: кампании/группы/ключи/аудитории (редко меняются)
-   - Facts: дневные метрики, поисковые запросы, лендинги (растут по времени)
-2) **Ключи и детерминизм**
-   - Каждая строка имеет `primary_key` (напр. `account_id + campaign_id + date`)
-3) **Инкрементальность**
-   - Для facts: watermark по `date` (партитирование по дням/неделям)
-   - Для dimensions: watermark по `updated_at` (если доступно) или периодический полный refresh
-4) **Ограничение объёма**
-   - параметр `date_from/date_to`, `limit`, `page_size`
-   - в sync делаем chunk’и (например 7 дней на job) для устойчивости
-5) **Traceability**
-   - `raw_refs` в результатах датасет-инструментов (что именно вызвали/с какими params)
+## Dataset design principles
 
-## Предлагаемый набор датасетов (3 варианта)
+1) Separate **dimensions** and **facts**
+   - Dimensions: campaigns/adgroups/keywords/audiences (change slowly)
+   - Facts: daily metrics, search phrases, landings (grow over time)
+2) Deterministic keys
+   - every row has a stable `primary_key` (e.g. `account_id + campaign_id + date`)
+3) Incremental model
+   - facts: partition by `date` (day chunks)
+   - dimensions: periodic refresh via paging
+4) Volume bounds
+   - require `date_from/date_to` for heavy facts
+   - chunk jobs in sync (7d default, 1d for heavy datasets)
+5) Traceability
+   - return `raw_refs` describing which raw calls were made (what/with which params).
 
-### Variant A — Minimal (самое востребованное)
+## Datasets (Variant B — Standard)
 
-**Direct**
+### Direct
+
+Dimensions:
 - `dashboard.dataset.direct_campaigns_dim`
-- `dashboard.dataset.direct_campaign_daily` (Date, CampaignId, Impressions, Clicks, Cost, optional Leads/CPL)
-- `dashboard.dataset.direct_search_phrases_daily` (SEARCH_QUERY_PERFORMANCE_REPORT: Query, MatchedKeyword, MatchType + metrics)
-
-**Metrica**
-- `dashboard.dataset.metrica_daily` (visits/users/bounce/duration + optional goals)
-- `dashboard.dataset.metrica_landing_pages_daily` (top landing pages, best-effort)
-- `dashboard.dataset.metrica_utm_campaigns_daily`
-
-**Wordstat**
-- `dashboard.dataset.wordstat_top_requests` (seed → candidates, bounded)
-
-**Audience**
-- `dashboard.dataset.audience_segments` (уже реализовано)
-- `dashboard.dataset.audience_overlap` (уже реализовано)
-
-**Join**
-- `dashboard.dataset.join_direct_vs_metrica_utm_daily` (на базе `join.hf.direct_vs_metrica_by_utm`)
-
-### Variant B — Standard (для ежедневного BI)
-
-Variant A +:
-
-**Direct**
 - `dashboard.dataset.direct_adgroups_dim`
 - `dashboard.dataset.direct_keywords_dim`
-- `dashboard.dataset.direct_keyword_daily`
-- `dashboard.dataset.direct_ads_daily`
-- `dashboard.dataset.direct_bids_snapshot` (bids/bidmodifiers на дату)
 
-**Metrica**
+Facts:
+- `dashboard.dataset.direct_campaign_daily`
+- `dashboard.dataset.direct_keyword_daily` (heavy; chunked per-day in sync)
+- `dashboard.dataset.direct_ads_daily` (heavy; chunked per-day in sync)
+- `dashboard.dataset.direct_search_phrases_daily` (very heavy; only when needed)
+
+Snapshots:
+- `dashboard.dataset.direct_bids_snapshot`
+
+### Metrica
+
+Facts:
+- `dashboard.dataset.metrica_daily`
 - `dashboard.dataset.metrica_devices_daily`
-- `dashboard.dataset.metrica_geo_daily`
-- `dashboard.dataset.metrica_goals_daily` (пер-цель или “all goals”)
+- `dashboard.dataset.metrica_geo_daily` (country by default; city optional)
+- `dashboard.dataset.metrica_goals_daily` (requires `goal_ids`)
+- `dashboard.dataset.metrica_utm_campaigns_daily` (bounded by `limit_per_day`)
+- `dashboard.dataset.metrica_landing_pages_daily` (bounded by `limit_per_day`)
 
-**Audience**
-- `dashboard.dataset.audience_segment_perf_daily` (уже реализовано; best effort proxy)
+### Wordstat (manual / ad-hoc)
 
-### Variant C — Max (для агентств/форензики)
+- `dashboard.dataset.wordstat_top_requests` (bounded; input-driven)
 
-Variant B +:
+### Audience
 
-**Join**
-- `dashboard.dataset.join_direct_vs_metrica_yclid` (тяжёлый; через Logs API; лучше как отдельный экспорт)
+- `dashboard.dataset.audience_segments`
+- `dashboard.dataset.audience_overlap` (requires `segment_ids`)
+- `dashboard.dataset.audience_segment_perf_daily` (requires `segment_ids` + dates; best-effort proxy)
 
-**Metrica logs**
-- `dashboard.dataset.metrica_logs_exports` (метаданные о request_id, статусах, частях, без PII)
+### Join (manual / ad-hoc)
 
-**Wordstat**
-- `dashboard.dataset.wordstat_dynamics` (для мониторинга трендов по ключевым фразам)
-- `dashboard.dataset.wordstat_regions` (гео-структура спроса по фразе)
+- `dashboard.dataset.join_direct_vs_metrica_utm_daily`
 
-## Sync API (инкрементальный)
+## Sync API (incremental)
 
-Инструменты:
-- `dashboard.sync.start` → возвращает `cursor` (base64url JSON)
-- `dashboard.sync.next` → возвращает `ndjson` + обновлённый `cursor`
+Tools:
+- `dashboard.sync.start` → returns `cursor` (base64url JSON)
+- `dashboard.sync.next` → returns `ndjson` + next `cursor`
 
-Рекомендации по cursor/job модели:
-- Jobs = декартово произведение (`dataset` × `account_id` × `date_chunk`)
-- `dashboard.sync.next` отдаёт **NDJSON**:
-  - по одной строке: `{ "dataset": "...", "account_id": "...", "row": { ... } }`
-- Consumer хранит “watermark” (например последний `date`) и вызывает `sync.start` с новым `date_from`.
+Cursor/job model:
+- Jobs are a cartesian product of (`dataset` × `account_id` × `date_chunk`) for date-based facts.
+- Output is NDJSON (one JSON per line):
+  - `{ "dataset": "...", "account_id": "...", "row": { ... } }`
 
-## PRO write инструменты, необходимые для “полного контура”
+Recommended consumer behavior:
+- Store your own “watermark” (e.g., the last `date` fully ingested).
+- Run sync again with the next `date_from`.
 
-Direct: весь набор `direct.hf.*` write из каталога уже есть (budget/geo/ads/keywords/bids/assets/utm).
+## PRO write scope (full contour)
 
-Audience: есть `audience.segments.*` write + `audience.upload.*` + `audience.hf.apply_activation_plan`.
+Direct:
+- Raw writes: `direct.create_*`, `direct.update_*` (guarded)
+- HF writes: use plan/apply:
+  - `direct.hf.plan_changes` → `direct.hf.apply_plan`
 
-Wordstat: write как такового нет; PRO-ценность — **apply** рекомендаций в Direct:
-- добавить ключи/минус-слова/ставки по результатам Wordstat и search phrases.
-Рекомендуется отдельный HF слой “plan → apply” (см. спецификацию ниже).
+Audience:
+- Raw writes: `audience.segments.create/update/delete`, `audience.upload.*` (guarded)
+- HF activation: `audience.hf.activation_plan` (preview) / `audience.hf.apply_activation_plan` (apply)
 
-Metrica: определить, какие write-операции реально нужны (обычно хватает read + Logs API “create/cancel/clean”).
+Wordstat:
+- No Direct writes inside Wordstat tools; “write value” is applying recommendations to Direct via `direct.hf.plan_changes` / `direct.hf.apply_plan`.
 
-## Открытые вопросы (нужно подтвердить)
+Metrica:
+- Logs API operations are used for joins/exports.
+- Management writes: goals CRUD (`metrica.goals.*`, `metrica.hf.*`, apply-guarded).
 
-1) **Список PRO датасетов**: выбираем Variant A/B/C как “базовый” для 1.0 PRO?
-2) **Metrica write**: что считать write-инструментами в PRO?
-   - Goals (create/update/delete)?
-   - Counter management?
-   - Только Logs API операции (create/cancel/clean)?
-3) **Wordstat→Direct apply**: какой UX предпочтительнее?
-   - Option 1: быстрые инструменты (`direct.hf.apply_wordstat_keywords`, `direct.hf.apply_wordstat_negatives`)
-   - Option 2: общий “plan/apply” (`direct.hf.plan_changes` → `direct.hf.apply_plan`) для идемпотентности и аудита
-
-## Wordstat→Direct apply: варианты спецификации (PRO)
-
-Нужно помнить: Wordstat не меняет Direct сущности; “write” здесь = **изменения в Direct** на основе Wordstat/поисковых фраз.
-
-### Option 1 — Fast tools (быстро, минимально)
-
-1) `direct.hf.apply_wordstat_keywords` (add keywords)
-- Вход:
-  - `adgroup_id` (required)
-  - `phrases[]` (required) — уже отфильтрованные/дедуплицированные фразы
-  - `max_phrases` (default 50)
-  - `dedupe_mode` (`strict|normalize`, default `normalize`)
-  - `bid_rub?` (optional) — если задан, то проставляем `Bid` (либо отдельным шагом)
-  - `dry_run=true|false`, `apply=true|false`
-- Выход:
-  - `preview.items[]` (payload для `direct.create_keywords`)
-  - `result` (ответ API при apply)
-
-2) `direct.hf.apply_wordstat_negatives` (set negatives)
-- Вход:
-  - `campaign_id` **или** `adgroup_id`
-  - `items[]` (tokens/phrases)
-  - `mode=merge|replace` (default `merge`)
-  - `dry_run`, `apply`
-- Выход:
-  - `preview.items[]` (payload для `direct.update_campaigns`/`direct.update_adgroups`)
-
-Плюсы: быстро внедрить. Минусы: сложнее делать идемпотентность и аудит “что именно применили”.
-
-### Option 2 — Plan/apply (рекомендую)
-
-1) `direct.hf.plan_changes` (preview-only)
-- Вход:
-  - `context`: `{account_id?, direct_client_login?, counter_id?}`
-  - `operations[]` (типизированные операции):
-    - `{"op":"keywords.add","adgroup_id":..., "phrases":[...], "bid_rub?":...}`
-    - `{"op":"negatives.merge","scope":"campaign|adgroup","id":..., "items":[...]}`
-    - `{"op":"bids.set","keyword_ids":[...],"bid_rub":...}`
-  - `dry_run=true` (фиксируем как preview)
-- Выход:
-  - `plan_id` (opaque)
-  - `preview.calls[]` — точные `direct.*` вызовы (с ресурсом/методом/params)
-  - `warnings[]` — PII/объём/лимиты/ambiguous matches
-
-2) `direct.hf.apply_plan` (exec)
-- Вход: `plan_id`, `apply=true`
-- Выход: `result.calls[]` + сводка ошибок по шагам
-
-Плюсы: идемпотентность, аудит, удобно для LLM и “human in the loop”. Минусы: требуется хранение plan state (in-memory с TTL) или отдавать весь план обратно в cursor.
-
-### Option 3 — “BI-driven apply”
-
-Инструмент принимает **BI Option 2 датасет** (или ссылку на файл) и применяет изменения:
-- `direct.hf.apply_recommendations_from_dataset`
-
-Плюсы: хорошо для агентств и пайплайнов. Минусы: сложнее; требует строгой схемы и проверок.
-
-**Рекомендация**: начать с Option 2 (plan/apply) для устойчивости; если хочешь быстрее — Option 1 как MVP, а Option 2 сразу планируем как “2.0 PRO”.

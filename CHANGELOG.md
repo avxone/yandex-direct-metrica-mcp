@@ -70,7 +70,7 @@ All notable changes to this MCP project will be documented in this file.
 - Added multi-account registry via `MCP_ACCOUNTS_FILE` (`account_id` -> Direct `Client-Login` + optional default Metrica counter ids).
 - Added `account_id` argument to `direct.*`, `metrica.*`, and `join.hf.*` tool schemas and runtime resolution in the server.
 - Added `accounts.*` tools (`accounts.list`, `accounts.reload`, `accounts.upsert`, `accounts.delete`) to manage project profiles via MCP; writes are guarded by `MCP_ACCOUNTS_WRITE_ENABLED`.
-- Updated `docker-compose.yml` to mount external state (`/Users/georgyagaev/mcp/state/yandex.ad`) so secrets/config aren’t baked into the image.
+- Updated `docker-compose.yml` to mount external state (for example: `/path/to/your/state`) so secrets/config aren’t baked into the image.
 - Added unit tests for accounts registry loading and schema injection.
 - Added `scripts/check_direct_access.py` for a minimal Direct credentials/access check.
 - Made `scripts/validate_env.py`, `scripts/health_check.py`, and `scripts/smoke_test.py` load `.env` by default.
