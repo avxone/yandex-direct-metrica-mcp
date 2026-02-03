@@ -39,7 +39,7 @@ git push
 Ничего дополнительно настраивать не нужно:
 - workflow логинится в GHCR через `GITHUB_TOKEN`
 - public образ пушится в `ghcr.io/<repo-owner>/yandex-direct-metrica-mcp:<tag>` (read-only, `MCP_PUBLIC_READONLY=true`)
-- pro образ пушится в `ghcr.io/<repo-owner>/yandex-direct-metrica-mcp-pro:<tag>` (write tools доступны при `MCP_WRITE_ENABLED=true`)
+- pro образ предназначен для платного доступа и публикуется отдельным workflow/тегом (см. ниже)
 
 Пояснение:
 - Public image is **safe-by-default**:
@@ -50,6 +50,10 @@ git push
 Рекомендуемый релиз-флоу:
 - Для релиза: создать git tag `vX.Y.Z` и пушнуть его — workflow соберёт и запушит Docker image.
   - При пуше тега также публикуется `:latest` (stable) для соответствующего image.
+
+PRO релиз-флоу (ручной / закрытый):
+- Публиковать PRO image только при необходимости (например, `pro-vX.Y.Z`) или через `workflow_dispatch`.
+- Сделать GHCR package `yandex-direct-metrica-mcp-pro` **private** и выдавать доступ подписчикам через GHCR credentials.
 
 ## 2.1) Ручная публикация в GHCR (buildx + multi-arch)
 

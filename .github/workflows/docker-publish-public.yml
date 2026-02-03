@@ -1,4 +1,4 @@
-name: Docker Publish
+name: Docker Publish (Public)
 
 on:
   push:
@@ -10,18 +10,11 @@ permissions:
   packages: write
 
 env:
-  IMAGE_NAME_PUBLIC: yandex-direct-metrica-mcp
-  IMAGE_NAME_PRO: yandex-direct-metrica-mcp-pro
   GHCR_IMAGE_PUBLIC: ghcr.io/${{ github.repository_owner }}/yandex-direct-metrica-mcp
-  GHCR_IMAGE_PRO: ghcr.io/${{ github.repository_owner }}/yandex-direct-metrica-mcp-pro
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        edition: [public, pro]
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +36,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ matrix.edition == 'public' && env.GHCR_IMAGE_PUBLIC || env.GHCR_IMAGE_PRO }}
+            ${{ env.GHCR_IMAGE_PUBLIC }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -57,7 +50,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
-            MCP_PUBLIC_READONLY=${{ matrix.edition == 'public' && 'true' || 'false' }}
-            MCP_EDITION=${{ matrix.edition }}
+            MCP_PUBLIC_READONLY=true
+            MCP_EDITION=public
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+

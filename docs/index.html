@@ -40,7 +40,7 @@
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
     ghcr.io/&lt;owner&gt;/yandex-direct-metrica-mcp:latest</code></pre>
-        <p class="hint">Pro (separate artifact; write tools require explicit guard flags):</p>
+        <p class="hint">Pro (separate artifact; intended for paid subscribers; keep the GHCR package private):</p>
         <pre><code>claude mcp add yandex-direct-metrica-mcp-pro -- \
   docker run --rm -i \
     --env-file /path/to/your/.env \

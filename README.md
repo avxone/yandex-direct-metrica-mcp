@@ -67,7 +67,7 @@ claude mcp add yandex-direct-metrica-mcp -- \
     ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:v1.0.0
 ```
 
-Pro (separate artifact; write tools exist but are still guarded by env + `apply=true`):
+Pro (separate artifact; intended for paid subscribers; keep the GHCR package private):
 ```bash
 claude mcp add yandex-direct-metrica-mcp-pro -- \
   docker run --rm -i \
