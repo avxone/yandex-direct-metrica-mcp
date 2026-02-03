@@ -2,7 +2,7 @@
 
 MCP server for **Yandex Direct + Yandex Metrica + Yandex Wordstat + Yandex Audience** (Python).
 
-Website (docs): https://georgy-agaev.github.io/yandex-direct-metrica-mcp/
+Website (docs): https://georgy-agaev.github.io/yandex-direct-metrica-mcp/<br>
 Russian docs: https://georgy-agaev.github.io/yandex-direct-metrica-mcp/ru/
 
 Images:
