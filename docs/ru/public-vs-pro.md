@@ -18,8 +18,8 @@
 - Pro Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<tag>` (отдельный артефакт)
 
 См. также:
-- `docs/public-mode.md` (спецификация public‑контракта)
-- `docs/compatibility-semver.md` (политика совместимости)
+- `public-mode.md` (спецификация public‑контракта)
+- `compatibility-semver.md` (политика совместимости)
 
 ## Pro (полный контур)
 

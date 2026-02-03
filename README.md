@@ -3,7 +3,7 @@
 MCP server for **Yandex Direct + Yandex Metrica + Yandex Wordstat + Yandex Audience** (Python).
 
 Website (docs): https://georgy-agaev.github.io/yandex-direct-metrica-mcp/
-Russian docs (branch): https://github.com/georgy-agaev/yandex-direct-metrica-mcp/tree/docs-ru/docs
+Russian docs: https://georgy-agaev.github.io/yandex-direct-metrica-mcp/ru/
 
 Images:
 - GHCR (public): https://github.com/georgy-agaev/yandex-direct-metrica-mcp/pkgs/container/yandex-direct-metrica-mcp
@@ -227,8 +227,7 @@ CI and publishing:
 ## Documentation languages
 
 - English docs live in `docs/` (this branch).
-- Russian docs are maintained in a separate branch:
-  - `docs-ru`: `https://github.com/georgy-agaev/yandex-direct-metrica-mcp/tree/docs-ru/docs`
+- Russian docs live in `docs/ru/` (this branch) and are published under `/ru/` on the docs website.
 
 ## Disclaimer (affiliation / trademarks)
 
