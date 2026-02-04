@@ -6,7 +6,7 @@ COPY pyproject.toml README.md /app/
 COPY src /app/src
 COPY docs/templates/dashboard-template-option1-2026-01-28.html /app/docs/templates/dashboard-template-option1-2026-01-28.html
 
-ARG MCP_EDITION=pro
+ARG MCP_EDITION=public
 
 # Security: pull OS security updates and upgrade pip tooling (wheel has known CVEs).
 RUN apt-get update \
@@ -16,7 +16,7 @@ RUN apt-get update \
   && pip install --no-cache-dir -e .
 
 ENV PYTHONUNBUFFERED=1
-ARG MCP_PUBLIC_READONLY=false
+ARG MCP_PUBLIC_READONLY=true
 ENV MCP_PUBLIC_READONLY=${MCP_PUBLIC_READONLY}
 ENV MCP_EDITION=${MCP_EDITION}
 

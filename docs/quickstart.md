@@ -52,6 +52,11 @@ Build locally:
 docker build -t yandex-direct-metrica-mcp:local .
 ```
 
+Notes:
+- `docker build ...` produces a **public read-only** image by default.
+- If you really need a local PRO image, build with:
+  - `docker build --build-arg MCP_EDITION=pro --build-arg MCP_PUBLIC_READONLY=false -t yandex-direct-metrica-mcp:pro .`
+
 Add to Claude Code:
 ```bash
 claude mcp add yandex-direct-metrica-mcp -- \
