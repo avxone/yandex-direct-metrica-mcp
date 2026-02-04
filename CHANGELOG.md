@@ -5,6 +5,9 @@ All notable changes to this MCP project will be documented in this file.
 ## Unreleased
 - (none yet)
 
+## 2.0.1 - 2026-02-04
+- Docker: bumped base image to `python:3.13-slim` to pick up newer security fixes.
+
 ## 2.0.0 - 2026-02-04
 - Pro-only tools: added `auth.start` and `auth.exchange_code` (gated by `MCP_AUTH_TOOLS_ENABLED=true`; returns secrets; no storage).
 - Pro-only write safety: added two-phase writes with `write.confirm` (gated by `MCP_TWO_PHASE_WRITES=true`; TTL via `MCP_CONFIRM_TTL_SECONDS`).
