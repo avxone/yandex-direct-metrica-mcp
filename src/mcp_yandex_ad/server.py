@@ -4,8 +4,11 @@ import json
 import logging
 import os
 import re
+import secrets
 import threading
+import time
 from collections.abc import AsyncIterator
+from contextvars import ContextVar
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -406,6 +409,17 @@ _DASHBOARD_TEMPLATE_OPTION1_2026_01_28 = """<!doctype html>
 """
 
 
+_TWO_PHASE_BYPASS: ContextVar[bool] = ContextVar("_TWO_PHASE_BYPASS", default=False)
+
+
+@dataclass(frozen=True)
+class PendingWriteAction:
+    tool: str
+    args: dict[str, Any]
+    created_at: float
+    expires_at: float
+
+
 @dataclass
 class AppContext:
     config: AppConfig
@@ -424,6 +438,8 @@ class AppContext:
     accounts_registry_lock: threading.Lock = field(default_factory=threading.Lock)
     accounts_registry_cache: dict[str, AccountProfile] | None = None
     accounts_registry_mtime: float | None = None
+    pending_writes_lock: threading.Lock = field(default_factory=threading.Lock)
+    pending_writes: dict[str, PendingWriteAction] = field(default_factory=dict)
 
     # Convenience wrappers so HF modules don't have to import server internals.
     def _direct_get(
@@ -628,6 +644,49 @@ def _enforce_write_guard(config: AppConfig, name: str, args: dict[str, Any] | No
             "Write operations are allowed only in sandbox.",
             "Set YANDEX_DIRECT_SANDBOX=true or disable MCP_WRITE_SANDBOX_ONLY.",
         )
+
+
+def _pending_writes_cleanup(ctx: AppContext) -> None:
+    now = time.monotonic()
+    with ctx.pending_writes_lock:
+        expired = [token for token, action in ctx.pending_writes.items() if action.expires_at <= now]
+        for token in expired:
+            ctx.pending_writes.pop(token, None)
+
+
+def _pending_write_put(ctx: AppContext, *, tool: str, args: dict[str, Any]) -> tuple[str, int]:
+    _pending_writes_cleanup(ctx)
+    ttl = int(getattr(ctx.config, "confirm_ttl_seconds", 300) or 300)
+    ttl = max(30, ttl)
+    now = time.monotonic()
+    token = secrets.token_urlsafe(24)
+    action = PendingWriteAction(tool=tool, args=dict(args), created_at=now, expires_at=now + ttl)
+    with ctx.pending_writes_lock:
+        ctx.pending_writes[token] = action
+    return token, ttl
+
+
+def _pending_write_pop(ctx: AppContext, *, confirm_token: str) -> PendingWriteAction | None:
+    _pending_writes_cleanup(ctx)
+    with ctx.pending_writes_lock:
+        return ctx.pending_writes.pop(confirm_token, None)
+
+
+def _two_phase_planned_payload(
+    tool: str, *, confirm_token: str, args: dict[str, Any], ttl_seconds: int
+) -> dict[str, Any]:
+    return {
+        "tool": tool,
+        "status": "planned",
+        "result": {
+            "confirm_token": confirm_token,
+            "plan": {
+                "summary": f"Planned write for {tool}. Call write.confirm(confirm_token) to execute.",
+                "args_keys": sorted([str(k) for k in (args or {}).keys()]),
+                "ttl_seconds": int(ttl_seconds),
+            },
+        },
+    }
 
 
 def _normalize_raw_data(data: Any) -> Any:
@@ -4086,6 +4145,215 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
 
     args = arguments or {}
 
+    if name.startswith("auth."):
+        try:
+            if getattr(ctx.config, "public_readonly", False):
+                raise WriteGuardError(
+                    "public",
+                    "Auth tools are disabled in public read-only mode.",
+                    "Use the pro edition.",
+                )
+            if not getattr(ctx.config, "auth_tools_enabled", False):
+                raise WriteGuardError(
+                    "auth",
+                    "Auth tools are disabled.",
+                    "Set MCP_AUTH_TOOLS_ENABLED=true to enable auth.* tools.",
+                )
+
+            from .oauth import build_authorize_url, exchange_code_for_tokens
+
+            def _purpose(p: Any) -> str:
+                value = str(p or "direct_metrica").strip().lower()
+                if value in {"direct", "direct_metrica", "direct+metrica", "main"}:
+                    return "direct_metrica"
+                if value in {"audience"}:
+                    return "audience"
+                if value in {"wordstat"}:
+                    return "wordstat"
+                raise ValueError("purpose must be one of: direct_metrica | audience | wordstat")
+
+            def _env_for(purpose: str) -> dict[str, str]:
+                if purpose == "audience":
+                    return {
+                        "client_id": "YANDEX_AUDIENCE_CLIENT_ID",
+                        "client_secret": "YANDEX_AUDIENCE_CLIENT_SECRET",
+                        "access_token": "YANDEX_AUDIENCE_ACCESS_TOKEN",
+                        "refresh_token": "YANDEX_AUDIENCE_REFRESH_TOKEN",
+                        "redirect_uri": "YANDEX_AUDIENCE_REDIRECT_URI",
+                        "scopes": "YANDEX_AUDIENCE_SCOPES",
+                    }
+                if purpose == "wordstat":
+                    return {
+                        "client_id": "YANDEX_WORDSTAT_CLIENT_ID",
+                        "client_secret": "YANDEX_WORDSTAT_CLIENT_SECRET",
+                        "access_token": "YANDEX_WORDSTAT_ACCESS_TOKEN",
+                        "refresh_token": "YANDEX_WORDSTAT_REFRESH_TOKEN",
+                        "redirect_uri": "YANDEX_WORDSTAT_REDIRECT_URI",
+                        "scopes": "YANDEX_WORDSTAT_SCOPES",
+                    }
+                return {
+                    "client_id": "YANDEX_CLIENT_ID",
+                    "client_secret": "YANDEX_CLIENT_SECRET",
+                    "access_token": "YANDEX_ACCESS_TOKEN",
+                    "refresh_token": "YANDEX_REFRESH_TOKEN",
+                    "redirect_uri": "YANDEX_REDIRECT_URI",
+                    "scopes": "YANDEX_SCOPES",
+                }
+
+            if name == "auth.start":
+                purpose = _purpose(args.get("purpose"))
+                env = _env_for(purpose)
+                client_id = str(args.get("client_id") or os.getenv(env["client_id"]) or "").strip()
+                if not client_id:
+                    raise ValueError(f"{env['client_id']} is required (or pass client_id).")
+
+                redirect_uri = str(
+                    args.get("redirect_uri")
+                    or os.getenv(env["redirect_uri"])
+                    or os.getenv("YANDEX_REDIRECT_URI")
+                    or "https://oauth.yandex.ru/verification_code"
+                ).strip()
+
+                scopes_arg = args.get("scopes")
+                scopes_env = os.getenv(env["scopes"]) or os.getenv("YANDEX_SCOPES") or ""
+                scopes_list: list[str]
+                if isinstance(scopes_arg, list):
+                    scopes_list = [str(s).strip() for s in scopes_arg if str(s).strip()]
+                else:
+                    scopes_list = [s.strip() for s in scopes_env.split(" ") if s.strip()]
+
+                state = secrets.token_urlsafe(24)
+                authorize_url = build_authorize_url(
+                    client_id=client_id,
+                    redirect_uri=redirect_uri,
+                    scopes=scopes_list or None,
+                    state=state,
+                )
+                return _ok_result(
+                    ctx,
+                    name,
+                    {
+                        "status": "ok",
+                        "result": {
+                            "purpose": purpose,
+                            "authorize_url": authorize_url,
+                            "state": state,
+                            "redirect_uri": redirect_uri,
+                            "scopes": scopes_list,
+                            "env_keys": env,
+                        },
+                    },
+                )
+
+            if name == "auth.exchange_code":
+                purpose = _purpose(args.get("purpose"))
+                env = _env_for(purpose)
+                code = str(args.get("code") or "").strip()
+                if not code:
+                    raise ValueError("code is required")
+
+                client_id = str(args.get("client_id") or os.getenv(env["client_id"]) or "").strip()
+                client_secret = str(args.get("client_secret") or os.getenv(env["client_secret"]) or "").strip()
+                if not client_id:
+                    raise ValueError(f"{env['client_id']} is required (or pass client_id).")
+                if not client_secret:
+                    raise ValueError(f"{env['client_secret']} is required (or pass client_secret).")
+
+                redirect_uri = str(
+                    args.get("redirect_uri")
+                    or os.getenv(env["redirect_uri"])
+                    or os.getenv("YANDEX_REDIRECT_URI")
+                    or "https://oauth.yandex.ru/verification_code"
+                ).strip()
+
+                tokens = exchange_code_for_tokens(
+                    code=code,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    redirect_uri=redirect_uri,
+                )
+                refresh = tokens.refresh_token or ""
+                env_block = "\n".join(
+                    [
+                        "# OAuth",
+                        f"{env['client_id']}={client_id}",
+                        f"{env['client_secret']}={client_secret}",
+                        f"{env['access_token']}={tokens.access_token}",
+                        f"{env['refresh_token']}={refresh}",
+                        f"{env['redirect_uri']}={redirect_uri}",
+                    ]
+                )
+                warnings: list[str] = []
+                if not tokens.access_token:
+                    warnings.append("access_token is empty")
+                if not tokens.refresh_token:
+                    warnings.append("refresh_token is empty (may be expected depending on OAuth app settings)")
+                return _ok_result(
+                    ctx,
+                    name,
+                    {
+                        "status": "ok",
+                        "result": {
+                            "purpose": purpose,
+                            "tokens": {
+                                "access_token": tokens.access_token,
+                                "refresh_token": tokens.refresh_token,
+                                "expires_in": tokens.expires_in,
+                                "token_type": tokens.token_type,
+                            },
+                            "env_block": env_block,
+                            "warnings": warnings,
+                        },
+                    },
+                )
+
+            raise ValueError(f"Unknown auth tool: {name}")
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name == "write.confirm":
+        try:
+            if getattr(ctx.config, "public_readonly", False):
+                raise WriteGuardError(
+                    "public",
+                    "Two-phase write confirm is disabled in public read-only mode.",
+                    "Use the pro edition.",
+                )
+            if not getattr(ctx.config, "two_phase_writes_enabled", False):
+                raise WriteGuardError(
+                    "pro",
+                    "Two-phase writes are disabled.",
+                    "Set MCP_TWO_PHASE_WRITES=true to enable write.confirm.",
+                )
+            confirm_token = str(args.get("confirm_token") or "").strip()
+            if not confirm_token:
+                raise ValueError("confirm_token is required")
+
+            action = _pending_write_pop(ctx, confirm_token=confirm_token)
+            if action is None:
+                raise ValueError("Unknown or expired confirm_token")
+
+            token = _TWO_PHASE_BYPASS.set(True)
+            try:
+                out = await call_tool(action.tool, action.args)
+            finally:
+                _TWO_PHASE_BYPASS.reset(token)
+
+            structured: Any = None
+            if isinstance(out, tuple) and len(out) == 2:
+                structured = out[1]
+            payload = {
+                "status": "ok",
+                "result": {
+                    "executed_tool": action.tool,
+                    "executed_args_keys": sorted([str(k) for k in (action.args or {}).keys()]),
+                    "output": structured if structured is not None else {"raw": out},
+                },
+            }
+            return _ok_result(ctx, name, payload)
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
     if name.startswith("accounts."):
         try:
             if name == "accounts.list":
@@ -4111,6 +4379,13 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                     "Set MCP_ACCOUNTS_WRITE_ENABLED=true to allow accounts.* write operations.",
                 )
             if name == "accounts.upsert":
+                if (
+                    getattr(ctx.config, "two_phase_writes_enabled", False)
+                    and not _TWO_PHASE_BYPASS.get()
+                ):
+                    token, ttl = _pending_write_put(ctx, tool=name, args=args)
+                    planned = _two_phase_planned_payload(name, confirm_token=token, args=args, ttl_seconds=ttl)
+                    return _ok_result(ctx, name, planned)
                 result = upsert_account(
                     ctx.config.accounts_file,
                     account_id=str(args.get("account_id") or ""),
@@ -4120,6 +4395,13 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                 _refresh_accounts_registry(ctx, force=True)
                 return _ok_result(ctx, name, {"result": result})
             if name == "accounts.delete":
+                if (
+                    getattr(ctx.config, "two_phase_writes_enabled", False)
+                    and not _TWO_PHASE_BYPASS.get()
+                ):
+                    token, ttl = _pending_write_put(ctx, tool=name, args=args)
+                    planned = _two_phase_planned_payload(name, confirm_token=token, args=args, ttl_seconds=ttl)
+                    return _ok_result(ctx, name, planned)
                 result = delete_account(ctx.config.accounts_file, account_id=str(args.get("account_id") or ""))
                 _refresh_accounts_registry(ctx, force=True)
                 return _ok_result(ctx, name, {"result": result})
@@ -4158,6 +4440,15 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         _enforce_write_guard(ctx.config, name, args)
     except Exception as exc:  # pragma: no cover - runtime safety
         return _error_response(name, exc)
+
+    if (
+        getattr(ctx.config, "two_phase_writes_enabled", False)
+        and not _TWO_PHASE_BYPASS.get()
+        and _is_write_tool(name, args)
+    ):
+        token, ttl = _pending_write_put(ctx, tool=name, args=args)
+        planned = _two_phase_planned_payload(name, confirm_token=token, args=args, ttl_seconds=ttl)
+        return _ok_result(ctx, name, planned)
 
     # Human-friendly (HF) tools.
     if name.startswith("direct.hf."):

@@ -1146,6 +1146,43 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             },
         ),
         Tool(
+            name="auth.start",
+            description="Pro-only: build OAuth authorize URL (no token storage).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "purpose": {"type": "string", "description": "direct_metrica | audience | wordstat."},
+                    "client_id": {"type": "string", "description": "Optional override; defaults to env for given purpose."},
+                    "redirect_uri": {"type": "string", "description": "Optional override; defaults to env for given purpose."},
+                    "scopes": {"type": "array", "items": {"type": "string"}, "description": "Optional override; defaults to env for given purpose."},
+                },
+            },
+        ),
+        Tool(
+            name="auth.exchange_code",
+            description="Pro-only: exchange OAuth code for tokens (returns secrets; no storage).",
+            inputSchema={
+                "type": "object",
+                "required": ["purpose", "code"],
+                "properties": {
+                    "purpose": {"type": "string", "description": "direct_metrica | audience | wordstat."},
+                    "code": {"type": "string"},
+                    "client_id": {"type": "string"},
+                    "client_secret": {"type": "string"},
+                    "redirect_uri": {"type": "string"},
+                },
+            },
+        ),
+        Tool(
+            name="write.confirm",
+            description="Pro-only: confirm and execute a planned write operation (two-phase writes).",
+            inputSchema={
+                "type": "object",
+                "required": ["confirm_token"],
+                "properties": {"confirm_token": {"type": "string"}},
+            },
+        ),
+        Tool(
             name="direct.list_campaigns",
             description="List campaigns from Yandex Direct.",
             inputSchema={
@@ -2081,6 +2118,18 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
     ]
 
     hf = _hf_tools()
+
+    # Pro-only feature-flagged tools: hide unless enabled.
+    if config is None:
+        base = [t for t in base if t.name not in {"auth.start", "auth.exchange_code", "write.confirm"}]
+    else:
+        if getattr(config, "public_readonly", False):
+            base = [t for t in base if t.name not in {"auth.start", "auth.exchange_code", "write.confirm"}]
+        else:
+            if not getattr(config, "auth_tools_enabled", False):
+                base = [t for t in base if t.name not in {"auth.start", "auth.exchange_code"}]
+            if not getattr(config, "two_phase_writes_enabled", False):
+                base = [t for t in base if t.name != "write.confirm"]
     # Public read-only mode: expose only read-oriented tools (hide write + escape hatches by default).
     if config is not None and getattr(config, "public_readonly", False):
         # Hide write-capable tools from the published schema. Server-side guardrail still blocks any attempts.
@@ -2104,6 +2153,9 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             "metrica.goals.create",
             "metrica.goals.update",
             "metrica.goals.delete",
+            "auth.start",
+            "auth.exchange_code",
+            "write.confirm",
         }
         base = [
             t

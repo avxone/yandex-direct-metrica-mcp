@@ -5,6 +5,12 @@ All notable changes to this MCP project will be documented in this file.
 ## Unreleased
 - (none yet)
 
+## 2.0.0 - 2026-02-04
+- Pro-only tools: added `auth.start` and `auth.exchange_code` (gated by `MCP_AUTH_TOOLS_ENABLED=true`; returns secrets; no storage).
+- Pro-only write safety: added two-phase writes with `write.confirm` (gated by `MCP_TWO_PHASE_WRITES=true`; TTL via `MCP_CONFIRM_TTL_SECONDS`).
+- CLI `auth`: added `--flow hybrid|manual|local` and loopback callback support (hybrid C3 UX); optional `--output-env` to write env block to a file.
+- Added next-release session notes and tool proposal docs for Auth UX + PRO confirm.
+
 ## 1.0.0 - 2026-02-03
 - BI Option 2 (PRO): expanded datasets to Variant B (Direct/Metrica/Wordstat/Join) and upgraded sync cursor/NDJSON to include `account_id`.
 - PRO write: added Metrica goals CRUD (raw + HF apply-guarded) and Direct plan/apply (`direct.hf.plan_changes` / `direct.hf.apply_plan`).

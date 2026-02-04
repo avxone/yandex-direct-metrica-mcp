@@ -48,6 +48,9 @@ class AppConfig:
     accounts_file: str | None = None
     accounts: dict[str, AccountProfile] = field(default_factory=dict)
     edition: str | None = None
+    auth_tools_enabled: bool = False
+    two_phase_writes_enabled: bool = False
+    confirm_ttl_seconds: int = 300
 
 
 def _split_csv(value: str | None) -> list[str]:
@@ -99,6 +102,8 @@ def _apply_public_edition_overrides(config: AppConfig) -> AppConfig:
             "hf_write_enabled": False,
             "hf_destructive_enabled": False,
             "accounts_write_enabled": False,
+            "auth_tools_enabled": False,
+            "two_phase_writes_enabled": False,
         }
     )
 
@@ -160,5 +165,8 @@ def load_config() -> AppConfig:
         accounts_file=accounts_file,
         accounts=accounts,
         edition=edition,
+        auth_tools_enabled=os.getenv("MCP_AUTH_TOOLS_ENABLED", "false").lower() in {"1", "true", "yes"},
+        two_phase_writes_enabled=os.getenv("MCP_TWO_PHASE_WRITES", "false").lower() in {"1", "true", "yes"},
+        confirm_ttl_seconds=int(os.getenv("MCP_CONFIRM_TTL_SECONDS", "300")),
     )
     return _apply_public_edition_overrides(config)

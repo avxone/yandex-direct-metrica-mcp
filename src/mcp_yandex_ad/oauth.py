@@ -26,12 +26,15 @@ def build_authorize_url(
     client_id: str,
     redirect_uri: str | None,
     scopes: list[str] | None,
+    state: str | None = None,
 ) -> str:
     params: dict[str, str] = {"response_type": "code", "client_id": client_id}
     if redirect_uri:
         params["redirect_uri"] = redirect_uri
     if scopes:
         params["scope"] = " ".join([s.strip() for s in scopes if s.strip()])
+    if state:
+        params["state"] = state
     return f"{OAUTH_AUTHORIZE_URL}?{urlencode(params)}"
 
 
@@ -62,4 +65,3 @@ def exchange_code_for_tokens(
         token_type=payload.get("token_type"),
         raw=payload,
     )
-

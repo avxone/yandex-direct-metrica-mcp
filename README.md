@@ -182,6 +182,8 @@ Public/pro flags:
   - `MCP_WRITE_ENABLED=true`
   - `HF_WRITE_ENABLED=true` (HF write tools)
   - `HF_DESTRUCTIVE_ENABLED=true` (delete tools)
+  - Optional safety: `MCP_TWO_PHASE_WRITES=true` (write tools return a `confirm_token`; execution requires `write.confirm`)
+- Pro-only auth tools (return secrets; no storage): `MCP_AUTH_TOOLS_ENABLED=true`
 
 ## CLI commands
 
@@ -191,6 +193,8 @@ The container/entrypoint runs the MCP server (stdio by default). Local/venv entr
 
 The CLI also provides:
 - `auth` — interactive OAuth helper (opens auth URL and exchanges code)
+  - `--flow hybrid` (default) uses loopback callback when `YANDEX_REDIRECT_URI` is a local URL (example: `http://127.0.0.1:8765/callback`), otherwise falls back to manual code copy/paste.
+  - Tip: set `--output-env /path/to/.env` to avoid printing tokens to stdout.
 
 ## Public vs Pro
 

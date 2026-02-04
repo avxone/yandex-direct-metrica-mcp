@@ -14,9 +14,10 @@ def test_build_authorize_url_with_scopes_and_redirect():
         client_id="cid",
         redirect_uri="https://oauth.yandex.ru/verification_code",
         scopes=["direct:api", "metrika:read"],
+        state="s123",
     )
     assert "redirect_uri=" in url
     assert "scope=" in url
     assert "direct%3Aapi" in url
     assert "metrika%3Aread" in url
-
+    assert "state=s123" in url

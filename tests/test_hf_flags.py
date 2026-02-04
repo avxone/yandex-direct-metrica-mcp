@@ -62,3 +62,29 @@ def test_hf_destructive_tools_visible_when_enabled():
     names = {t.name for t in tools}
     assert "direct.hf.delete_ads" in names
     assert "direct.hf.delete_keywords" in names
+
+
+def test_auth_tools_hidden_by_default():
+    tools = tool_definitions(_config(auth_tools_enabled=False))
+    names = {t.name for t in tools}
+    assert "auth.start" not in names
+    assert "auth.exchange_code" not in names
+
+
+def test_auth_tools_visible_when_enabled():
+    tools = tool_definitions(_config(auth_tools_enabled=True))
+    names = {t.name for t in tools}
+    assert "auth.start" in names
+    assert "auth.exchange_code" in names
+
+
+def test_write_confirm_hidden_by_default():
+    tools = tool_definitions(_config(two_phase_writes_enabled=False))
+    names = {t.name for t in tools}
+    assert "write.confirm" not in names
+
+
+def test_write_confirm_visible_when_enabled():
+    tools = tool_definitions(_config(two_phase_writes_enabled=True))
+    names = {t.name for t in tools}
+    assert "write.confirm" in names
