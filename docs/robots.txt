@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://georgy-agaev.github.io/yandex-direct-metrica-mcp/sitemap.xml
+

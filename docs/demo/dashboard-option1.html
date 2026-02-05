@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dashboard demo — yandex-direct-metrica-mcp</title>
+    <meta name="description" content="Option 1 dashboard demo (static sample data)." />
+    <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="nav">
+        <div class="nav-inner">
+          <div class="brand">
+            <div class="logo" aria-hidden="true"></div>
+            <div class="brand-title">
+              <b>Dashboard demo</b>
+              <span>Option 1 (HTML + JSON)</span>
+            </div>
+          </div>
+          <div class="nav-cta">
+            <a class="btn small ghost" href="index.html">All demos</a>
+            <a class="btn small" href="../ru/#demo">Русский</a>
+          </div>
+        </div>
+      </div>
+
+      <header class="hero">
+        <h1>Loading demo dashboard…</h1>
+        <p class="subtitle">
+          This page loads the dashboard template from <code>docs/templates/</code> and injects static sample data.
+        </p>
+        <div class="pillrow">
+          <span class="pill"><b>No API calls</b> static data only</span>
+          <span class="pill"><b>Same template</b> as <code>dashboard.generate_option1</code></span>
+        </div>
+      </header>
+
+      <section class="section">
+        <div class="card">
+          <h3>If it does not load</h3>
+          <p class="muted">
+            If you open this as a local file, <code>fetch()</code> may be blocked by the browser. Use GitHub Pages or a local static server.
+          </p>
+          <div class="hero-actions">
+            <a class="btn" href="../templates/dashboard-template-option1-2026-01-28.html">Open template file</a>
+            <a class="btn ghost" href="../ru/quickstart.md">Quickstart (RU)</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const toYmd = (d) => {
+        const z = (n) => String(n).padStart(2, "0");
+        return `${d.getUTCFullYear()}-${z(d.getUTCMonth() + 1)}-${z(d.getUTCDate())}`;
+      };
+
+      const makeSeries = (startYmd, days, mk) => {
+        const start = new Date(`${startYmd}T00:00:00Z`);
+        const out = [];
+        for (let i = 0; i < days; i++) {
+          const d = new Date(start.getTime() + i * 86400000);
+          out.push({ date: toYmd(d), ...mk(i) });
+        }
+        return out;
+      };
+
+      const sum = (arr, key) => arr.reduce((a, x) => a + Number(x[key] || 0), 0);
+
+      const directDaily = makeSeries("2026-01-20", 14, (i) => {
+        const impressions = 22000 + i * 350 + (i % 3) * 900;
+        const clicks = Math.round(impressions * (0.018 + (i % 4) * 0.001));
+        const cpc = 26 + (i % 5) * 2.2;
+        const cost = Math.round(clicks * cpc * 100) / 100;
+        return { impressions, clicks, cost };
+      });
+
+      const directPrevDaily = makeSeries("2026-01-06", 14, (i) => {
+        const impressions = 20000 + i * 280 + (i % 2) * 700;
+        const clicks = Math.round(impressions * (0.017 + (i % 4) * 0.0008));
+        const cpc = 25.5 + (i % 5) * 1.9;
+        const cost = Math.round(clicks * cpc * 100) / 100;
+        return { impressions, clicks, cost };
+      });
+
+      const directTotals = {
+        impressions: sum(directDaily, "impressions"),
+        clicks: sum(directDaily, "clicks"),
+        cost_rub: Math.round(sum(directDaily, "cost") * 100) / 100,
+      };
+      directTotals.ctr = directTotals.impressions > 0 ? (directTotals.clicks / directTotals.impressions) * 100 : 0;
+      directTotals.cpc = directTotals.clicks > 0 ? directTotals.cost_rub / directTotals.clicks : 0;
+
+      const directPrevTotals = {
+        impressions: sum(directPrevDaily, "impressions"),
+        clicks: sum(directPrevDaily, "clicks"),
+        cost_rub: Math.round(sum(directPrevDaily, "cost") * 100) / 100,
+      };
+      directPrevTotals.ctr = directPrevTotals.impressions > 0 ? (directPrevTotals.clicks / directPrevTotals.impressions) * 100 : 0;
+      directPrevTotals.cpc = directPrevTotals.clicks > 0 ? directPrevTotals.cost_rub / directPrevTotals.clicks : 0;
+
+      const metricaDaily = makeSeries("2026-01-20", 14, (i) => {
+        const visits = 1700 + i * 22 + (i % 3) * 35;
+        const users = Math.round(visits * (0.78 + (i % 4) * 0.01));
+        const bounce_rate = 19 + (i % 5) * 1.4;
+        const page_depth = 2.7 + (i % 3) * 0.08;
+        const avg_visit_duration_seconds = 74 + (i % 6) * 3.5;
+        const engaged = visits * (1 - bounce_rate / 100);
+        return { visits, users, bounce_rate, page_depth, avg_visit_duration_seconds, engaged, leads: 0 };
+      });
+
+      const metricaPrevDaily = makeSeries("2026-01-06", 14, (i) => {
+        const visits = 1600 + i * 18 + (i % 3) * 30;
+        const users = Math.round(visits * (0.77 + (i % 4) * 0.01));
+        const bounce_rate = 20.5 + (i % 5) * 1.3;
+        const page_depth = 2.65 + (i % 3) * 0.07;
+        const avg_visit_duration_seconds = 72 + (i % 6) * 3.2;
+        const engaged = visits * (1 - bounce_rate / 100);
+        return { visits, users, bounce_rate, page_depth, avg_visit_duration_seconds, engaged, leads: 0 };
+      });
+
+      const weightedAvg = (arr, key, wkey) => {
+        const w = arr.reduce((a, x) => a + Number(x[wkey] || 0), 0);
+        if (!w) return 0;
+        const s = arr.reduce((a, x) => a + Number(x[key] || 0) * Number(x[wkey] || 0), 0);
+        return s / w;
+      };
+
+      const metricaTotals = {
+        visits: sum(metricaDaily, "visits"),
+        users: sum(metricaDaily, "users"),
+        engaged: sum(metricaDaily, "engaged"),
+        leads: 0,
+        bounce_rate: weightedAvg(metricaDaily, "bounce_rate", "visits"),
+        page_depth: weightedAvg(metricaDaily, "page_depth", "visits"),
+        avg_visit_duration_seconds: weightedAvg(metricaDaily, "avg_visit_duration_seconds", "visits"),
+      };
+
+      const metricaPrevTotals = {
+        visits: sum(metricaPrevDaily, "visits"),
+        users: sum(metricaPrevDaily, "users"),
+        engaged: sum(metricaPrevDaily, "engaged"),
+        leads: 0,
+        bounce_rate: weightedAvg(metricaPrevDaily, "bounce_rate", "visits"),
+        page_depth: weightedAvg(metricaPrevDaily, "page_depth", "visits"),
+        avg_visit_duration_seconds: weightedAvg(metricaPrevDaily, "avg_visit_duration_seconds", "visits"),
+      };
+
+      const campaignA = directDaily.map((x) => ({
+        date: x.date,
+        impressions: Math.round(x.impressions * 0.62),
+        clicks: Math.round(x.clicks * 0.58),
+        cost: Math.round(x.cost * 0.60 * 100) / 100,
+      }));
+      const campaignB = directDaily.map((x) => ({
+        date: x.date,
+        impressions: Math.round(x.impressions * 0.38),
+        clicks: Math.round(x.clicks * 0.42),
+        cost: Math.round(x.cost * 0.40 * 100) / 100,
+      }));
+
+      const DATA = {
+        meta: {
+          generated_at: "2026-02-05T12:00:00Z",
+          date_from: "2026-01-20",
+          date_to: "2026-02-02",
+          requested_date_to: null,
+          prev_date_from: "2026-01-06",
+          prev_date_to: "2026-01-19",
+          account_id: "demo_project",
+          project_name: "Demo project",
+          direct_client_login: "demo-client-login",
+          counter_id: "12345678",
+          tool: "dashboard.generate_option1",
+          goals_mode: "none",
+          goal_ids: [],
+          goals_resolved_count: 0,
+        },
+        coverage: {
+          direct_current_daily: { count: directDaily.length, first_date: directDaily[0].date, last_date: directDaily[directDaily.length - 1].date },
+          direct_prev_daily: { count: directPrevDaily.length, first_date: directPrevDaily[0].date, last_date: directPrevDaily[directPrevDaily.length - 1].date },
+          metrica_current_daily: { count: metricaDaily.length, first_date: metricaDaily[0].date, last_date: metricaDaily[metricaDaily.length - 1].date },
+          metrica_prev_daily: { count: metricaPrevDaily.length, first_date: metricaPrevDaily[0].date, last_date: metricaPrevDaily[metricaPrevDaily.length - 1].date },
+        },
+        direct: {
+          current: { daily: directDaily, totals: directTotals },
+          prev: { daily: directPrevDaily, totals: directPrevTotals },
+          campaign_data: {
+            "1001": { name: "Поиск — Demo", shortName: "Поиск — Demo", subName: "", type: "search", daily: campaignA },
+            "1002": { name: "РСЯ — Demo", shortName: "РСЯ — Demo", subName: "", type: "rsya", daily: campaignB },
+          },
+        },
+        metrica: {
+          current: { daily: metricaDaily, totals: metricaTotals },
+          prev: { daily: metricaPrevDaily, totals: metricaPrevTotals },
+          daily_data: metricaDaily.map((x) => ({
+            date: x.date,
+            visits: x.visits,
+            bounceRate: x.bounce_rate,
+            avgDuration: x.avg_visit_duration_seconds,
+            engaged: x.engaged,
+          })),
+          sources: { available: false, series: [] },
+          goals: { available: false, goal_ids: [], goals: [] },
+          direct: { available: false },
+          direct_split: { available: false },
+          direct_by_campaign: {},
+          goals_direct: { available: false, goal_ids: [], goals: [] },
+        },
+        warnings: [],
+        recommendations: {
+          today: [
+            "Проверьте UTM-разметку и соответствие кампаний в Метрике.",
+            "Снимите список поисковых фраз и соберите минус-слова.",
+            "Зафиксируйте гипотезы на неделю: что меняем и чем меряем.",
+          ],
+          questions: [
+            "Какие цели/конверсии считаем ключевыми (goal_ids)?",
+            "Нужно ли разделение Поиск/РСЯ по KPI и бюджетам?",
+          ],
+          notes: ["Это демо использует статические данные и шаблон дашборда из репозитория."],
+        },
+      };
+
+      (async () => {
+        try {
+          const res = await fetch("../templates/dashboard-template-option1-2026-01-28.html", { cache: "no-store" });
+          if (!res.ok) throw new Error(`Template fetch failed: ${res.status}`);
+          const tpl = await res.text();
+          const html = tpl.replace("/*__DATA_JSON__*/", JSON.stringify(DATA));
+          document.open();
+          document.write(html);
+          document.close();
+        } catch (e) {
+          console.error(e);
+          const el = document.querySelector("h1");
+          if (el) el.textContent = "Failed to load demo dashboard";
+        }
+      })();
+    </script>
+  </body>
+</html>
+
