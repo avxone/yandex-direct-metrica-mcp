@@ -5,6 +5,10 @@ All notable changes to this MCP project will be documented in this file.
 ## Unreleased
 - (none yet)
 
+## 2.0.2 - 2026-02-05
+- Direct: fixed `direct.list_clients` to avoid sending unsupported `SelectionCriteria` (was causing `YandexDirectClientError` code `8000`).
+- Schema: relaxed `direct_client_login` hints (no hard enum restriction; agency logins are accepted).
+
 ## 2.0.1 - 2026-02-04
 - Docker: bumped base image to `python:3.13-slim` to pick up newer security fixes.
 

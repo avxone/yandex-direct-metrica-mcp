@@ -3614,6 +3614,26 @@ def _build_basic_params(
     return params
 
 
+def _build_clients_params(args: dict[str, Any], *, default_fields: list[str]) -> dict[str, Any]:
+    """Build params for Direct `clients` service.
+
+    The Direct `clients` endpoint does **not** accept `SelectionCriteria` (even empty),
+    so we must not send it by default.
+    """
+    if args.get("params"):
+        return args["params"]
+
+    selection = args.get("selection_criteria")
+    if selection not in (None, {}, []):
+        raise ValueError("selection_criteria is not supported for direct.list_clients (use params override)")
+
+    params: dict[str, Any] = {
+        "FieldNames": args.get("field_names") or default_fields,
+    }
+    _apply_page_params(params, args.get("page"))
+    return params
+
+
 def _build_ids_selection_params(
     args: dict[str, Any],
     *,
@@ -4783,7 +4803,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
 
     if name == "direct.list_clients":
         try:
-            params = _build_basic_params(args, default_fields=["ClientId", "Login"])
+            params = _build_clients_params(args, default_fields=["ClientId", "Login"])
             data = _direct_get(ctx, "clients", params, direct_client_login=args.get("direct_client_login"))
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety

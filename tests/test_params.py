@@ -141,6 +141,33 @@ def test_ids_selection_params_accepts_selection_criteria_ids():
     assert params["SelectionCriteria"]["Ids"] == [10]
 
 
+def test_direct_list_clients_omits_selectioncriteria():
+    params = server._build_clients_params({}, default_fields=["ClientId", "Login"])
+    assert params == {"FieldNames": ["ClientId", "Login"]}
+
+
+def test_direct_list_clients_supports_page():
+    params = server._build_clients_params(
+        {"page": {"limit": 10, "offset": 20}},
+        default_fields=["ClientId", "Login"],
+    )
+    assert params["FieldNames"] == ["ClientId", "Login"]
+    assert params["Page"] == {"Limit": 10, "Offset": 20}
+
+
+def test_direct_list_clients_rejects_selection_criteria():
+    with pytest.raises(ValueError, match="selection_criteria is not supported"):
+        server._build_clients_params(
+            {"selection_criteria": {"Logins": ["x"]}},
+            default_fields=["ClientId", "Login"],
+        )
+
+
+def test_direct_list_clients_allows_params_override():
+    params = server._build_clients_params({"params": {"FieldNames": ["Login"]}}, default_fields=["ClientId", "Login"])
+    assert params == {"FieldNames": ["Login"]}
+
+
 def test_normalize_ads_items_for_update_converts_adextensions_ids_to_calloutsetting():
     items = [
         {

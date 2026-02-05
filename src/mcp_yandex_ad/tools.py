@@ -523,10 +523,16 @@ def _hf_tools() -> list[Tool]:
             description="Human-friendly: suggest keyword candidates from seed phrases (resumable via cursor).",
             inputSchema={
                 "type": "object",
-                "anyOf": [{"required": ["seed_phrases"]}, {"required": ["cursor"]}],
                 "properties": {
-                    "seed_phrases": {"type": "array", "items": {"type": "string"}},
-                    "cursor": {"type": "string", "description": "Opaque cursor (base64 JSON) to resume pending runs."},
+                    "seed_phrases": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Start a new run. Provide either seed_phrases or cursor (exactly one).",
+                    },
+                    "cursor": {
+                        "type": "string",
+                        "description": "Resume a pending run. Provide either seed_phrases or cursor (exactly one).",
+                    },
                     "regions": {"type": "array", "items": {"type": "integer"}},
                     "devices": {"type": "array", "items": {"type": "string"}},
                     "num_phrases": {"type": "integer", "description": "Per-seed numPhrases (default: 50, max: 2000)."},
@@ -1526,10 +1532,6 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "selection_criteria": {
-                        "type": "object",
-                        "description": "Direct API SelectionCriteria object (optional).",
-                    },
                     "field_names": {
                         "type": "array",
                         "description": "Client field names (default: ClientId, Login).",
@@ -2073,10 +2075,16 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             description="Wordstat: topRequests (top queries by phrase).",
             inputSchema={
                 "type": "object",
-                "anyOf": [{"required": ["phrase"]}, {"required": ["phrases"]}],
                 "properties": {
-                    "phrase": {"type": "string"},
-                    "phrases": {"type": "array", "items": {"type": "string"}, "description": "Up to 128 phrases."},
+                    "phrase": {
+                        "type": "string",
+                        "description": "Provide either phrase or phrases (exactly one).",
+                    },
+                    "phrases": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Up to 128 phrases. Provide either phrase or phrases (exactly one).",
+                    },
                     "regions": {"type": "array", "items": {"type": "integer"}},
                     "devices": {"type": "array", "items": {"type": "string"}},
                     "num_phrases": {"type": "integer", "description": "Max: 2000."},
@@ -2180,8 +2188,16 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
         hf = [t for t in hf if not t.name.startswith("metrica.hf.") or t.name.startswith("metrica.hf.report_") or t.name in {"metrica.hf.list_accessible_counters", "metrica.hf.counter_summary", "metrica.hf.logs_export_preset"}]
 
     direct_client_logins: list[str] = []
-    if config is not None and getattr(config, "direct_client_logins", None):
-        direct_client_logins = [str(x) for x in config.direct_client_logins if str(x).strip()]
+    if config is not None:
+        # Provide helpful hints, but never hard-restrict values via enum (agency setups may have many logins).
+        if getattr(config, "direct_client_logins", None):
+            direct_client_logins.extend([str(x) for x in (config.direct_client_logins or []) if str(x).strip()])
+        if getattr(config, "accounts", None):
+            for profile in (config.accounts or {}).values():
+                login = getattr(profile, "direct_client_login", None)
+                if login and str(login).strip():
+                    direct_client_logins.append(str(login).strip())
+    direct_client_logins = sorted({x for x in direct_client_logins if x})
 
     account_ids: list[str] = []
     if config is not None and getattr(config, "accounts", None):
@@ -2228,7 +2244,11 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 if is_direct_or_join or is_dashboard or is_audience_hf:
                     direct_client_login_schema = dict(DIRECT_CLIENT_LOGIN_SCHEMA_BASE)
                     if direct_client_logins:
-                        direct_client_login_schema["enum"] = direct_client_logins
+                        max_hint = 25
+                        hinted = direct_client_logins[:max_hint]
+                        suffix = ", …" if len(direct_client_logins) > max_hint else ""
+                        hint = f" Known values: {', '.join(hinted)}{suffix}."
+                        direct_client_login_schema["description"] = (direct_client_login_schema.get("description") or "").rstrip(".") + "." + hint
                     props.setdefault("direct_client_login", direct_client_login_schema)
             tool.inputSchema = schema
         return tools

@@ -65,3 +65,31 @@ def test_tool_schemas_include_account_id(monkeypatch, tmp_path):
     assert dashboard_account_id["anyOf"][0]["enum"] == ["proj1"]
     assert "direct_client_login" in dashboard_schema["properties"]
     assert "return_data" in dashboard_schema["properties"]
+
+
+def test_hf_direct_client_login_is_hint_only(monkeypatch, tmp_path):
+    registry_path = tmp_path / "accounts.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "accounts": [
+                    {"id": "proj1", "direct_client_login": "elama-123"},
+                    {"id": "proj2", "direct_client_login": "elama-456"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("MCP_ACCOUNTS_FILE", str(registry_path))
+    monkeypatch.setenv("YANDEX_DIRECT_CLIENT_LOGINS", "georgiyagaev")
+    config = load_config()
+    tools = {tool.name: tool for tool in tool_definitions(config)}
+
+    schema = tools["direct.hf.pressure_report"].inputSchema
+    direct_login_schema = schema["properties"]["direct_client_login"]
+    assert direct_login_schema["type"] == "string"
+    assert "enum" not in direct_login_schema
+    assert "Known values:" in (direct_login_schema.get("description") or "")
+    assert "georgiyagaev" in direct_login_schema["description"]
+    assert "elama-123" in direct_login_schema["description"]

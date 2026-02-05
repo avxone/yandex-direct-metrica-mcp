@@ -1405,10 +1405,6 @@
         "params": {
           "description": "Raw Direct params override (advanced).",
           "type": "object"
-        },
-        "selection_criteria": {
-          "description": "Direct API SelectionCriteria object (optional).",
-          "type": "object"
         }
       },
       "type": "object"
@@ -2141,21 +2137,9 @@
     "name": "wordstat.hf.suggest_keywords",
     "description": "Human-friendly: suggest keyword candidates from seed phrases (resumable via cursor).",
     "inputSchema": {
-      "anyOf": [
-        {
-          "required": [
-            "seed_phrases"
-          ]
-        },
-        {
-          "required": [
-            "cursor"
-          ]
-        }
-      ],
       "properties": {
         "cursor": {
-          "description": "Opaque cursor (base64 JSON) to resume pending runs.",
+          "description": "Resume a pending run. Provide either seed_phrases or cursor (exactly one).",
           "type": "string"
         },
         "devices": {
@@ -2183,6 +2167,7 @@
           "type": "array"
         },
         "seed_phrases": {
+          "description": "Start a new run. Provide either seed_phrases or cursor (exactly one).",
           "items": {
             "type": "string"
           },
@@ -2251,18 +2236,6 @@
     "name": "wordstat.top_requests",
     "description": "Wordstat: topRequests (top queries by phrase).",
     "inputSchema": {
-      "anyOf": [
-        {
-          "required": [
-            "phrase"
-          ]
-        },
-        {
-          "required": [
-            "phrases"
-          ]
-        }
-      ],
       "properties": {
         "devices": {
           "items": {
@@ -2279,10 +2252,11 @@
           "type": "object"
         },
         "phrase": {
+          "description": "Provide either phrase or phrases (exactly one).",
           "type": "string"
         },
         "phrases": {
-          "description": "Up to 128 phrases.",
+          "description": "Up to 128 phrases. Provide either phrase or phrases (exactly one).",
           "items": {
             "type": "string"
           },
