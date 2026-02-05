@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Плейбук запуска кампании — yandex-direct-metrica-mcp</title>
+    <meta
+      name="description"
+      content="Демо-плейбук: запуск/оптимизация кампаний через diagnose → plan → review → apply (PRO) с guardrails и артефактами."
+    />
+    <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="nav">
+        <div class="nav-inner">
+          <div class="brand">
+            <div class="logo" aria-hidden="true"></div>
+            <div class="brand-title">
+              <b>Плейбук запуска</b>
+              <span>diagnose → plan → review → apply</span>
+            </div>
+          </div>
+          <div class="nav-cta">
+            <a class="btn small ghost" href="index.html">Все демо</a>
+            <a class="btn small" href="../ru/">Лендинг</a>
+          </div>
+        </div>
+      </div>
+
+      <header class="hero">
+        <h1>Запуск кампании без “black‑box”</h1>
+        <p class="subtitle">
+          Это пример алгоритма, который удобно демонстрировать клиентам: вы формируете гипотезы, строите план изменений, проходите ревью,
+          применяете под guardrails и измеряете эффект. Инструменты — ваши (LLM/локальные модели), данные и артефакты — у вас.
+        </p>
+        <div class="pillrow">
+          <span class="pill"><b>Public</b> — диагностика и отчёты</span>
+          <span class="pill"><b>PRO</b> — plan/apply и BI sync</span>
+          <span class="pill"><b>Артефакты</b> — доказуемость результата</span>
+        </div>
+      </header>
+
+      <section class="section">
+        <h2>0) Контекст (что спросить у клиента)</h2>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Минимум</h3>
+            <ul class="list">
+              <li><code>ACCOUNT_ID</code> (или <code>direct_client_login</code> + <code>counter_id</code>)</li>
+              <li>Период: <code>DATE_FROM</code> → <code>DATE_TO</code> (обычно “до вчера”)</li>
+              <li>Главные KPI: заявки/продажи/визиты, и какие цели считать (<code>goal_ids</code>)</li>
+              <li>Ограничения: бюджеты/сроки/гео/устройства</li>
+            </ul>
+          </div>
+          <div class="card col-6">
+            <h3>Флаги безопасности (PRO writes)</h3>
+            <pre data-copy><code>MCP_PUBLIC_READONLY=false
+MCP_WRITE_ENABLED=true
+HF_WRITE_ENABLED=true
+MCP_WRITE_SANDBOX_ONLY=true
+YANDEX_DIRECT_SANDBOX=true
+
+# optional:
+MCP_TWO_PHASE_WRITES=true</code></pre>
+            <p class="fine">По умолчанию рекомендуем sandbox‑only и двухфазное подтверждение.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>1) Diagnose (read‑only): быстро понять, что происходит</h2>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Дашборд (для человека)</h3>
+            <pre data-copy><code>{
+  "tool":"dashboard.generate_option1",
+  "arguments":{
+    "account_id":"${ACCOUNT_ID}",
+    "date_from":"${DATE_FROM}",
+    "date_to":"${DATE_TO}",
+    "output_dir":"/data/dashboards",
+    "return_data":false,
+    "include_raw_reports":false
+  }
+}</code></pre>
+          </div>
+          <div class="card col-6">
+            <h3>Проблемные зоны (быстро)</h3>
+            <pre data-copy><code>{
+  "tool":"direct.hf.get_campaign_summary",
+  "arguments":{
+    "account_id":"${ACCOUNT_ID}",
+    "limit":50
+  }
+}</code></pre>
+            <p class="fine">Дальше обычно: search phrases → Wordstat → минуса.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>2) Plan (PRO, preview): собрать план изменений</h2>
+        <div class="grid">
+          <div class="card col-12">
+            <h3>Пример: добавить ключи + слить минуса (без применения)</h3>
+            <pre data-copy><code>{
+  "tool":"direct.hf.plan_changes",
+  "arguments":{
+    "account_id":"${ACCOUNT_ID}",
+    "operations":[
+      {
+        "op":"keywords.add",
+        "adgroup_id":123456,
+        "keywords":[
+          {"keyword":"купить газонокосилку"},
+          {"keyword":"газонокосилка бензиновая"}
+        ]
+      },
+      {
+        "op":"negatives.merge",
+        "campaign_id":987654,
+        "negatives":["б/у","ремонт","инструкция","чертеж"]
+      }
+    ]
+  }
+}</code></pre>
+            <p class="fine">Ожидайте в ответе <code>preview</code> + <code>warnings</code>. Это удобно показывать клиенту как “план работ”.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>3) Review: ревью человеком (обязательный этап)</h2>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Чеклист ревью</h3>
+            <ul class="list">
+              <li>Правильный аккаунт/кампания/группа</li>
+              <li>Согласованы KPI и цели (goal_ids)</li>
+              <li>Минуса не убьют бренд/коммерческий интент</li>
+              <li>Ограничения по бюджету и срокам</li>
+            </ul>
+          </div>
+          <div class="card col-6">
+            <h3>Артефакты</h3>
+            <ul class="list">
+              <li>Сохраняйте ответы tool calls (JSON) в папку запуска</li>
+              <li>Фиксируйте гипотезы, изменения и “почему так”</li>
+              <li>Измеряйте эффект в согласованном окне (до/после)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>4) Apply (PRO): применить изменения под guardrails</h2>
+        <div class="grid">
+          <div class="card col-12">
+            <h3>Применение (explicit apply=true)</h3>
+            <pre data-copy><code>{
+  "tool":"direct.hf.apply_plan",
+  "arguments":{
+    "account_id":"${ACCOUNT_ID}",
+    "apply":true,
+    "plan_id":"${PLAN_ID_FROM_PREVIEW}"
+  }
+}</code></pre>
+            <p class="fine">Если включён two‑phase режим, часть write‑операций может потребовать отдельного подтверждения через <code>write.confirm</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>5) Measure: измерить эффект и закрыть гипотезу</h2>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Снимок после (дашборд)</h3>
+            <pre data-copy><code>{
+  "tool":"dashboard.generate_option1",
+  "arguments":{
+    "account_id":"${ACCOUNT_ID}",
+    "date_from":"${AFTER_FROM}",
+    "date_to":"${AFTER_TO}",
+    "output_dir":"/data/dashboards",
+    "return_data":false,
+    "include_raw_reports":false
+  }
+}</code></pre>
+          </div>
+          <div class="card col-6">
+            <h3>BI (если нужно)</h3>
+            <pre data-copy><code>{
+  "tool":"dashboard.sync.start",
+  "arguments":{
+    "datasets":[
+      "dashboard.dataset.direct_campaign_daily",
+      "dashboard.dataset.metrica_daily"
+    ],
+    "account_ids":["${ACCOUNT_ID}"],
+    "date_from":"${DATE_FROM}",
+    "date_to":"${DATE_TO}",
+    "page_size":500,
+    "chunk_days":7
+  }
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <p class="fine">
+          Источник подхода: <a href="../_product_strategy/runbook-direct-metrica-wordstat-audience.md">runbook (в репозитории)</a>
+          · <a href="../ru/llm-usage-guide-pro-2026-02-03.md">гайд PRO</a>
+        </p>
+      </footer>
+    </main>
+    <script src="../assets/site.js" defer></script>
+  </body>
+</html>
+
