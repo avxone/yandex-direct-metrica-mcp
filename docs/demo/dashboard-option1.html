@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Dashboard demo — yandex-direct-metrica-mcp</title>
     <meta name="description" content="Option 1 dashboard demo (static sample data)." />
-    <link rel="icon" href="../assets/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="../assets/style.css" />
+    <link rel="icon" href="../assets/icon.svg?v=20260205-1" type="image/svg+xml" />
+    <link rel="stylesheet" href="../assets/style.css?v=20260205-1" />
   </head>
   <body>
     <main class="wrap">
@@ -47,6 +47,19 @@
             <a class="btn" href="../templates/dashboard-template-option1-2026-01-28.html">Open template file</a>
             <a class="btn ghost" href="../ru/quickstart.md">Quickstart (RU)</a>
           </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="card">
+          <h3>Dashboard preview</h3>
+          <p class="muted">Rendered in an iframe using the same template as the server.</p>
+          <div style="height: 12px"></div>
+          <iframe
+            id="dashframe"
+            title="Dashboard demo"
+            style="width: 100%; height: 78vh; border: 1px solid var(--border); border-radius: 14px; background: rgba(0,0,0,0.12);"
+          ></iframe>
         </div>
       </section>
     </main>
@@ -230,9 +243,10 @@
           if (!res.ok) throw new Error(`Template fetch failed: ${res.status}`);
           const tpl = await res.text();
           const html = tpl.replace("/*__DATA_JSON__*/", JSON.stringify(DATA));
-          document.open();
-          document.write(html);
-          document.close();
+          const frame = document.getElementById("dashframe");
+          if (frame && "srcdoc" in frame) {
+            frame.srcdoc = html;
+          }
         } catch (e) {
           console.error(e);
           const el = document.querySelector("h1");
@@ -242,4 +256,3 @@
     </script>
   </body>
 </html>
-
