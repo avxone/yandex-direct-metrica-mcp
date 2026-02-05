@@ -5,6 +5,10 @@ All notable changes to this MCP project will be documented in this file.
 ## Unreleased
 - (none yet)
 
+## 2.0.3 - 2026-02-05
+- Direct: `direct.report` now provides safe defaults for `DateRangeType`/`Format`/`IncludeVAT`/`IncludeDiscount` (reduces UX friction).
+- Audience: removed `audience.lookalikes.*` from the public read-only surface (it returned HTTP 404); server now returns a clear `NotSupported` error when called.
+
 ## 2.0.2 - 2026-02-05
 - Direct: fixed `direct.list_clients` to avoid sending unsupported `SelectionCriteria` (was causing `YandexDirectClientError` code `8000`).
 - Schema: relaxed `direct_client_login` hints (no hard enum restriction; agency logins are accepted).

@@ -76,6 +76,13 @@ class WriteGuardError(RuntimeError):
         self.hint = hint
 
 
+class NotSupportedError(RuntimeError):
+    def __init__(self, provider: str, message: str, hint: str | None = None) -> None:
+        super().__init__(message)
+        self.provider = provider
+        self.hint = hint or "Operation is not supported by the upstream API."
+
+
 def _safe_message(value: Any) -> str | None:
     if value is None:
         return None
@@ -128,6 +135,10 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
         payload["message"] = str(exc)
         payload["hint"] = HINT_TOKEN
     elif isinstance(exc, WriteGuardError):
+        payload["provider"] = exc.provider
+        payload["message"] = str(exc)
+        payload["hint"] = exc.hint
+    elif isinstance(exc, NotSupportedError):
         payload["provider"] = exc.provider
         payload["message"] = str(exc)
         payload["hint"] = exc.hint

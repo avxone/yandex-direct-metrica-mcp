@@ -2161,6 +2161,8 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             "metrica.goals.create",
             "metrica.goals.update",
             "metrica.goals.delete",
+            "audience.lookalikes.list",
+            "audience.lookalikes.get",
             "auth.start",
             "auth.exchange_code",
             "write.confirm",

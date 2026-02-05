@@ -24,7 +24,7 @@ from .cache import TTLCache
 from .auth import TokenManager
 from .clients import YandexClients, build_clients, build_direct_client
 from .config import AppConfig, load_config
-from .errors import MissingClientError, WriteGuardError, normalize_error
+from .errors import MissingClientError, NotSupportedError, WriteGuardError, normalize_error
 from .hf_common import HFError, hf_payload
 from .hf_direct import handle as hf_direct_handle
 from .hf_join import handle as hf_join_handle
@@ -3739,14 +3739,26 @@ def _build_report_params(args: dict[str, Any]) -> dict[str, Any]:
         params["ReportName"] = f"MCP_{report_type}{suffix}"[:255]
     if args.get("report_type") is not None:
         params["ReportType"] = args.get("report_type")
-    if args.get("date_range_type") is not None:
-        params["DateRangeType"] = args.get("date_range_type")
-    if args.get("format") is not None:
-        params["Format"] = args.get("format")
-    if args.get("include_vat") is not None:
-        params["IncludeVAT"] = args.get("include_vat")
-    if args.get("include_discount") is not None:
-        params["IncludeDiscount"] = args.get("include_discount")
+
+    # Safe defaults: reduce UX friction for common report calls.
+    # Direct report API expects these parameters even when they are "obvious".
+    date_range_type = args.get("date_range_type")
+    if date_range_type is None and isinstance(params.get("SelectionCriteria"), dict):
+        selection = params.get("SelectionCriteria") or {}
+        if selection.get("DateFrom") or selection.get("DateTo"):
+            date_range_type = "CUSTOM_DATE"
+    if date_range_type is not None:
+        params["DateRangeType"] = date_range_type
+
+    fmt = args.get("format") or "TSV"
+    params["Format"] = fmt
+
+    include_vat = args.get("include_vat") or "YES"
+    params["IncludeVAT"] = include_vat
+
+    include_discount = args.get("include_discount") or "NO"
+    params["IncludeDiscount"] = include_discount
+
     if args.get("goals") is not None:
         params["Goals"] = args.get("goals")
     if args.get("attribution_models") is not None:
@@ -4646,7 +4658,16 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             params = {k: v for k, v in (args or {}).items() if k in {"limit", "offset", "fields"} and v is not None}
             data = ctx._audience_call("GET", "/lookalikes", params=params or None)
             return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
+            if getattr(exc, "response", None) is not None and getattr(getattr(exc, "response", None), "status_code", None) == 404:
+                return _error_response(
+                    name,
+                    NotSupportedError(
+                        "audience",
+                        "Audience lookalikes endpoints are not available (HTTP 404).",
+                        hint="Use audience.segments.* tools instead, or remove lookalikes tools from the surface.",
+                    ),
+                )
             return _error_response(name, exc)
 
     if name == "audience.lookalikes.get":
@@ -4659,7 +4680,16 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                 params["fields"] = args.get("fields")
             data = ctx._audience_call("GET", f"/lookalikes/{look_id}", params=params or None)
             return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
+            if getattr(exc, "response", None) is not None and getattr(getattr(exc, "response", None), "status_code", None) == 404:
+                return _error_response(
+                    name,
+                    NotSupportedError(
+                        "audience",
+                        "Audience lookalikes endpoints are not available (HTTP 404).",
+                        hint="Use audience.segments.* tools instead, or remove lookalikes tools from the surface.",
+                    ),
+                )
             return _error_response(name, exc)
 
     if name == "audience.segments.create":

@@ -273,48 +273,6 @@
     }
   },
   {
-    "name": "audience.lookalikes.get",
-    "description": "Audience: get lookalike by id.",
-    "inputSchema": {
-      "properties": {
-        "fields": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "id": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "audience.lookalikes.list",
-    "description": "Audience: list lookalikes (best effort).",
-    "inputSchema": {
-      "properties": {
-        "fields": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "limit": {
-          "type": "integer"
-        },
-        "offset": {
-          "type": "integer"
-        }
-      },
-      "type": "object"
-    }
-  },
-  {
     "name": "audience.pixels.get",
     "description": "Audience: get pixel by id.",
     "inputSchema": {

@@ -53,6 +53,21 @@ def test_direct_report_allows_params_override():
     assert params["ReportType"] == "CUSTOM_REPORT"
 
 
+def test_direct_report_adds_safe_defaults_when_dates_provided():
+    params = server._build_report_params(
+        {
+            "report_type": "CAMPAIGN_PERFORMANCE_REPORT",
+            "field_names": ["Date", "CampaignId"],
+            "date_from": "2026-02-01",
+            "date_to": "2026-02-03",
+        }
+    )
+    assert params["DateRangeType"] == "CUSTOM_DATE"
+    assert params["Format"] == "TSV"
+    assert params["IncludeVAT"] == "YES"
+    assert params["IncludeDiscount"] == "NO"
+
+
 def test_logs_export_requires_dates_for_create():
     with pytest.raises(ValueError, match="date_from and date_to are required"):
         server._build_logs_params({"action": "create", "counter_id": "1"})
