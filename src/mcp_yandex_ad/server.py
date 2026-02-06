@@ -2364,8 +2364,13 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
         return_data = not bool(output_dir)
 
     # Direct (fetch current + previous period).
+    # Important: report names must be unique per Direct client login in multi-account runs
+    # to avoid collisions/cache reuse on the Direct Reports API side.
+    report_identity = _dashboard_safe_slug(str(args.get("account_id") or args.get("direct_client_login") or "default"))
+    direct_report_name = f"dashboard_option1__{report_identity}__{fetch_from_s}_{fetch_to_s}"[:255]
     direct_report_args: dict[str, Any] = {
         "report_type": "CAMPAIGN_PERFORMANCE_REPORT",
+        "report_name": direct_report_name,
         "date_range_type": "CUSTOM_DATE",
         "date_from": fetch_from_s,
         "date_to": fetch_to_s,
