@@ -2464,7 +2464,17 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
             total_impr += imp
             total_clicks += clk
             total_cost += cost_rub
-            daily.append({"date": day, "impressions": imp, "clicks": clk, "cost": cost_rub})
+            # `cost` is RUB for Direct verified accounts. Keep an alias to reduce LLM confusion
+            # when mixing with `direct.current.daily.cost_rub`.
+            daily.append(
+                {
+                    "date": day,
+                    "impressions": imp,
+                    "clicks": clk,
+                    "cost": cost_rub,
+                    "cost_rub": cost_rub,
+                }
+            )
 
         # Skip completely empty campaigns to reduce payload.
         if total_impr <= 0 and total_clicks <= 0 and total_cost <= 0:
@@ -2515,7 +2525,88 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
     direct_current = _direct_series(date_from_d, date_to_d)
     direct_prev = _direct_series(prev_start, prev_end)
 
-    # Note: per-campaign period summaries, trends, and vs-prev are computed client-side from campaign_data.
+    # Note: the UI can compute per-campaign period summaries client-side from `campaign_data`,
+    # but LLM agents often fail to aggregate daily arrays correctly. Provide a compact, pre-aggregated
+    # structure so agents can generate specific recommendations reliably.
+    current_from_s = date_from_eff_s
+    current_to_s = date_to_eff_s
+    prev_from_s = _dashboard_to_ymd(prev_start)
+    prev_to_s = _dashboard_to_ymd(prev_end)
+
+    def _pct_change(cur: float | None, prev: float | None) -> float | None:
+        try:
+            if cur is None or prev is None:
+                return None
+            prev_f = float(prev)
+            cur_f = float(cur)
+            if prev_f == 0.0:
+                return 0.0 if cur_f == 0.0 else None
+            return ((cur_f / prev_f) - 1.0) * 100.0
+        except Exception:
+            return None
+
+    def _campaign_totals(cid: str, start_s: str, end_s: str) -> dict[str, Any]:
+        by_d = direct_by_campaign_date.get(cid) or {}
+        impressions = 0.0
+        clicks = 0.0
+        cost_rub = 0.0
+        if isinstance(by_d, dict):
+            for day, vals in by_d.items():
+                day_s = str(day or "").strip()
+                if not day_s or day_s < start_s or day_s > end_s:
+                    continue
+                if not isinstance(vals, dict):
+                    continue
+                impressions += float(vals.get("impressions") or 0.0)
+                clicks += float(vals.get("clicks") or 0.0)
+                cost_rub += float(vals.get("cost_rub") or 0.0)
+        out: dict[str, Any] = {
+            "impressions": float(impressions),
+            "clicks": float(clicks),
+            # Prefer explicit naming; keep `cost` alias for convenience.
+            "cost_rub": float(cost_rub),
+            "cost": float(cost_rub),
+            "cost_micros": _dashboard_rub_to_micros(float(cost_rub)),
+        }
+        out["ctr"] = (
+            100.0 * v
+            if (v := _dashboard_safe_div(float(out["clicks"]), float(out["impressions"]))) is not None
+            else None
+        )
+        out["cpc"] = _dashboard_safe_div(float(out["cost_rub"]), float(out["clicks"]))
+        out["cpm"] = (
+            1000.0 * v
+            if (v := _dashboard_safe_div(float(out["cost_rub"]), float(out["impressions"]))) is not None
+            else None
+        )
+        return out
+
+    direct_campaign_summaries: dict[str, Any] = {}
+    for cid, meta in direct_campaign_data.items():
+        if not isinstance(meta, dict):
+            continue
+        cur = _campaign_totals(str(cid), current_from_s, current_to_s)
+        prev = _campaign_totals(str(cid), prev_from_s, prev_to_s)
+        change = {
+            "impressions_pct": _pct_change(cur.get("impressions"), prev.get("impressions")),
+            "clicks_pct": _pct_change(cur.get("clicks"), prev.get("clicks")),
+            "cost_pct": _pct_change(cur.get("cost_rub"), prev.get("cost_rub")),
+            "ctr_pp": (
+                (float(cur["ctr"]) - float(prev["ctr"]))
+                if cur.get("ctr") is not None and prev.get("ctr") is not None
+                else None
+            ),
+            "cpc_pct": _pct_change(cur.get("cpc"), prev.get("cpc")),
+        }
+        direct_campaign_summaries[str(cid)] = {
+            "name": meta.get("name"),
+            "shortName": meta.get("shortName"),
+            "subName": meta.get("subName"),
+            "type": meta.get("type"),
+            "current": cur,
+            "prev": prev,
+            "change": change,
+        }
 
     # Metrica (fetch current + previous period).
     metrica_report: dict[str, Any] | None = None
@@ -3157,7 +3248,12 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
             "goals_resolved_count": (len(metrica_goals.get("goals") or []) if isinstance(metrica_goals, dict) else 0),
         },
         "coverage": coverage,
-        "direct": {"current": direct_current, "prev": direct_prev, "campaign_data": direct_campaign_data},
+        "direct": {
+            "current": direct_current,
+            "prev": direct_prev,
+            "campaign_data": direct_campaign_data,
+            "campaign_summaries": direct_campaign_summaries,
+        },
         "metrica": {
             "current": metrica_current,
             "prev": metrica_prev,

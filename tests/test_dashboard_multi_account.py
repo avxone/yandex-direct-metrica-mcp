@@ -121,4 +121,7 @@ def test_dashboard_multi_account_uses_unique_report_names(monkeypatch: pytest.Mo
         per = data["accounts"][account_id]
         assert per["direct"]["campaign_data"], f"Expected non-empty campaign_data for {account_id}"
         assert per["direct"]["current"]["totals"]["impressions"] > 0
-
+        summaries = per["direct"].get("campaign_summaries") or {}
+        assert summaries, f"Expected non-empty campaign_summaries for {account_id}"
+        first = next(iter(summaries.values()))
+        assert first["current"]["impressions"] > 0
