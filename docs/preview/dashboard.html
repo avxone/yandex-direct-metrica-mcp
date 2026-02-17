@@ -138,40 +138,87 @@
     .card-table .title { padding: 14px 14px 0; }
     .card-table .note { padding: 0 14px 14px; }
 
-    /* --- Unified funnel + cost grid --- */
-    .uf-grid { display: grid; grid-template-columns: minmax(0, 1fr) 170px; grid-template-rows: repeat(5, auto); column-gap: 14px; row-gap: 10px; align-items: start; }
-    .uf-node, .uf-cost-item, .uf-info-item { min-height: 64px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
-    .uf-node { padding: 10px 16px; text-align: left; background: rgba(122,162,255,.10); border-radius: 12px; border: 1px solid var(--grid-color); transition: background .3s, border-color .3s; grid-column: 1; width: 100%; justify-self: stretch; }
-    [data-theme="light"] .uf-node { background: rgba(52,84,209,.06); }
-    .uf-node.bottleneck { background: rgba(255,193,7,.12); animation: bottleneckPulse 2.5s ease-in-out infinite; }
-    [data-theme="light"] .uf-node.bottleneck { background: rgba(255,193,7,.10); }
-    .uf-node.bottleneck .uf-node-label::after { content: " · узкое место"; color: var(--warning); font-weight: 700; font-size: 10px; }
-    .uf-node-label { font-size: 11px; color: var(--text-muted); line-height: 1; }
-    .uf-node-value { font-size: 18px; font-weight: 800; font-family: var(--font-display); line-height: 1.2; margin-top: 2px; }
-    .uf-node .kpi-change { font-size: 11px; }
-    .uf-node-dual { height: auto; padding: 6px 16px; }
-    .uf-dir-all { margin-top: 1px; font-size: 12px; color: var(--text-muted); line-height: 1.3; }
-    .uf-dir-all b { color: var(--text-primary, #e2e8f0); font-weight: 800; font-size: 16px; font-family: var(--font-display); }
-    [data-theme="light"] .uf-dir-all b { color: var(--text-primary, #111827); }
-    .uf-rate { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
-    .uf-rate.rate-good { color: var(--success); font-weight: 600; }
-    .uf-rate.rate-medium { color: var(--warning); font-weight: 600; }
-    .uf-rate.rate-bad { color: var(--danger); font-weight: 600; }
+    /* --- Funnel layout experiments (table/classic/tapered) --- */
+    html { --funnel-layout: classic; }
+    html[data-funnel-layout] { --funnel-layout: attr(data-funnel-layout); }
 
-    .uf-cost-item { grid-column: 2; padding: 10px 10px; border-radius: 12px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.08); text-align: center; align-self: stretch; transition: background .3s; }
-    [data-theme="light"] .uf-cost-item { background: rgba(17,24,39,.03); }
-    .uf-cost-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; line-height: 1; }
-    .uf-cost-value { font-size: 17px; font-weight: 800; font-family: var(--font-display); line-height: 1.2; margin-top: 1px; }
-    .uf-cost-item .kpi-change { font-size: 11px; }
-    .uf-cost-sub { font-size: 10px; color: var(--text-muted); }
-    .uf-info-item { grid-column: 2; padding: 10px 10px; border-radius: 12px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.05); text-align: center; align-self: stretch; transition: background .3s; }
-    [data-theme="light"] .uf-info-item { background: rgba(17,24,39,.02); }
-    .uf-info-label { font-size: 10px; color: var(--text-muted); line-height: 1; }
-    .uf-info-value { font-size: 13px; font-weight: 600; color: var(--text-secondary); line-height: 1.3; margin-top: 2px; }
+    .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .title-row .title { margin: 0; }
+    .funnel-layout-toggle { display: inline-flex; gap: 6px; padding: 4px; border-radius: 999px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.08); }
+    [data-theme="light"] .funnel-layout-toggle { background: rgba(17,24,39,.03); }
+    .funnel-layout-toggle .layout-btn { padding: 7px 10px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12px; font-weight: 600; }
+    .funnel-layout-toggle .layout-btn.active { background: rgba(122,162,255,.18); border-color: rgba(122,162,255,.35); color: var(--text-primary); }
+    [data-theme="light"] .funnel-layout-toggle .layout-btn.active { background: rgba(52,84,209,.12); border-color: rgba(52,84,209,.22); }
+
+    .funnel-viz { display: grid; gap: 12px; }
+    .funnel-steps { display: grid; gap: 10px; }
+    .funnel-side { display: grid; gap: 10px; }
+
+    .fstep { position: relative; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.08); overflow: hidden; }
+    [data-theme="light"] .fstep { background: rgba(17,24,39,.03); }
+    .fstep.bottleneck { border-color: rgba(255,193,7,.55); box-shadow: 0 0 0 1px rgba(255,193,7,.20) inset; }
+    .fstep-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+    .fstep-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+    .fstep-value { margin-top: 6px; font-size: 20px; font-weight: 800; font-family: var(--font-display); line-height: 1.1; }
+    .fstep-change { margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+    .fstep-rate { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+
+    .fstep-dual .fstep-value { font-size: 16px; }
+    .fstep-dual-line { margin-top: 6px; font-size: 12px; color: var(--text-muted); line-height: 1.3; }
+    .fstep-dual-line b { color: var(--text-primary, #e2e8f0); font-weight: 800; font-size: 16px; font-family: var(--font-display); }
+    [data-theme="light"] .fstep-dual-line b { color: var(--text-primary, #111827); }
+
+    .side-card { padding: 12px 12px; border-radius: 14px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.08); text-align: center; }
+    [data-theme="light"] .side-card { background: rgba(17,24,39,.03); }
+    .side-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; }
+    .side-value { margin-top: 6px; font-size: 18px; font-weight: 800; font-family: var(--font-display); line-height: 1.1; }
+    .side-sub { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
+
+    /* Layout: table (compact rows + right-side aligned to rows) */
+    html[data-funnel-layout="table"] .funnel-viz { grid-template-columns: minmax(0, 1fr) 190px; align-items: start; }
+    html[data-funnel-layout="table"] .funnel-steps { grid-column: 1; }
+    html[data-funnel-layout="table"] .funnel-side { grid-column: 2; }
+    html[data-funnel-layout="table"] .funnel-side { grid-template-rows: repeat(5, auto); }
+    html[data-funnel-layout="table"] #side-cost { grid-row: 1; }
+    html[data-funnel-layout="table"] #side-cpc  { grid-row: 2; }
+    html[data-funnel-layout="table"] #side-quality { grid-row: 3; }
+    html[data-funnel-layout="table"] #side-cpl  { grid-row: 5; }
+
+    /* Layout: classic (horizontal segments) */
+    html[data-funnel-layout="classic"] .funnel-viz { grid-template-columns: 1fr; }
+    html[data-funnel-layout="classic"] .funnel-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-radius: 14px; overflow: hidden; border: 1px solid var(--grid-color); }
+    html[data-funnel-layout="classic"] .fstep { border: none; border-right: 1px solid var(--grid-color); border-radius: 0; background: rgba(122,162,255,.08); clip-path: polygon(4% 0, 96% 0, 100% 100%, 0% 100%); }
+    html[data-funnel-layout="classic"] .fstep:first-child { clip-path: polygon(0 0, 96% 0, 100% 100%, 0 100%); }
+    html[data-funnel-layout="classic"] .fstep:last-child { border-right: none; clip-path: polygon(4% 0, 100% 0, 100% 100%, 0% 100%); }
+    [data-theme="light"] html[data-funnel-layout="classic"] .fstep { background: rgba(52,84,209,.06); }
+    html[data-funnel-layout="classic"] .funnel-side { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    html[data-funnel-layout="classic"] .side-card { text-align: center; }
+
+    /* Layout: tapered (bars by magnitude) */
+    html[data-funnel-layout="tapered"] .funnel-viz { grid-template-columns: 1fr; }
+    html[data-funnel-layout="tapered"] .funnel-steps { grid-template-columns: 1fr; gap: 10px; }
+    html[data-funnel-layout="tapered"] .fstep { background: rgba(0,0,0,.07); }
+    html[data-funnel-layout="tapered"] .fstep::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: calc(var(--w, 0.12) * 100%);
+      background: linear-gradient(90deg, rgba(122,162,255,.22), rgba(122,162,255,.08));
+      pointer-events: none;
+    }
+    [data-theme="light"] html[data-funnel-layout="tapered"] .fstep::before {
+      background: linear-gradient(90deg, rgba(52,84,209,.18), rgba(52,84,209,.06));
+    }
+    html[data-funnel-layout="tapered"] .funnel-side { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
     @media (max-width: 980px) {
-      .uf-grid { grid-template-columns: 1fr; }
-      .uf-cost-item, .uf-info-item { grid-column: 1; max-width: 260px; justify-self: center; }
+      html[data-funnel-layout="table"] .funnel-viz { grid-template-columns: 1fr; }
+      html[data-funnel-layout="classic"] .funnel-steps { grid-template-columns: 1fr; gap: 10px; border: none; overflow: visible; }
+      html[data-funnel-layout="classic"] .fstep { border: 1px solid var(--grid-color); border-radius: 14px; clip-path: none; }
+      html[data-funnel-layout="classic"] .funnel-side,
+      html[data-funnel-layout="tapered"] .funnel-side { grid-template-columns: 1fr 1fr; }
       .col-8, .col-6, .col-4 { grid-column: span 12; }
       header { flex-direction: column; align-items: flex-start; }
       .meta { text-align: left; }
@@ -351,62 +398,84 @@
 
     <div class="grid">
       <section class="card col-12">
-        <div class="title">Воронка и стоимость</div>
+        <div class="title-row">
+          <div class="title">Воронка (Direct) + стоимость</div>
+          <div class="funnel-layout-toggle" role="tablist" aria-label="Funnel layout">
+            <button class="layout-btn" type="button" data-funnel-layout="table">Table</button>
+            <button class="layout-btn" type="button" data-funnel-layout="classic">Classic</button>
+            <button class="layout-btn" type="button" data-funnel-layout="tapered">Tapered</button>
+          </div>
+        </div>
 
-        <div class="uf-grid">
-          <!-- Row 1: Показы + Расход -->
-          <div class="uf-node" style="grid-row:1" id="step-direct-impr-clicks">
-            <div class="uf-node-label">Показы <span class="kpi-flag" id="flag-impressions"></span></div>
-            <div class="uf-node-value" id="kpi-impressions">—</div>
-            <div class="kpi-change neutral" id="kpi-impressions-change">—</div>
-            <div class="uf-rate funnel-rate" id="conv-direct-impressions-clicks">—</div>
-          </div>
-          <div class="uf-cost-item" style="grid-row:1">
-            <div class="uf-cost-label">Расход <span class="kpi-flag" id="flag-cost"></span></div>
-            <div class="uf-cost-value" id="kpi-cost">—</div>
-            <div class="kpi-change neutral" id="kpi-cost-change">—</div>
+        <div class="funnel-viz" id="funnelViz">
+          <div class="funnel-steps">
+            <div class="fstep" id="step-direct-impr-clicks">
+              <div class="fstep-top">
+                <div class="fstep-label">Показы <span class="kpi-flag" id="flag-impressions"></span></div>
+                <div class="kpi-change neutral fstep-change" id="kpi-impressions-change">—</div>
+              </div>
+              <div class="fstep-value" id="kpi-impressions">—</div>
+              <div class="funnel-rate fstep-rate" id="conv-direct-impressions-clicks">—</div>
+            </div>
+
+            <div class="fstep" id="step-direct-clicks-visits">
+              <div class="fstep-top">
+                <div class="fstep-label">Клики <span class="kpi-flag" id="flag-clicks"></span></div>
+                <div class="kpi-change neutral fstep-change" id="kpi-clicks-change">—</div>
+              </div>
+              <div class="fstep-value" id="kpi-clicks">—</div>
+              <div class="funnel-rate fstep-rate" id="conv-direct-clicks-visits">—</div>
+            </div>
+
+            <div class="fstep fstep-dual" id="step-direct-visits-engaged">
+              <div class="fstep-top">
+                <div class="fstep-label">Визиты</div>
+                <span></span>
+              </div>
+              <div class="fstep-dual-line">Директ <b id="uf-direct-visits">—</b> из Всего <b id="uf-site-visits">—</b></div>
+              <div class="funnel-rate fstep-rate" id="conv-direct-visits-engaged">—</div>
+            </div>
+
+            <div class="fstep fstep-dual" id="step-direct-engaged-leads">
+              <div class="fstep-top">
+                <div class="fstep-label">Engaged</div>
+                <span></span>
+              </div>
+              <div class="fstep-dual-line">Директ <b id="uf-direct-engaged">—</b> из Всего <b id="uf-site-engaged">—</b></div>
+              <div class="funnel-rate fstep-rate" id="conv-direct-engaged-leads">—</div>
+            </div>
+
+            <div class="fstep fstep-dual" id="step-direct-cpl">
+              <div class="fstep-top">
+                <div class="fstep-label">Leads</div>
+                <span></span>
+              </div>
+              <div class="fstep-dual-line">Директ <b id="uf-direct-leads">—</b> из Всего <b id="uf-site-leads">—</b></div>
+              <div class="funnel-rate fstep-rate" id="conv-direct-total">—</div>
+            </div>
           </div>
 
-          <!-- Row 2: Клики + CPC -->
-          <div class="uf-node" style="grid-row:2" id="step-direct-clicks-visits">
-            <div class="uf-node-label">Клики <span class="kpi-flag" id="flag-clicks"></span></div>
-            <div class="uf-node-value" id="kpi-clicks">—</div>
-            <div class="kpi-change neutral" id="kpi-clicks-change">—</div>
-            <div class="uf-rate funnel-rate" id="conv-direct-clicks-visits">—</div>
-          </div>
-          <div class="uf-cost-item" style="grid-row:2">
-            <div class="uf-cost-label">CPC <span class="kpi-flag" id="flag-cpc"></span></div>
-            <div class="uf-cost-value" id="kpi-cpc">—</div>
-            <div class="kpi-change neutral" id="kpi-cpc-change">—</div>
-          </div>
-
-          <!-- Row 3: Визиты -->
-          <div class="uf-node uf-node-dual" style="grid-row:3" id="step-direct-visits-engaged">
-            <div class="uf-node-label">Визиты</div>
-            <div class="uf-dir-all">Директ <b id="uf-direct-visits">—</b> из Всего <b id="uf-site-visits">—</b></div>
-            <div class="uf-rate funnel-rate" id="conv-direct-visits-engaged">—</div>
-          </div>
-          <div class="uf-info-item" style="grid-row:3">
-            <div class="uf-info-label">Качество визитов</div>
-            <div class="uf-info-value" id="uf-bounce-dur">—</div>
-          </div>
-
-          <!-- Row 4: Engaged -->
-          <div class="uf-node uf-node-dual" style="grid-row:4" id="step-direct-engaged-leads">
-            <div class="uf-node-label">Engaged</div>
-            <div class="uf-dir-all">Директ <b id="uf-direct-engaged">—</b> из Всего <b id="uf-site-engaged">—</b></div>
-            <div class="uf-rate funnel-rate" id="conv-direct-engaged-leads">—</div>
-          </div>
-
-          <!-- Row 5: Leads + CPL -->
-          <div class="uf-node uf-node-dual" style="grid-row:5" id="step-direct-cpl">
-            <div class="uf-node-label">Leads</div>
-            <div class="uf-dir-all">Директ <b id="uf-direct-leads">—</b> из Всего <b id="uf-site-leads">—</b></div>
-          </div>
-          <div class="uf-cost-item" style="grid-row:5">
-            <div class="uf-cost-label">CPL</div>
-            <div class="uf-cost-value" id="funnel-direct-cpl">—</div>
-            <div class="uf-cost-sub" id="conv-direct-total">—</div>
+          <div class="funnel-side">
+            <div class="side-card" id="side-cost">
+              <div class="side-label">Расход <span class="kpi-flag" id="flag-cost"></span></div>
+              <div class="side-value" id="kpi-cost">—</div>
+              <div class="kpi-change neutral" id="kpi-cost-change">—</div>
+            </div>
+            <div class="side-card" id="side-cpc">
+              <div class="side-label">CPC <span class="kpi-flag" id="flag-cpc"></span></div>
+              <div class="side-value" id="kpi-cpc">—</div>
+              <div class="kpi-change neutral" id="kpi-cpc-change">—</div>
+            </div>
+            <div class="side-card" id="side-quality">
+              <div class="side-label">Качество визитов</div>
+              <div class="side-value" id="uf-bounce-dur">—</div>
+              <div class="side-sub">Bounce · Avg dur</div>
+            </div>
+            <div class="side-card" id="side-cpl">
+              <div class="side-label">CPL</div>
+              <div class="side-value" id="funnel-direct-cpl">—</div>
+              <div class="side-sub" id="conv-direct-cpl-sub">—</div>
+            </div>
           </div>
         </div>
 
@@ -1500,7 +1569,7 @@
 	      document.getElementById('kpi-note').textContent = notes.join(' · ');
 	    }
 
-	    function updateFunnel(data) {
+    function updateFunnel(data) {
       // Reset bottleneck highlights
       const resetStep = (id) => {
         const el = document.getElementById(id);
@@ -1512,6 +1581,7 @@
         'step-site-visits-engaged','step-site-engaged-leads','step-site-total',
         'step-direct-impr-clicks','step-direct-clicks-visits','step-direct-visits-engaged','step-direct-engaged-leads','step-direct-cpl'
       ].forEach(resetStep);
+      setText('conv-direct-cpl-sub', '—');
 
       const markBottleneck = (id, title) => {
         const el = document.getElementById(id);
@@ -1539,6 +1609,27 @@
 	          : (directBounce === null ? null : (Number(directVisits || 0) * (1 - directBounce / 100))))
 	        : null;
 	      const directLeads = hasDirect && data.direct.leads !== null && data.direct.leads !== undefined ? Number(data.direct.leads) : null;
+
+      const resetTaper = () => {
+        ['step-direct-impr-clicks','step-direct-clicks-visits','step-direct-visits-engaged','step-direct-engaged-leads','step-direct-cpl'].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.style.setProperty('--w', '0.12');
+        });
+      };
+      const setTaper = (id, value, base) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const v = Number(value);
+        const b = Number(base);
+        if (!Number.isFinite(v) || !Number.isFinite(b) || b <= 0 || v < 0) {
+          el.style.setProperty('--w', '0.12');
+          return;
+        }
+        const ratio = Math.max(0, Math.min(1, v / b));
+        const visual = Math.max(0.08, Math.min(1, Math.sqrt(ratio)));
+        el.style.setProperty('--w', String(visual));
+      };
+      resetTaper();
 
       // Site funnel (all sources)
       if (siteEngaged === null) {
@@ -1582,6 +1673,7 @@
 	      if (!allowDirectAttribution) {
 	        ['funnel-direct-clicks-visits','conv-direct-clicks-visits','funnel-direct-visits-engaged','conv-direct-visits-engaged','funnel-direct-engaged-leads','conv-direct-engaged-leads','funnel-direct-cpl'].forEach(id => setText(id, '—'));
 	        setText('conv-direct-total', '—');
+          setText('conv-direct-cpl-sub', '—');
 	        setText('directFunnelNote', '');
 	        return;
 	      }
@@ -1630,6 +1722,7 @@
         setText('conv-direct-engaged-leads', '—');
         setText('funnel-direct-cpl', '—');
         setText('conv-direct-total', '—');
+        setText('conv-direct-cpl-sub', '—');
         return;
       }
 
@@ -1638,10 +1731,29 @@
 	      if (filterMode === 'unclassified') {
 	        setText('funnel-direct-cpl', '—');
 	        setText('conv-direct-total', (directLeads > 0) ? `${fmtInt.format(Math.round(directLeads))} leads` : '—');
+          setText('conv-direct-cpl-sub', (directLeads > 0) ? `${fmtInt.format(Math.round(directLeads))} leads` : '—');
 	      } else {
 	        setText('funnel-direct-cpl', (directLeads > 0) ? `${fmt2.format(cost / directLeads)} ₽` : '—');
 	        setText('conv-direct-total', (directLeads > 0) ? `${fmtInt.format(Math.round(directLeads))} leads` : '—');
+          setText('conv-direct-cpl-sub', (directLeads > 0) ? `${fmtInt.format(Math.round(directLeads))} leads` : '—');
 	      }
+
+      // Taper widths (best-effort visualization).
+      if (filterMode === 'unclassified') {
+        const base = Math.max(1, Number(directVisits || 0));
+        setTaper('step-direct-impr-clicks', 0, base);
+        setTaper('step-direct-clicks-visits', 0, base);
+        setTaper('step-direct-visits-engaged', Number(directVisits || 0), base);
+        setTaper('step-direct-engaged-leads', Number(directEngaged || 0), base);
+        setTaper('step-direct-cpl', Number(directLeads || 0), base);
+      } else {
+        const base = Math.max(1, Number(impressions || 0));
+        setTaper('step-direct-impr-clicks', Number(impressions || 0), base);
+        setTaper('step-direct-clicks-visits', Number(clicks || 0), base);
+        setTaper('step-direct-visits-engaged', Number(directVisits || 0), base);
+        setTaper('step-direct-engaged-leads', Number(directEngaged || 0), base);
+        setTaper('step-direct-cpl', Number(directLeads || 0), base);
+      }
 
       // Direct bottleneck: mark the step with the lowest available conversion rate (excluding CTR).
       const directRates = [];
@@ -2191,6 +2303,26 @@
     }
 
     // UI handlers
+    (() => {
+      const STORAGE_KEY = 'preview.funnelLayout';
+      const allowed = new Set(['table', 'classic', 'tapered']);
+      const root = document.documentElement;
+      const buttons = Array.from(document.querySelectorAll('.funnel-layout-toggle .layout-btn'));
+      const setLayout = (next) => {
+        const v = allowed.has(next) ? next : 'classic';
+        root.dataset.funnelLayout = v;
+        try { localStorage.setItem(STORAGE_KEY, v); } catch {}
+        buttons.forEach((b) => b.classList.toggle('active', b.dataset.funnelLayout === v));
+      };
+      let initial = 'classic';
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && allowed.has(saved)) initial = saved;
+      } catch {}
+      setLayout(initial);
+      buttons.forEach((btn) => btn.addEventListener('click', () => setLayout(btn.dataset.funnelLayout)));
+    })();
+
     document.querySelectorAll('.period-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
