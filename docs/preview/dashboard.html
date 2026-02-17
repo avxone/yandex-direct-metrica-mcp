@@ -139,8 +139,7 @@
     .card-table .note { padding: 0 14px 14px; }
 
     /* --- Funnel layout experiments (table/classic/tapered) --- */
-    html { --funnel-layout: classic; }
-    html[data-funnel-layout] { --funnel-layout: attr(data-funnel-layout); }
+    /* Layout is controlled via html[data-funnel-layout] (persisted in localStorage in preview). */
 
     .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
     .title-row .title { margin: 0; }
@@ -167,6 +166,7 @@
     .fstep-dual-line { margin-top: 6px; font-size: 12px; color: var(--text-muted); line-height: 1.3; }
     .fstep-dual-line b { color: var(--text-primary, #e2e8f0); font-weight: 800; font-size: 16px; font-family: var(--font-display); }
     [data-theme="light"] .fstep-dual-line b { color: var(--text-primary, #111827); }
+    .fstep-loss { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
 
     .side-card { padding: 12px 12px; border-radius: 14px; border: 1px solid var(--grid-color); background: rgba(0,0,0,.08); text-align: center; }
     [data-theme="light"] .side-card { background: rgba(17,24,39,.03); }
@@ -213,12 +213,81 @@
     }
     html[data-funnel-layout="tapered"] .funnel-side { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
+    /* Layout: ladder (ordered rows + magnitude bars + drop-offs) */
+    html[data-funnel-layout="ladder"] .funnel-viz {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "side"
+        "steps";
+    }
+    html[data-funnel-layout="ladder"] .funnel-steps { grid-area: steps; gap: 8px; counter-reset: funnelStep; }
+    html[data-funnel-layout="ladder"] .funnel-side { grid-area: side; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    html[data-funnel-layout="ladder"] .side-card { padding: 10px 10px; }
+    html[data-funnel-layout="ladder"] .side-value { font-size: 16px; }
+
+    html[data-funnel-layout="ladder"] .fstep {
+      counter-increment: funnelStep;
+      padding: 10px 12px 10px 44px;
+      background: rgba(0,0,0,.06);
+    }
+    [data-theme="light"] html[data-funnel-layout="ladder"] .fstep { background: rgba(17,24,39,.02); }
+    html[data-funnel-layout="ladder"] .fstep::before {
+      content: "";
+      position: absolute;
+      left: 36px;
+      right: 10px;
+      top: 8px;
+      bottom: 8px;
+      border-radius: 10px;
+      background:
+        linear-gradient(90deg, rgba(122,162,255,.22), rgba(122,162,255,.06)) 0 0 / calc(var(--w, 0.12) * 100%) 100% no-repeat,
+        rgba(255,255,255,.03);
+      pointer-events: none;
+      z-index: 0;
+    }
+    [data-theme="light"] html[data-funnel-layout="ladder"] .fstep::before {
+      background:
+        linear-gradient(90deg, rgba(52,84,209,.18), rgba(52,84,209,.05)) 0 0 / calc(var(--w, 0.12) * 100%) 100% no-repeat,
+        rgba(17,24,39,.02);
+    }
+    html[data-funnel-layout="ladder"] .fstep::after {
+      content: counter(funnelStep);
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: rgba(122,162,255,.16);
+      border: 1px solid rgba(122,162,255,.32);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 800;
+      font-family: var(--font-display);
+      z-index: 1;
+    }
+    [data-theme="light"] html[data-funnel-layout="ladder"] .fstep::after {
+      background: rgba(52,84,209,.10);
+      border-color: rgba(52,84,209,.20);
+    }
+    html[data-funnel-layout="ladder"] .fstep > * { position: relative; z-index: 1; }
+    html[data-funnel-layout="ladder"] .fstep-top { align-items: center; }
+    html[data-funnel-layout="ladder"] .fstep-label { font-size: 11px; }
+    html[data-funnel-layout="ladder"] .fstep-value { margin-top: 4px; font-size: 18px; }
+    html[data-funnel-layout="ladder"] .fstep-rate,
+    html[data-funnel-layout="ladder"] .fstep-loss { margin-top: 4px; }
+    html[data-funnel-layout="ladder"] .fstep-loss { color: var(--danger); opacity: .92; }
+
     @media (max-width: 980px) {
       html[data-funnel-layout="table"] .funnel-viz { grid-template-columns: 1fr; }
       html[data-funnel-layout="classic"] .funnel-steps { grid-template-columns: 1fr; gap: 10px; border: none; overflow: visible; }
       html[data-funnel-layout="classic"] .fstep { border: 1px solid var(--grid-color); border-radius: 14px; clip-path: none; }
       html[data-funnel-layout="classic"] .funnel-side,
       html[data-funnel-layout="tapered"] .funnel-side { grid-template-columns: 1fr 1fr; }
+      html[data-funnel-layout="ladder"] .funnel-side { grid-template-columns: 1fr 1fr; }
       .col-8, .col-6, .col-4 { grid-column: span 12; }
       header { flex-direction: column; align-items: flex-start; }
       .meta { text-align: left; }
@@ -404,6 +473,7 @@
             <button class="layout-btn" type="button" data-funnel-layout="table">Table</button>
             <button class="layout-btn" type="button" data-funnel-layout="classic">Classic</button>
             <button class="layout-btn" type="button" data-funnel-layout="tapered">Tapered</button>
+            <button class="layout-btn" type="button" data-funnel-layout="ladder">Ladder</button>
           </div>
         </div>
 
@@ -416,6 +486,7 @@
               </div>
               <div class="fstep-value" id="kpi-impressions">—</div>
               <div class="funnel-rate fstep-rate" id="conv-direct-impressions-clicks">—</div>
+              <div class="fstep-loss" id="loss-direct-impr-clicks">—</div>
             </div>
 
             <div class="fstep" id="step-direct-clicks-visits">
@@ -425,6 +496,7 @@
               </div>
               <div class="fstep-value" id="kpi-clicks">—</div>
               <div class="funnel-rate fstep-rate" id="conv-direct-clicks-visits">—</div>
+              <div class="fstep-loss" id="loss-direct-clicks-visits">—</div>
             </div>
 
             <div class="fstep fstep-dual" id="step-direct-visits-engaged">
@@ -434,6 +506,7 @@
               </div>
               <div class="fstep-dual-line">Директ <b id="uf-direct-visits">—</b> из Всего <b id="uf-site-visits">—</b></div>
               <div class="funnel-rate fstep-rate" id="conv-direct-visits-engaged">—</div>
+              <div class="fstep-loss" id="loss-direct-visits-engaged">—</div>
             </div>
 
             <div class="fstep fstep-dual" id="step-direct-engaged-leads">
@@ -443,6 +516,7 @@
               </div>
               <div class="fstep-dual-line">Директ <b id="uf-direct-engaged">—</b> из Всего <b id="uf-site-engaged">—</b></div>
               <div class="funnel-rate fstep-rate" id="conv-direct-engaged-leads">—</div>
+              <div class="fstep-loss" id="loss-direct-engaged-leads">—</div>
             </div>
 
             <div class="fstep fstep-dual" id="step-direct-cpl">
@@ -1582,6 +1656,7 @@
         'step-direct-impr-clicks','step-direct-clicks-visits','step-direct-visits-engaged','step-direct-engaged-leads','step-direct-cpl'
       ].forEach(resetStep);
       setText('conv-direct-cpl-sub', '—');
+      ['loss-direct-impr-clicks','loss-direct-clicks-visits','loss-direct-visits-engaged','loss-direct-engaged-leads'].forEach((id) => setText(id, '—'));
 
       const markBottleneck = (id, title) => {
         const el = document.getElementById(id);
@@ -1661,19 +1736,28 @@
         markBottleneck(worst.id, `Узкое место (сайт): ${worst.label} ≈ ${(100*worst.rate).toFixed(2)}%`);
       }
 
-	      // Direct funnel (Metrica-attributed Direct traffic)
+      // Direct funnel (Metrica-attributed Direct traffic)
 	      if (filterMode === 'unclassified') {
 	        setText('funnel-direct-impr-clicks', '—');
 	        setText('conv-direct-impressions-clicks', '—');
+          setText('loss-direct-impr-clicks', '—');
 	      } else {
 	        setText('funnel-direct-impr-clicks', `${fmtInt.format(Math.round(impressions))} → ${fmtInt.format(Math.round(clicks))}`);
 	        setText('conv-direct-impressions-clicks', impressions > 0 ? `CTR ≈ ${(100 * clicks / impressions).toFixed(2)}%` : '—');
+          if (impressions > 0) {
+            const lost = Math.max(0, Math.round(impressions - clicks));
+            const pct = Math.max(0, Math.min(100, (100 * (1 - (clicks / impressions)))));
+            setText('loss-direct-impr-clicks', `Не кликнули: ${fmtInt.format(lost)} (${pct.toFixed(2)}%)`);
+          } else {
+            setText('loss-direct-impr-clicks', '—');
+          }
 	      }
 	      const allowDirectAttribution = hasDirect;
 	      if (!allowDirectAttribution) {
 	        ['funnel-direct-clicks-visits','conv-direct-clicks-visits','funnel-direct-visits-engaged','conv-direct-visits-engaged','funnel-direct-engaged-leads','conv-direct-engaged-leads','funnel-direct-cpl'].forEach(id => setText(id, '—'));
 	        setText('conv-direct-total', '—');
           setText('conv-direct-cpl-sub', '—');
+          ['loss-direct-clicks-visits','loss-direct-visits-engaged','loss-direct-engaged-leads'].forEach((id) => setText(id, '—'));
 	        setText('directFunnelNote', '');
 	        return;
 	      }
@@ -1704,17 +1788,33 @@
       if (filterMode === 'unclassified') {
         setText('funnel-direct-clicks-visits', `— → ${fmtInt.format(Math.round(directVisits || 0))}`);
         setText('conv-direct-clicks-visits', '—');
+        setText('loss-direct-clicks-visits', '—');
       } else {
         setText('funnel-direct-clicks-visits', `${fmtInt.format(Math.round(clicks))} → ${fmtInt.format(Math.round(directVisits || 0))}`);
         setText('conv-direct-clicks-visits', (clicks > 0) ? `≈ ${(100 * (directVisits || 0) / clicks).toFixed(2)}%` : '—');
+        if (clicks > 0) {
+          const lost = Math.max(0, Math.round(clicks - (directVisits || 0)));
+          const pct = Math.max(0, Math.min(100, (100 * (1 - ((directVisits || 0) / clicks)))));
+          setText('loss-direct-clicks-visits', `Не дошли до визита: ${fmtInt.format(lost)} (${pct.toFixed(2)}%)`);
+        } else {
+          setText('loss-direct-clicks-visits', '—');
+        }
       }
 
       if (directEngaged === null) {
         setText('funnel-direct-visits-engaged', `${fmtInt.format(Math.round(directVisits || 0))} → —`);
         setText('conv-direct-visits-engaged', '—');
+        setText('loss-direct-visits-engaged', '—');
       } else {
         setText('funnel-direct-visits-engaged', `${fmtInt.format(Math.round(directVisits || 0))} → ${fmtInt.format(Math.round(directEngaged))}`);
         setText('conv-direct-visits-engaged', (directVisits && directVisits > 0) ? `≈ ${(100 * directEngaged / directVisits).toFixed(2)}%` : '—');
+        if (directVisits && directVisits > 0) {
+          const lost = Math.max(0, Math.round((directVisits || 0) - directEngaged));
+          const pct = Math.max(0, Math.min(100, (100 * (1 - (directEngaged / directVisits)))));
+          setText('loss-direct-visits-engaged', `Не engaged: ${fmtInt.format(lost)} (${pct.toFixed(2)}%)`);
+        } else {
+          setText('loss-direct-visits-engaged', '—');
+        }
       }
 
       if (directLeads === null) {
@@ -1723,11 +1823,19 @@
         setText('funnel-direct-cpl', '—');
         setText('conv-direct-total', '—');
         setText('conv-direct-cpl-sub', '—');
+        setText('loss-direct-engaged-leads', '—');
         return;
       }
 
       setText('funnel-direct-engaged-leads', `${directEngaged === null ? '—' : fmtInt.format(Math.round(directEngaged))} → ${fmtInt.format(Math.round(directLeads))}`);
       setText('conv-direct-engaged-leads', (directEngaged && directEngaged > 0) ? `≈ ${(100 * directLeads / directEngaged).toFixed(2)}%` : '—');
+      if (directEngaged && directEngaged > 0 && directLeads !== null) {
+        const lost = Math.max(0, Math.round((directEngaged || 0) - (directLeads || 0)));
+        const pct = Math.max(0, Math.min(100, (100 * (1 - ((directLeads || 0) / directEngaged)))));
+        setText('loss-direct-engaged-leads', `Не сконверт.: ${fmtInt.format(lost)} (${pct.toFixed(2)}%)`);
+      } else {
+        setText('loss-direct-engaged-leads', '—');
+      }
 	      if (filterMode === 'unclassified') {
 	        setText('funnel-direct-cpl', '—');
 	        setText('conv-direct-total', (directLeads > 0) ? `${fmtInt.format(Math.round(directLeads))} leads` : '—');
@@ -2305,7 +2413,7 @@
     // UI handlers
     (() => {
       const STORAGE_KEY = 'preview.funnelLayout';
-      const allowed = new Set(['table', 'classic', 'tapered']);
+      const allowed = new Set(['table', 'classic', 'tapered', 'ladder']);
       const root = document.documentElement;
       const buttons = Array.from(document.querySelectorAll('.funnel-layout-toggle .layout-btn'));
       const setLayout = (next) => {
