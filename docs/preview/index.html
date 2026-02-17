@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>yandex-direct-metrica-mcp — LLM-ready analytics + controlled optimization for Yandex Ads</title>
+    <meta
+      name="description"
+      content="Open-core MCP server for Yandex Direct + Metrica + Wordstat + Audience: raw exports, human-friendly tools, dashboards. Public is safe-by-default read-only; PRO adds BI datasets/sync and guarded plan/apply writes."
+    />
+    <link rel="canonical" href="https://georgy-agaev.github.io/yandex-direct-metrica-mcp/" />
+    <meta property="og:title" content="yandex-direct-metrica-mcp" />
+    <meta property="og:description" content="LLM-ready analytics + controlled optimization for Yandex Direct + Metrica." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://georgy-agaev.github.io/yandex-direct-metrica-mcp/" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+    <link rel="icon" href="../assets/icon.svg?v=20260205-1" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="accent-bar" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <div class="nav-inner">
+        <a href="#" class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div class="brand-text">
+            <span class="brand-name">yandex-direct-metrica-mcp</span>
+            <span class="brand-sub">Direct + Metrica + Wordstat + Audience</span>
+          </div>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#demo">Demo</a>
+          <a href="#install">Install</a>
+          <a href="#pro">PRO</a>
+          <a href="#docs">Docs</a>
+        </div>
+        <div class="nav-actions">
+          <a class="btn btn-ghost btn-sm" href="ru/">Русский</a>
+          <a class="btn btn-outline btn-sm" href="https://github.com/georgy-agaev/yandex-direct-metrica-mcp">
+            <svg class="gh-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            GitHub
+          </a>
+          <button class="hamburger" aria-label="Menu" aria-expanded="false">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+      <div class="mobile-menu" hidden>
+        <a href="#features">Features</a>
+        <a href="#demo">Demo</a>
+        <a href="#install">Install</a>
+        <a href="#pro">PRO</a>
+        <a href="#docs">Docs</a>
+        <div class="mobile-menu-footer">
+          <a class="btn btn-ghost btn-sm" href="ru/">Русский</a>
+          <a class="btn btn-outline btn-sm" href="https://github.com/georgy-agaev/yandex-direct-metrica-mcp">GitHub</a>
+        </div>
+      </div>
+    </nav>
+
+    <main class="wrap">
+      <header class="hero">
+        <h1 class="hero-title">LLM-ready analytics for Yandex Ads — with audit trail and guardrails</h1>
+        <p class="hero-subtitle">
+          Open-core MCP server for <b>Yandex Direct</b> + <b>Metrica</b> + <b>Wordstat</b> + <b>Audience</b>.
+          Use large models (Claude/GPT) or local models — keep your data and decisions under control.
+          <b>Public</b> is safe-by-default read-only. <b>PRO</b> adds BI datasets/sync and guarded plan/apply writes.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#demo">Open demo</a>
+          <a class="btn btn-outline" href="#install">Install</a>
+          <a class="btn btn-ghost" href="#pro">Get PRO</a>
+        </div>
+        <div class="pillrow" aria-label="Product highlights">
+          <span class="pill"><b>Safe-by-default</b> public read-only</span>
+          <span class="pill"><b>Artifacts</b> HTML + JSON + NDJSON</span>
+          <span class="pill"><b>Multi-account</b> via accounts registry</span>
+          <span class="pill"><b>No token storage</b> (BYO secrets)</span>
+        </div>
+        <p class="disclaimer">
+          Not affiliated with Yandex. Yandex, Yandex.Direct, Yandex.Metrica, Yandex Wordstat, Yandex Audience are trademarks of their respective owners.
+        </p>
+      </header>
+
+      <section id="features" class="section reveal">
+        <div class="section-header">
+          <h2>What you get</h2>
+          <p class="lead">
+            A reliable "data + playbooks" layer: raw exports for analysis, human-friendly presets for speed,
+            dashboards for stakeholders, and (in PRO) BI-ready datasets and controlled changes.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="card col-4" data-accent="blue">
+            <h3>Direct</h3>
+            <ul class="list">
+              <li>Raw reporting + entity reads</li>
+              <li>HF find/get/report presets</li>
+              <li>PRO: plan/apply writes (guarded)</li>
+            </ul>
+          </div>
+          <div class="card col-4" data-accent="green">
+            <h3>Metrica</h3>
+            <ul class="list">
+              <li>Raw reports + Logs API exports</li>
+              <li>HF report presets</li>
+              <li>PRO: goals CRUD (guarded)</li>
+            </ul>
+          </div>
+          <div class="card col-4" data-accent="warm">
+            <h3>Wordstat + Audience</h3>
+            <ul class="list">
+              <li>Keyword demand and expansion</li>
+              <li>Segments catalog / overlaps / perf proxy</li>
+              <li>Optional blocks in dashboards</li>
+            </ul>
+          </div>
+          <div class="card col-6 soft">
+            <h3>Dashboards (Option 1)</h3>
+            <p class="muted">One tool call → a self-contained HTML + JSON dashboard (including multi-account mode).</p>
+            <div class="kpi">
+              <div class="item"><div class="label">Audience</div><div class="value">Optional</div></div>
+              <div class="item"><div class="label">Wordstat</div><div class="value">Optional</div></div>
+              <div class="item"><div class="label">Artifacts</div><div class="value">HTML + JSON</div></div>
+              <div class="item"><div class="label">Mode</div><div class="value">Read-only</div></div>
+            </div>
+          </div>
+          <div class="card col-6 soft">
+            <h3>BI Option 2 (PRO)</h3>
+            <p class="muted">
+              NDJSON-friendly datasets + incremental cursor sync (designed for warehouses, BI, and reproducible pipelines).
+            </p>
+            <ul class="list">
+              <li><code>dashboard.schema</code> + <code>dashboard.dataset.*</code></li>
+              <li><code>dashboard.sync.start</code> / <code>dashboard.sync.next</code></li>
+              <li>Chunking + per-day limits for heavy datasets</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="demo" class="section reveal">
+        <div class="section-header">
+          <h2>Demo</h2>
+          <p class="lead">Use these pages to show stakeholders what the outputs look like without any credentials.</p>
+        </div>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Option 1 dashboard (sample)</h3>
+            <p class="muted">A static example of the HTML dashboard produced by <code>dashboard.generate_option1</code>.</p>
+            <div class="browser-mockup">
+              <div class="browser-chrome">
+                <div class="browser-dots"><span></span><span></span><span></span></div>
+                <div class="browser-url">dashboard-option1.html</div>
+              </div>
+              <div class="browser-body">
+                <div class="mock-kpis">
+                  <div class="mock-block"></div>
+                  <div class="mock-block"></div>
+                  <div class="mock-block"></div>
+                  <div class="mock-block"></div>
+                </div>
+                <div class="mock-chart">
+                  <svg viewBox="0 0 200 60" preserveAspectRatio="none">
+                    <path d="M0,50 C30,42 50,18 80,28 C110,38 130,8 160,14 C180,17 195,24 200,18 L200,60 L0,60 Z" fill="var(--accent-subtle)"/>
+                    <path d="M0,50 C30,42 50,18 80,28 C110,38 130,8 160,14 C180,17 195,24 200,18" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+                  </svg>
+                </div>
+                <div class="mock-table">
+                  <div class="mock-line"></div>
+                  <div class="mock-line"></div>
+                  <div class="mock-line"></div>
+                </div>
+              </div>
+            </div>
+            <div class="hero-actions" style="margin-top:16px">
+              <a class="btn btn-primary" href="../demo/dashboard-option1.html">Open dashboard demo</a>
+              <a class="btn btn-outline" href="../demo/">More demos</a>
+            </div>
+          </div>
+          <div class="card col-6">
+            <h3>Launch playbook (plan/apply)</h3>
+            <p class="muted">A "controlled changes" workflow: diagnose → plan → review → apply (PRO).</p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="../demo/launch-playbook.html">Open playbook demo</a>
+              <a class="btn btn-ghost" href="#pro">See PRO guardrails</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="section reveal">
+        <div class="section-header">
+          <h2>Install (Claude Code + Docker)</h2>
+          <p class="lead">
+            Public is read-only and safe-by-default. PRO is a separate artifact and is expected to be distributed privately to subscribers.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Public (read-only)</h3>
+            <p class="hint">Recommended:</p>
+            <div class="terminal">
+              <div class="terminal-bar">
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-label">zsh</span>
+              </div>
+              <pre data-copy><code>claude mcp add yandex-direct-metrica-mcp -- \
+  docker run --rm -i \
+    --env-file /path/to/your/.env \
+    -e MCP_ACCOUNTS_FILE=/data/accounts.json \
+    -v /path/to/your/state:/data \
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:latest</code></pre>
+            </div>
+            <p class="fine">Tip: set <code>date_to</code> to <b>yesterday</b> (today is often incomplete).</p>
+          </div>
+          <div class="card col-6">
+            <h3>PRO (separate artifact)</h3>
+            <p class="hint">Keep the package private (paid subscribers):</p>
+            <div class="terminal">
+              <div class="terminal-bar">
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-label">zsh</span>
+              </div>
+              <pre data-copy><code>claude mcp add yandex-direct-metrica-mcp-pro -- \
+  docker run --rm -i \
+    --env-file /path/to/your/.env \
+    -e MCP_ACCOUNTS_FILE=/data/accounts.json \
+    -v /path/to/your/state:/data \
+    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp-pro:latest</code></pre>
+            </div>
+            <p class="fine">
+              PRO writes still require explicit env guardrails: <code>MCP_WRITE_ENABLED</code>, <code>HF_WRITE_ENABLED</code>, sandbox-only policy, and (optionally) two-phase confirm.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pro" class="section reveal">
+        <div class="section-header">
+          <h2>PRO: BI + controlled changes</h2>
+          <p class="lead">
+            PRO is meant for teams who want reproducible analytics pipelines and safe operational workflows:
+            plan changes, review, apply under explicit flags, and keep an audit trail.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Guardrails (writes)</h3>
+            <ul class="list">
+              <li>Public edition forces read-only even if env is misconfigured</li>
+              <li>Writes require explicit enable flags</li>
+              <li>Sandbox-only writes are recommended by default</li>
+              <li>Optional two-phase confirm (<code>write.confirm</code>)</li>
+            </ul>
+            <p class="fine">Design goal: make accidental writes materially harder while keeping ops workflows practical.</p>
+          </div>
+          <div class="card col-6">
+            <h3>What you can sell to clients</h3>
+            <ul class="list">
+              <li>Scheduled dashboards + lightweight alerts (skills)</li>
+              <li>BI sync into your warehouse (NDJSON cursor)</li>
+              <li>Campaign launch playbooks: diagnose → plan → apply → measure</li>
+              <li>Artifacts: evidence, deltas, decisions</li>
+            </ul>
+            <p class="fine">To request PRO access, open an issue or contact via GitHub.</p>
+          </div>
+        </div>
+        <div class="section-actions">
+          <a class="btn btn-primary" href="https://github.com/georgy-agaev/yandex-direct-metrica-mcp/issues/new">Request PRO</a>
+          <a class="btn btn-outline" href="ru/#pro">Read in Russian</a>
+        </div>
+      </section>
+
+      <section id="docs" class="section reveal">
+        <div class="section-header">
+          <h2>Docs</h2>
+        </div>
+        <div class="grid">
+          <div class="card col-6">
+            <h3>Getting started</h3>
+            <ul class="list">
+              <li><a href="quickstart.md">Quickstart</a></li>
+              <li><a href="public-mode.md">Public mode (read-only contract)</a></li>
+              <li><a href="public-vs-pro.md">Public vs Pro</a></li>
+              <li><a href="compatibility-semver.md">Compatibility / SemVer</a></li>
+            </ul>
+          </div>
+          <div class="card col-6">
+            <h3>Deep dives</h3>
+            <ul class="list">
+              <li><a href="dashboard-option1.md">Dashboard (Option 1)</a></li>
+              <li><a href="bi-option2-proposal-2026-02-03.md">BI Option 2 (PRO)</a></li>
+              <li><a href="llm-usage-guide-2026-02-03.md">LLM usage guide (public)</a></li>
+              <li><a href="llm-usage-guide-pro-2026-02-03.md">LLM usage guide (pro)</a></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div class="grid">
+          <div class="col-8">
+            <div class="tag"><b>Security</b><span>Never commit OAuth tokens. Use <code>.env</code> and external secret stores.</span></div>
+            <p class="fine">Public is safe-by-default. PRO writes require explicit flags and are recommended sandbox-only.</p>
+          </div>
+          <div class="col-4" style="text-align:right">
+            <p class="fine">Language: <b>English</b> · <a href="ru/">Русский</a></p>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <script src="site.js" defer></script>
+  </body>
+</html>
