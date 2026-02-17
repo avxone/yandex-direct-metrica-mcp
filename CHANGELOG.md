@@ -3,10 +3,11 @@
 All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
+
+## 2.0.5 - 2026-02-17
 - Dashboard Option 1: stacked campaign modal blocks (funnel above daily dynamics) to give the chart and funnel more horizontal space.
 - Dashboard Option 1: added `direct.campaign_summaries` (current/prev totals + deltas) for LLM-friendly per-campaign recommendations.
 - Dashboard Option 1: added `cost_rub` alias to `direct.campaign_data[*].daily` rows (keeps existing `cost` key for UI compatibility).
-- Docs: added `docs/knowledge/` (hypotheses/experiments/learnings) to capture testable ideas and validated patterns in-repo.
 
 ## 2.0.4 - 2026-02-06
 - Dashboard Option 1: made Direct report `ReportName` unique per account/client login to prevent multi-account collisions (fixes empty datasets in `all_accounts` mode).
