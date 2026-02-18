@@ -4,6 +4,9 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+## 2.0.9 - 2026-02-18
+- CI: fixed public Docker publish workflow validation (avoids using `secrets.*` in `if:`; uses job `env` instead).
+
 ## 2.0.8 - 2026-02-18
 - CI: fixed public Docker publish workflow parsing (keeps optional Docker Hub mirror on tags via `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN`).
 

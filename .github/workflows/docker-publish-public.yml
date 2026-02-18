@@ -15,6 +15,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,11 +35,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub (optional; tags only)
-        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Docker metadata (GHCR)
         id: meta_ghcr
@@ -52,11 +55,11 @@ jobs:
 
       - name: Docker metadata (Docker Hub; optional; tags only)
         id: meta_dockerhub
-        if: ${{ startsWith(github.ref, 'refs/tags/') && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/metadata-action@v5
         with:
           images: |
-            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/yandex-direct-metrica-mcp
+            docker.io/${{ env.DOCKERHUB_USERNAME }}/yandex-direct-metrica-mcp
           tags: |
             type=ref,event=tag
             type=raw,value=latest
