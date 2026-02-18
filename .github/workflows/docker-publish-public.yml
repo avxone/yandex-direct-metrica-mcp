@@ -56,7 +56,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ format('docker.io/{0}/yandex-direct-metrica-mcp', (vars.DOCKERHUB_NAMESPACE != '' && vars.DOCKERHUB_NAMESPACE || secrets.DOCKERHUB_USERNAME)) }}
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/yandex-direct-metrica-mcp
           tags: |
             type=ref,event=tag
             type=raw,value=latest
