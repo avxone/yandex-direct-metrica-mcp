@@ -15,7 +15,7 @@
     <meta property="og:url" content="https://georgy-agaev.github.io/yandex-direct-metrica-mcp/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono&display=swap" rel="stylesheet" />
     <link rel="icon" href="../assets/icon.svg?v=20260205-1" type="image/svg+xml" />
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -64,11 +64,10 @@
 
     <main class="wrap">
       <header class="hero">
-        <h1 class="hero-title">LLM-ready analytics for Yandex Ads — with audit trail and guardrails</h1>
+        <h1 class="hero-title">LLM-ready analytics<span class="hero-title-dim"> for Yandex Ads</span></h1>
         <p class="hero-subtitle">
-          Open-core MCP server for <b>Yandex Direct</b> + <b>Metrica</b> + <b>Wordstat</b> + <b>Audience</b>.
+          Open-core MCP server for <b>Yandex Direct</b> + <b>Metrica</b> + <b>Wordstat</b> + <b>Audience</b>.<br>
           Use large models (Claude/GPT) or local models — keep your data and decisions under control.
-          <b>Public</b> is safe-by-default read-only. <b>PRO</b> adds BI datasets/sync and guarded plan/apply writes.
         </p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="#demo">Open demo</a>
@@ -82,7 +81,8 @@
           <span class="pill"><b>No token storage</b> (BYO secrets)</span>
         </div>
         <p class="disclaimer">
-          Not affiliated with Yandex. Yandex, Yandex.Direct, Yandex.Metrica, Yandex Wordstat, Yandex Audience are trademarks of their respective owners.
+          Not affiliated with Yandex.<br>
+          Yandex, Yandex.Direct, Yandex.Metrica, Yandex Wordstat, Yandex Audience are trademarks of their respective owners.
         </p>
       </header>
 
@@ -120,8 +120,8 @@
             </ul>
           </div>
           <div class="card col-6 soft">
-            <h3>Dashboards (Option 1)</h3>
-            <p class="muted">One tool call → a self-contained HTML + JSON dashboard (including multi-account mode).</p>
+            <h3>Dashboard Option 1</h3>
+            <p class="muted">One tool call → a self-contained HTML + JSON dashboard, including multi-account mode.</p>
             <div class="kpi">
               <div class="item"><div class="label">Audience</div><div class="value">Optional</div></div>
               <div class="item"><div class="label">Wordstat</div><div class="value">Optional</div></div>
@@ -130,9 +130,10 @@
             </div>
           </div>
           <div class="card col-6 soft">
-            <h3>BI Option 2 (PRO)</h3>
+            <h3>BI Option 2 · PRO</h3>
+            <p class="muted tier-note">Everything in Public, plus:</p>
             <p class="muted">
-              NDJSON-friendly datasets + incremental cursor sync (designed for warehouses, BI, and reproducible pipelines).
+              NDJSON-friendly datasets + incremental cursor sync for warehouses, BI, and reproducible pipelines.
             </p>
             <ul class="list">
               <li><code>dashboard.schema</code> + <code>dashboard.dataset.*</code></li>
@@ -149,46 +150,22 @@
           <p class="lead">Use these pages to show stakeholders what the outputs look like without any credentials.</p>
         </div>
         <div class="grid">
-          <div class="card col-6">
-            <h3>Option 1 dashboard (sample)</h3>
-            <p class="muted">A static example of the HTML dashboard produced by <code>dashboard.generate_option1</code>.</p>
-            <div class="browser-mockup">
-              <div class="browser-chrome">
-                <div class="browser-dots"><span></span><span></span><span></span></div>
-                <div class="browser-url">dashboard-option1.html</div>
-              </div>
-              <div class="browser-body">
-                <div class="mock-kpis">
-                  <div class="mock-block"></div>
-                  <div class="mock-block"></div>
-                  <div class="mock-block"></div>
-                  <div class="mock-block"></div>
+          <div class="card col-12">
+            <h3>Live dashboard (real data)</h3>
+            <p class="muted">One tool call → a self-contained interactive HTML dashboard with KPIs, funnel, alerts, and campaign-level analysis.</p>
+            <a href="dashboard.html" class="dashboard-preview" target="_blank">
+              <div class="browser-mockup browser-mockup--live">
+                <div class="browser-chrome">
+                  <div class="browser-dots"><span></span><span></span><span></span></div>
+                  <div class="browser-url">dashboard-option1.html</div>
+                  <span class="browser-badge">Live</span>
                 </div>
-                <div class="mock-chart">
-                  <svg viewBox="0 0 200 60" preserveAspectRatio="none">
-                    <path d="M0,50 C30,42 50,18 80,28 C110,38 130,8 160,14 C180,17 195,24 200,18 L200,60 L0,60 Z" fill="var(--accent-subtle)"/>
-                    <path d="M0,50 C30,42 50,18 80,28 C110,38 130,8 160,14 C180,17 195,24 200,18" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
-                  </svg>
-                </div>
-                <div class="mock-table">
-                  <div class="mock-line"></div>
-                  <div class="mock-line"></div>
-                  <div class="mock-line"></div>
+                <div class="browser-body browser-body--img">
+                  <img src="dashboard-preview.jpg" alt="BI Dashboard — KPIs, conversion funnel, alerts, campaign table" width="1280" height="800" loading="lazy" />
                 </div>
               </div>
-            </div>
-            <div class="hero-actions" style="margin-top:16px">
-              <a class="btn btn-primary" href="../demo/dashboard-option1.html">Open dashboard demo</a>
-              <a class="btn btn-outline" href="../demo/">More demos</a>
-            </div>
-          </div>
-          <div class="card col-6">
-            <h3>Launch playbook (plan/apply)</h3>
-            <p class="muted">A "controlled changes" workflow: diagnose → plan → review → apply (PRO).</p>
-            <div class="hero-actions">
-              <a class="btn btn-primary" href="../demo/launch-playbook.html">Open playbook demo</a>
-              <a class="btn btn-ghost" href="#pro">See PRO guardrails</a>
-            </div>
+              <span class="preview-cta">Open interactive dashboard →</span>
+            </a>
           </div>
         </div>
       </section>
@@ -216,7 +193,7 @@
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp:latest</code></pre>
+    ghcr.io/&lt;owner&gt;/yandex-direct-metrica-mcp:latest</code></pre>
             </div>
             <p class="fine">Tip: set <code>date_to</code> to <b>yesterday</b> (today is often incomplete).</p>
           </div>
@@ -235,7 +212,7 @@
     --env-file /path/to/your/.env \
     -e MCP_ACCOUNTS_FILE=/data/accounts.json \
     -v /path/to/your/state:/data \
-    ghcr.io/georgy-agaev/yandex-direct-metrica-mcp-pro:latest</code></pre>
+    ghcr.io/&lt;owner&gt;/yandex-direct-metrica-mcp-pro:latest</code></pre>
             </div>
             <p class="fine">
               PRO writes still require explicit env guardrails: <code>MCP_WRITE_ENABLED</code>, <code>HF_WRITE_ENABLED</code>, sandbox-only policy, and (optionally) two-phase confirm.
@@ -276,7 +253,6 @@
         </div>
         <div class="section-actions">
           <a class="btn btn-primary" href="https://github.com/georgy-agaev/yandex-direct-metrica-mcp/issues/new">Request PRO</a>
-          <a class="btn btn-outline" href="ru/#pro">Read in Russian</a>
         </div>
       </section>
 
@@ -297,8 +273,8 @@
           <div class="card col-6">
             <h3>Deep dives</h3>
             <ul class="list">
-              <li><a href="dashboard-option1.md">Dashboard (Option 1)</a></li>
-              <li><a href="bi-option2-proposal-2026-02-03.md">BI Option 2 (PRO)</a></li>
+              <li><a href="dashboard-option1.md">Dashboard Option 1</a></li>
+              <li><a href="bi-option2-proposal-2026-02-03.md">BI Option 2 · PRO</a></li>
               <li><a href="llm-usage-guide-2026-02-03.md">LLM usage guide (public)</a></li>
               <li><a href="llm-usage-guide-pro-2026-02-03.md">LLM usage guide (pro)</a></li>
             </ul>
