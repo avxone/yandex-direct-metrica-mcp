@@ -4,6 +4,9 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+## 2.0.7 - 2026-02-18
+- CI: Docker publish workflow now optionally mirrors public images to Docker Hub on tags (when `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` are set; namespace configurable via `DOCKERHUB_NAMESPACE`).
+
 ## 2.0.6 - 2026-02-18
 - BI Option 2: removed datasets/sync implementation from the OSS core and added a PRO plugin hook (BI tools are now provided via a private plug-in).
 - Public mode hardening: server now rejects tool calls that are not present in `tools/list` for the current build/config (prevents calling hidden tools by name).
