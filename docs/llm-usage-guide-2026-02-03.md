@@ -39,7 +39,7 @@
 
 3) Join Direct ↔ Metrica (если нужно):
    - `join.hf.direct_vs_metrica_by_utm` — более стабильное сравнение на уровне кампаний
-   - `join.hf.direct_vs_metrica_by_yclid` — связывание кликов и визитов (best effort; тяжелее)
+   - (PRO) Click-level join по `yclid` — тяжелее и доступен только в PRO
 
 4) Сгенерируйте дашборд для человека:
    - `dashboard.generate_option1` с `output_dir` и `return_data=false`
@@ -143,7 +143,7 @@
 - `metrica.hf.counter_summary`
 
 ### Logs API мощный, но тяжелее
-- `metrica.logs_export` используется в `join.hf.direct_vs_metrica_by_yclid`
+- `metrica.logs_export` полезен для click-level расследований (bounded; используйте осторожно)
 - Сначала пробуйте join’ы/dashboard; к логам переходите только если нужно линковать клики к визитам
 
 ## Audience (public read‑only)
@@ -167,16 +167,6 @@
 
 Типичный вопрос:
 - «Клики/расход/лиды Direct по дням vs визиты/лиды Метрики по дням — коррелирует ли?»
-
-### `join.hf.direct_vs_metrica_by_yclid` (best effort, тяжелее)
-Используйте, когда:
-- Нужно связать click identifiers из Direct с визитами Метрики (Logs API)
-- UTMs are missing/unreliable and you need click-level evidence
-
-Операционные советы:
-- Держите `max_rows` ограниченным (по умолчанию уже есть cap)
-- Используйте `request_id`, чтобы продолжить прогон при таймауте
-- Ожидайте partial join: поля логов могут отсутствовать, а данные могут не покрывать все клики
 
 ## Wordstat (public read‑only: семантика/спрос)
 
@@ -250,7 +240,7 @@ Dashboard:
 - `dashboard.generate_option1`
 
 BI Option 2 (datasets/sync):
-- Not part of public surface (PRO-only): `dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`
+- Not part of public surface (PRO-only plugin): `dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`
 
 Direct (raw):
 - `direct.report`, `direct.get_changes`, `direct.list_*`
@@ -268,7 +258,7 @@ Audience (raw + HF):
 - `audience.*` (read-only subset), `audience.hf.*` (read-only subset)
 
 Joins (HF):
-- `join.hf.direct_vs_metrica_by_utm`, `join.hf.direct_vs_metrica_by_yclid`
+- `join.hf.direct_vs_metrica_by_utm`
 
 Wordstat (raw + HF):
 - `wordstat.*`, `wordstat.hf.*`

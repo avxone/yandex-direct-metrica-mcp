@@ -4,6 +4,11 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+## 2.0.6 - 2026-02-18
+- BI Option 2: removed datasets/sync implementation from the OSS core and added a PRO plugin hook (BI tools are now provided via a private plug-in).
+- Public mode hardening: server now rejects tool calls that are not present in `tools/list` for the current build/config (prevents calling hidden tools by name).
+- Docs: added PRO plug-in loading guide and clarified BI Option 2 is delivered via a private plug-in.
+
 ## 2.0.5 - 2026-02-17
 - Dashboard Option 1: stacked campaign modal blocks (funnel above daily dynamics) to give the chart and funnel more horizontal space.
 - Dashboard Option 1: added `direct.campaign_summaries` (current/prev totals + deltas) for LLM-friendly per-campaign recommendations.

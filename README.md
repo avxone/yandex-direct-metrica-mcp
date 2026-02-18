@@ -14,7 +14,7 @@ Images:
 Primary UX goals:
 - Pull raw data for analytics (minimal normalization, traceable outputs).
 - Generate a practical **BI dashboard (Option 1)** as `HTML + JSON` (including multi-account dashboards).
-- Provide **BI Option 2 (PRO)**: datasets + incremental sync (warehouse/BI pipelines).
+- Provide **BI Option 2 (PRO, plugin)**: datasets + incremental sync (warehouse/BI pipelines).
 - Make it easy to use from **Claude Code** via `claude mcp add`.
 
 ## Quick start (Claude Code + Docker)
@@ -95,6 +95,7 @@ Notes:
 - `docker build ...` produces a **public read-only** image by default.
 - If you really need a local PRO image, build with:
   - `docker build --build-arg MCP_EDITION=pro --build-arg MCP_PUBLIC_READONLY=false -t yandex-direct-metrica-mcp:pro .`
+  - BI Option 2 is delivered via a private PRO plug-in; install it during build via `--build-arg MCP_PLUGIN_PIP="..."` (see `docs/pro-plugin.md`).
 
 Then:
 ```bash
@@ -144,9 +145,9 @@ These tools focus on practical analytics workflows:
 - `audience.hf.*` — audience catalog + best-effort segment performance proxy
 - `dashboard.generate_option1` — generates a self-contained BI dashboard (`HTML + JSON`)
 
-### 3) BI Option 2 (PRO): datasets + incremental sync
+### 3) BI Option 2 (PRO plugin): datasets + incremental sync
 
-PRO edition adds BI-oriented tools:
+BI Option 2 is provided by an optional **private PRO plugin** (not part of the public OSS build):
 - `dashboard.schema`
 - `dashboard.dataset.*`
 - `dashboard.sync.start` / `dashboard.sync.next` (NDJSON-friendly)
@@ -202,7 +203,7 @@ This repo ships **two artifacts**:
 
 - Public: `yandex-direct-metrica-mcp` (safe-by-default read-only).
   - Contract: `tests/snapshots/public_tools_v1.json`
-- Pro: `yandex-direct-metrica-mcp-pro` (full toolset; writes still require explicit env guardrails).
+- Pro: `yandex-direct-metrica-mcp-pro` (writes still require explicit env guardrails) + private PRO plug-ins (e.g., BI Option 2).
 
 See:
 - `docs/public-vs-pro.md`

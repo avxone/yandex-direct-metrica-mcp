@@ -10,7 +10,7 @@
 Эффект:
 - Write‑инструменты скрыты/заблокированы (Direct create/update, escape‑hatch raw calls).
 - Режим рассчитан на отчёты, join’ы и генерацию BI‑дашборда.
-- BI Option 2 (`dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`) **не** входит в public поверхность.
+ - BI Option 2 (`dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`) **не** входит в public поверхность и поставляется отдельным PRO plug-in.
 
 Рекомендованная модель артефактов (релиз 1.0.0):
 - Public Docker image: `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:<tag>` и `:latest`
@@ -28,7 +28,7 @@
 
 Эффект:
 - Доступен полный набор инструментов (всё ещё под guardrails: `MCP_WRITE_ENABLED`, sandbox‑only политики и т.д.).
-- Доступен BI Option 2 (датасеты + инкрементальный sync для BI/warehouse пайплайнов).
+ - Доступен BI Option 2 (датасеты + инкрементальный sync для BI/warehouse пайплайнов) **через PRO plug-in**.
 - Доступны HF write инструменты (guarded `apply=true`) — например, Direct plan/apply и CRUD целей в Метрике.
 
 ## Зачем делить

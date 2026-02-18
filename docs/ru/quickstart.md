@@ -58,6 +58,7 @@ docker build -t yandex-direct-metrica-mcp:local .
 - `docker build ...` по умолчанию собирает **public read‑only** образ.
 - Если вам действительно нужен локальный PRO образ, собирайте так:
   - `docker build --build-arg MCP_EDITION=pro --build-arg MCP_PUBLIC_READONLY=false -t yandex-direct-metrica-mcp:pro .`
+  - Если нужен BI Option 2 — установите приватный PRO plug-in на этапе сборки через `--build-arg MCP_PLUGIN_PIP="..."` (см. `docs/ru/pro-plugin.md`).
 
 Добавьте в Claude Code:
 ```bash

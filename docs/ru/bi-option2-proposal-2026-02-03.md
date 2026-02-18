@@ -6,7 +6,7 @@
 - минимальной нормализации (raw-first, но с полезными ключами/колонками).
 
 Статус:
-- Variant **B (Standard)** реализован как текущая PRO-база (датасеты + sync).
+- Variant **B (Standard)** реализован как PRO plug-in (датасеты + sync), чтобы не входить в public OSS build.
 
 ## Для кого
 
@@ -77,6 +77,7 @@ Facts:
 ### Join (manual / ad-hoc)
 
 - `dashboard.dataset.join_direct_vs_metrica_utm_daily`
+- `dashboard.dataset.join_direct_vs_metrica_yclid_daily` (Logs API; может вернуть `status=pending` + `request_id` для resume; обязательно задавайте жёсткие bounds)
 
 ## Sync API (инкрементальный)
 

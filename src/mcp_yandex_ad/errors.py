@@ -83,6 +83,13 @@ class NotSupportedError(RuntimeError):
         self.hint = hint or "Operation is not supported by the upstream API."
 
 
+class ToolNotAvailableError(RuntimeError):
+    def __init__(self, tool: str, message: str, hint: str | None = None) -> None:
+        super().__init__(message)
+        self.tool = tool
+        self.hint = hint or "Call tools/list to see the available tools for this build."
+
+
 def _safe_message(value: Any) -> str | None:
     if value is None:
         return None
@@ -134,6 +141,10 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
         payload["provider"] = exc.provider
         payload["message"] = str(exc)
         payload["hint"] = HINT_TOKEN
+    elif isinstance(exc, ToolNotAvailableError):
+        payload["provider"] = "mcp"
+        payload["message"] = str(exc)
+        payload["hint"] = exc.hint
     elif isinstance(exc, WriteGuardError):
         payload["provider"] = exc.provider
         payload["message"] = str(exc)

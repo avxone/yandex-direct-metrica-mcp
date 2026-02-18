@@ -2,7 +2,7 @@
 
 Документ предназначен для **LLM‑агентов**, которые подключаются к этому MCP‑серверу и должны получить максимум пользы **с включёнными PRO‑инструментами** (включая write‑инструменты под guardrails: `apply=true` + env flags).
 
-Область: **PRO** toolset (Direct + Metrica + Wordstat + Audience), включая **BI Option 2** (датасеты + инкрементальный sync).
+Область: **PRO** toolset (Direct + Metrica + Wordstat + Audience), включая **BI Option 2** (датасеты + инкрементальный sync) **через PRO plug-in**.
 
 ## Правила безопасности (PRO mindset)
 
@@ -30,7 +30,7 @@ Accounts:
 Dashboard (Option 1):
 - `dashboard.generate_option1` (multi-account, optional Wordstat/Audience blocks)
 
-Dashboard (BI Option 2: датасеты + sync):
+Dashboard (BI Option 2: датасеты + sync, PRO plug-in):
 - `dashboard.schema`
 - `dashboard.dataset.*` (Variant B: Direct/Metrica/Wordstat/Join + Audience)
 - `dashboard.sync.start`, `dashboard.sync.next`
@@ -77,6 +77,9 @@ Join (HF):
 
 ## BI Option 2 (датасеты + инкрементальный sync)
 
+Примечание:
+- Инструменты BI Option 2 появляются только если установлен PRO plug-in. `tools/list` — источник истины.
+
 ### Базовый API
 
 1) Посмотреть схему:
@@ -122,6 +125,7 @@ Wordstat (manual / ad‑hoc):
 
 Join (manual / ad‑hoc):
 - `dashboard.dataset.join_direct_vs_metrica_utm_daily`
+- `dashboard.dataset.join_direct_vs_metrica_yclid_daily` (Logs API; может вернуть `status=pending` + `request_id` для resume)
 
 ## Рекомендации ключей → применение (Direct plan/apply)
 

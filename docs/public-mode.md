@@ -70,7 +70,7 @@ Runtime tuning:
 Escape hatches не входят в public surface:
 - `direct.raw_call`, `metrica.raw_call`, `audience.raw_call`
 
-BI Option 2 не входит в public surface:
+BI Option 2 не входит в public surface (поставляется отдельным PRO plug-in):
 - `dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`
 
 ## /data state (public)
@@ -80,4 +80,3 @@ BI Option 2 не входит в public surface:
 
 Сервер не сохраняет OAuth токены и пользовательские данные.
 Если включён cache, он может хранить ограниченные ответы API (без “сырых” токенов).
-

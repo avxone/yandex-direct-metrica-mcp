@@ -24,24 +24,19 @@ from .cache import TTLCache
 from .auth import TokenManager
 from .clients import YandexClients, build_clients, build_direct_client
 from .config import AppConfig, load_config
-from .errors import MissingClientError, NotSupportedError, WriteGuardError, normalize_error
+from .errors import MissingClientError, NotSupportedError, ToolNotAvailableError, WriteGuardError, normalize_error
 from .hf_common import HFError, hf_payload
 from .hf_direct import handle as hf_direct_handle
 from .hf_join import handle as hf_join_handle
 from .hf_metrica import handle as hf_metrica_handle
 from .hf_wordstat import handle as hf_wordstat_handle
 from .hf_audience import handle as hf_audience_handle
+from .plugins import try_handle as plugins_try_handle
 from .ratelimit import RateLimiter
 from .retry import with_retries
 from .tools import tool_definitions
 from .wordstat_client import WordstatClient
 from .audience_client import AudienceClient
-from .dashboard_option2 import (
-    dashboard_dataset_handle,
-    dashboard_option2_schema,
-    dashboard_sync_next,
-    dashboard_sync_start,
-)
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
 
@@ -6396,6 +6391,15 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         except Exception as exc:  # pragma: no cover
             return _error_response(name, exc)
 
+    allowed_tools = {t.name for t in tool_definitions(ctx.config)}
+    if name not in allowed_tools:
+        hint = "Call tools/list to see the available tools for this build."
+        if name.startswith(("dashboard.schema", "dashboard.dataset.", "dashboard.sync.")):
+            hint = "This tool is provided by the PRO BI plugin. Install the plugin and restart the server."
+        elif getattr(ctx.config, "public_readonly", False):
+            hint = "This tool is not part of the public read-only surface. Use the pro edition."
+        return _error_response(name, ToolNotAvailableError(name, "Tool is not available.", hint))
+
     if name.startswith("accounts."):
         try:
             if name == "accounts.list":
@@ -6545,34 +6549,6 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             data = _dashboard_generate_option1(ctx, args)
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
-            return _error_response(name, exc)
-
-    if name == "dashboard.schema":
-        try:
-            data = dashboard_option2_schema()
-            return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
-            return _error_response(name, exc)
-
-    if name.startswith("dashboard.dataset."):
-        try:
-            data = dashboard_dataset_handle(ctx, name, args)
-            return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
-            return _error_response(name, exc)
-
-    if name == "dashboard.sync.start":
-        try:
-            data = dashboard_sync_start(ctx, args)
-            return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
-            return _error_response(name, exc)
-
-    if name == "dashboard.sync.next":
-        try:
-            data = dashboard_sync_next(ctx, args)
-            return _ok_result(ctx, name, data)
-        except Exception as exc:  # pragma: no cover
             return _error_response(name, exc)
 
     if name == "wordstat.user_info":
@@ -7148,6 +7124,13 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)
+
+    try:
+        plugin_payload = plugins_try_handle(ctx, name, args)
+        if plugin_payload is not None:
+            return _ok_result(ctx, name, plugin_payload)
+    except Exception as exc:  # pragma: no cover - defensive
+        return _error_response(name, exc)
 
     # Skeleton implementation for the remaining tools.
     payload = {

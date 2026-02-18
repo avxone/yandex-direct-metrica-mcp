@@ -7,13 +7,15 @@ COPY src /app/src
 COPY docs/templates/dashboard-template-option1-2026-01-28.html /app/docs/templates/dashboard-template-option1-2026-01-28.html
 
 ARG MCP_EDITION=public
+ARG MCP_PLUGIN_PIP=""
 
 # Security: pull OS security updates and upgrade pip tooling (wheel has known CVEs).
 RUN apt-get update \
   && apt-get upgrade -y \
   && rm -rf /var/lib/apt/lists/* \
   && pip install --no-cache-dir --upgrade pip wheel \
-  && pip install --no-cache-dir -e .
+  && pip install --no-cache-dir -e . \
+  && if [ -n "${MCP_PLUGIN_PIP}" ]; then pip install --no-cache-dir ${MCP_PLUGIN_PIP}; fi
 
 ENV PYTHONUNBUFFERED=1
 ARG MCP_PUBLIC_READONLY=true
