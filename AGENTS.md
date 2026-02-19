@@ -14,7 +14,7 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
 - Keep dependencies light and memory usage low.
 
 ## MCP tools policy
-- Use the approved tool list in `yandex.ad/docs/tools-proposal-YYYY-MM-DD.md`.
+- Use the approved tool list in `docs/tools-proposal-YYYY-MM-DD*.md`.
 - Add new tools only after explicit approval.
 - Provide a generic `raw_call` tool only if absolutely necessary.
 
@@ -44,12 +44,12 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
 - Keep tests green before committing; TDD is encouraged but optional.
 
 ## Documentation
-- Keep research and planning docs in `yandex.ad/docs/`.
+- Keep research and planning docs in `docs/`.
 - Update docs when the tool list or architecture changes.
-- Store session notes in `yandex.ad/docs/sessions/YYYY-MM-DD_<n>_<slug>.md`.
+- Store session notes in `docs/sessions/YYYY-MM-DD_<n>_<slug>.md`.
 - Each session file must include explicit sections: "Completed" and "To Do".
-- Keep `yandex.ad/README.md` as the entry point for this MCP project.
-- Update `yandex.ad/CHANGELOG.md` at the end of each session; latest changes go first.
+- Keep `README.md` as the entry point for this MCP project.
+- Update `CHANGELOG.md` at the end of each session; latest changes go first.
 
 ## Workflow
 - Changes should be incremental and reversible.
@@ -63,7 +63,8 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
 
 ### Contract summary (v1.0.0 baseline)
 - **Public contract**: read-only tools + `dashboard.generate_option1` + read-only HF/join tools.
-- **Pro tools**: anything write-related, escape hatches, BI Option 2 datasets/sync, etc. are **out of public contract**.
+- **Pro tools**: anything write-related, escape hatches, and **BI Option 2 datasets/sync** are **out of public contract**.
+- **BI Option 2 distribution (B1)**: BI Option 2 is delivered via a **private PRO plug-in**, not the OSS core.
 
 ### Branching / docs languages
 - `docs/` is **English** (official).
@@ -79,14 +80,29 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
    - update `CHANGELOG.md` (new section, latest first)
 3) Public safety:
    - public build must be **safe-by-default** (read-only)
-   - verify PRO publish is gated (no automatic public publish)
+   - verify PRO publish is gated (no automatic PRO publish)
+   - verify BI Option 2 code is **not** present in OSS core (only via private plug-in)
 4) Docs:
    - `README.md` reflects the current scope (Direct/Metrica/Wordstat/Audience)
    - `docs/` and `docs/ru/` updated (no machine-specific paths like `/Users/...` or `~/...`)
 
-### Tag + release checklist
-- Tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
-- GitHub Release: create/update notes (keep public vs pro artifacts clear).
+### Artifacts / what ships where
+- **OSS core repo** (this repo):
+  - Public Docker image (safe-by-default): `ghcr.io/<owner>/yandex-direct-metrica-mcp`
+  - Pro Docker image (private; gated): `ghcr.io/<owner>/yandex-direct-metrica-mcp-pro`
+- **Private PRO BI plug-in repo** (separate private repository):
+  - Python package installed into a PRO deployment to add `dashboard.schema`, `dashboard.dataset.*`, `dashboard.sync.*`
+  - Installed during Docker build via `--build-arg MCP_PLUGIN_PIP="..."` (see `docs/pro-plugin.md`)
+
+### Tag + release checklist (public)
+1) Commit version + changelog.
+2) Tag: `git tag vX.Y.Z && git push origin main && git push origin vX.Y.Z`
+3) GitHub Release (important): create a release for the tag.
+   - Git tags alone do **not** update the GitHub “Releases” UI / Latest release badge.
+   - Example: `gh release create vX.Y.Z --latest --title "vX.Y.Z" --notes-from-tag`
+4) Verify workflows succeeded:
+   - `CI`
+   - `Docker Publish (Public)` (should build/push multi-arch images)
 
 ### Docker image channels (public only by default)
 **Primary: GHCR**
@@ -96,10 +112,12 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
 **Optional mirror: Docker Hub**
 - Public image: `docker.io/<owner>/yandex-direct-metrica-mcp:vX.Y.Z` and `:latest`
 - Keep tags consistent with GHCR (`vX.Y.Z` + `latest`).
+- Docker Hub publishing must remain **optional** (only when secrets are configured).
 
 **Pro image**
 - Never publish PRO automatically.
 - Keep PRO package **private** and publish only via gated workflow (e.g. `workflow_dispatch` or `pro-v*` tags).
+- BI Option 2 remains a **private plug-in**; do not ship it in the public image.
 
 ### Dockerfile defaults (important for external builders like docker/mcp-registry)
 - The root `Dockerfile` must build **public read-only** by default:
@@ -107,6 +125,8 @@ Working principles for the Yandex Direct + Metrica MCP server (Python stack).
   - `ARG MCP_PUBLIC_READONLY=true`
 - Building PRO locally requires explicit build args:
   - `docker build --build-arg MCP_EDITION=pro --build-arg MCP_PUBLIC_READONLY=false -t yandex-direct-metrica-mcp:pro .`
+- Installing a private plug-in during build (PRO only) uses:
+  - `--build-arg MCP_PLUGIN_PIP="git+https://github.com/<OWNER>/<PRIVATE_PLUGIN_REPO>.git@vX.Y.Z"`
 
 ### Docker Hub publishing (multi-arch)
 When mirroring a release to Docker Hub, build from the **tag** to match the released source:
