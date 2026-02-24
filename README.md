@@ -19,6 +19,16 @@ Primary UX goals:
 
 ## Quick start (Claude Code + Docker)
 
+### Automated setup (recommended)
+
+Run the interactive wizard — it creates `.env`, `accounts.json`, and registers the MCP server for your client (Claude Code, Claude Desktop, Cursor, Codex CLI, OpenCode, Gemini CLI):
+
+```bash
+python3 scripts/setup.py
+```
+
+Or follow the manual steps below.
+
 ### 1) Prepare state folder
 
 Create a local folder for state/config (accounts registry, cache, etc):
