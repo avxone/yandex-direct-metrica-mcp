@@ -145,6 +145,64 @@
         </div>
       </section>
 
+      <section class="section reveal">
+        <div class="section-header">
+          <h2>B2B Marketing Workflow</h2>
+          <p class="lead">
+            Основной production use case этого MCP сейчас простой:
+            это интерфейс доступа к Yandex-данным для <b>Dream Team B2B / B2B Marketing</b>.
+          </p>
+        </div>
+        <div class="grid">
+          <div class="card col-12 soft">
+            <h3>Architecture</h3>
+            <div class="terminal">
+              <div class="terminal-bar">
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-dot"></span>
+                <span class="terminal-label">runtime</span>
+              </div>
+              <pre><code>Operator
+  ↓
+Claude Code (Dream Team / B2B Marketing)
+  ↓ reads via
+yandex-direct-metrica-mcp
+  ↓
+Yandex Direct + Metrica + Wordstat + Audience
+  ↓
+dashboard artifacts + analyses + recommendations</code></pre>
+            </div>
+            <p class="muted" style="margin-top:.75rem">
+              Его основная задача — отдавать Yandex-данные и controlled-операции маркетинговой системе.
+              В Dream Team skills собираются поверх этого MCP так:
+              <code>/offerings-mapper</code> → <code>/gap-overlay</code> + <code>/campaign-audit</code>
+              → <code>/synthesis-backlog</code> → <code>/b2b-review</code> → <code>/preflight-qa</code>.
+            </p>
+          </div>
+
+          <div class="card col-6" data-accent="blue">
+            <h3>Что относится к MCP</h3>
+            <ul class="list">
+              <li><code>direct.*</code>, <code>metrica.*</code>, <code>wordstat.*</code>, <code>audience.*</code></li>
+              <li><code>direct.hf.*</code>, <code>join.hf.*</code>, <code>wordstat.hf.*</code>, <code>audience.hf.*</code></li>
+              <li><code>dashboard.generate_option1</code> для HTML + JSON дашбордов</li>
+              <li>PRO: <code>dashboard.dataset.*</code>, <code>dashboard.sync.*</code>, guarded writes</li>
+            </ul>
+          </div>
+
+          <div class="card col-6" data-accent="green">
+            <h3>Что относится к B2B Marketing</h3>
+            <ul class="list">
+              <li><code>/analyst-weekly</code>, <code>/gap-overlay</code>, <code>/campaign-audit</code></li>
+              <li><code>/offerings-mapper</code>, <code>/synthesis-backlog</code>, <code>/b2b-review</code></li>
+              <li><code>/pipeline</code> оркестрирует автономный B2B-цикл end-to-end</li>
+              <li>Текущая production-форма: 7 agent roles, 18 skills, 4 B2B-проекта</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section id="demo" class="section reveal">
         <div class="section-header">
           <h2>Демо</h2>
