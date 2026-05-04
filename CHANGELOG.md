@@ -3,6 +3,20 @@
 All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
+- Path D: added an internal app-safe payload helper seam plus RFC-0003 and tests, without introducing MCP Apps runtime or changing the current MCP surface.
+- Path C: added an internal static bundle manifest module and tests for `marketing2025.analyst_pipeline` without expanding the public/runtime MCP tool surface.
+- Path A: surfaced top-level canonical warnings/messages for `join.hf.direct_vs_metrica_by_yclid` pending/fallback branches, added `metrica.hf.counter_summary` warnings for best-effort goals failures, and fixed explicit `max_wait_seconds=0` handling for immediate pending returns.
+- Docs: added a Google Ads MCP deep-research brief and a session note to preserve the plan for a self-hosted → SaaS-ready Google Ads MCP project.
+- Docs: drafted proposals for a backend operator CLI and a separate Dream Team Orchestrator repo (self-hosted → SaaS-ready).
+- Docs: added a NotebookLM-derived MCP ecosystem roadmap note for `yandex.ad` plus a session note with three options and a recommended path.
+- Docs: added a research note on Progressive tool discovery and MCP Apps for `yandex.ad`, plus a session note mapping official MCP guidance to current project constraints.
+- Docs: clarified that discovery/UI recommendations for `yandex.ad` must remain portable across multiple model vendors and MCP-capable clients.
+- Docs: added balanced development options for `yandex.ad` focused on the real needs of `Marketing2025` as the primary user.
+- Docs: added an English + Russian collaboration proposal for `Marketing2025` and `yandex.ad`, plus a session note that formalizes the backend/orchestrator split for stakeholder review.
+- Docs: added a formal reply to the `Marketing2025` collaboration response, a concrete `A -> C -> D` backend backlog, and an initial cross-repo RFC space with drafts for the HF envelope and role/bundle manifests.
+- Docs: incorporated `Marketing2025` review feedback into `RFC-0001` by adding structured errors, envelope versioning, explicit `choices[]` / `warnings[]` element shapes, and a required-field matrix by status.
+- Path A: added canonical HF envelope metadata/validation plus initial `outputSchema` and read-only annotations for the prioritized read-only tool set.
+- Path A: added a focused public contract snapshot for prioritized tools and surfaced `direct.hf.pressure_report` fallback warnings at the top-level HF envelope.
 
 ## 2.0.9 - 2026-02-18
 - CI: fixed public Docker publish workflow validation (avoids using `secrets.*` in `if:`; uses job `env` instead).

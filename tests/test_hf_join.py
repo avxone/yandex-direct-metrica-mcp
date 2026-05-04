@@ -284,7 +284,33 @@ def test_join_by_banner_id_fallback_maps_to_campaigns() -> None:
         {"counter_id": "42", "date_from": "2026-01-01", "date_to": "2026-01-01", "max_wait_seconds": 1, "poll_interval_seconds": 0.01},
     )
     assert out["status"] == "ok"
+    assert out["message"] == "Direct click id report was not available; used Metrica lastDirectClickBanner -> Direct ads.get mapping."
+    assert out["warnings"][0]["code"] == "join_mode_fallback"
     result = out["result"]
     assert result["join_mode"] == "banner_id"
     by_campaign = {x["campaign_id"]: x["visits"] for x in result["join"]["by_campaign"]}
     assert by_campaign == {"10": 2, "20": 1}
+
+
+def test_join_by_yclid_surfaces_pending_at_top_level() -> None:
+    class _PendingCtx(_CtxYclid):
+        def _metrica_logs_call(self, action: str, path_args: dict[str, Any], params: dict[str, Any] | None) -> dict[str, Any]:
+            self.calls.append((action, path_args, params))
+            if action == "create":
+                return {"request_id": "r1"}
+            if action == "info":
+                return {"status": "created"}
+            raise AssertionError(f"Unexpected logs action: {action}")
+
+    ctx = _PendingCtx()
+    out = handle(
+        "join.hf.direct_vs_metrica_by_yclid",
+        ctx,
+        {"counter_id": "42", "date_from": "2026-01-01", "date_to": "2026-01-01", "max_wait_seconds": 0, "poll_interval_seconds": 0.01},
+    )
+
+    assert out["status"] == "ok"
+    assert out["message"] == "Logs export is not ready yet. Retry the same tool call with request_id."
+    assert out["warnings"][0]["code"] == "logs_export_pending"
+    assert out["result"]["status"] == "pending"
+    assert out["result"]["request_id"] == "r1"

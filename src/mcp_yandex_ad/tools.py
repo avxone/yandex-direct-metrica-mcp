@@ -4,6 +4,7 @@ from mcp.types import Tool
 
 from .config import AppConfig
 from .plugins import plugin_tools
+from .tool_contracts import decorate_tool
 
 HF_DESTRUCTIVE_TOOLS = {
     "direct.hf.delete_ads",
@@ -1937,9 +1938,12 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
         return tools
 
     if config is None:
-        return _inject_account_and_overrides(base + hf)
+        tools = _inject_account_and_overrides(base + hf)
+        return [decorate_tool(tool) for tool in tools]
     if not config.hf_enabled:
-        return _inject_account_and_overrides(base)
+        tools = _inject_account_and_overrides(base)
+        return [decorate_tool(tool) for tool in tools]
     if not config.hf_destructive_enabled:
         hf = [t for t in hf if t.name not in HF_DESTRUCTIVE_TOOLS]
-    return _inject_account_and_overrides(base + hf)
+    tools = _inject_account_and_overrides(base + hf)
+    return [decorate_tool(tool) for tool in tools]

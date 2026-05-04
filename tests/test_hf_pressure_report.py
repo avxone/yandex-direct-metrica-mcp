@@ -80,9 +80,42 @@ def test_pressure_report_partial_when_unmapped_or_ambiguous():
     )
 
     assert out["status"] == "partial"
+    assert "warnings" not in out
     notes = out["result"]["coverage_notes"]
     assert notes["rows_total"] == 2
     assert notes["rows_mapped"] == 1
     assert notes["rows_unmapped"] == 1
     assert notes["rows_ambiguous"] == 1
 
+
+def test_pressure_report_surfaces_fallback_warning_in_envelope():
+    class FallbackCtx(DummyCtx):
+        def __init__(self, tsv: str):
+            super().__init__(tsv)
+            self.calls = 0
+
+        def _direct_report(self, params):  # noqa: ANN001
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("dims unsupported")
+            self.last_params = params
+            return {"raw": self._tsv}
+
+    raw = _tsv(
+        "Date\tCampaignId\tAdGroupId\tQuery\tMatchedKeyword\tMatchType\tImpressions\tClicks\tCost",
+        "2026-02-01\t1\t10\tкупить велосипед\tкупить велосипед\tPHRASE\t100\t10\t100",
+    )
+    ctx = FallbackCtx(raw)
+    out = hf_direct_handle(
+        "direct.hf.pressure_report",
+        ctx,
+        {
+            "date_from": "2026-02-01",
+            "date_to": "2026-02-01",
+            "clusters": [{"cluster_id": "buy", "phrases": ["купить велосипед"]}],
+            "include_breakdown": True,
+        },
+    )
+
+    assert out["status"] == "partial"
+    assert out["warnings"] == [{"code": "warning", "message": "Direct report fallback: SEARCH_QUERY_PERFORMANCE_REPORT does not support requested filters/dimensions (RuntimeError).", "details": {}}]

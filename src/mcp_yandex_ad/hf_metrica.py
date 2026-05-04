@@ -85,6 +85,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         info = ctx._metrica_get_counter(counter_id, {})  # type: ignore[attr-defined]
         # goals list best-effort
         goals = None
+        warnings: list[dict[str, Any]] = []
         try:
             goals = ctx._metrica_management_call(  # type: ignore[attr-defined]
                 resource="goals",
@@ -93,9 +94,21 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 data=None,
                 path_args={"counterId": counter_id},
             )
-        except Exception:
+        except Exception as exc:
             goals = None
-        return hf_payload(tool=tool, status="ok", result={"counter": info.get("counter", info), "goals": goals})
+            warnings.append(
+                {
+                    "code": "metrica_goals_unavailable",
+                    "message": "Goals list could not be fetched; counter summary returned without goals.",
+                    "details": {"error_type": exc.__class__.__name__, "counter_id": str(counter_id)},
+                }
+            )
+        return hf_payload(
+            tool=tool,
+            status="ok",
+            result={"counter": info.get("counter", info), "goals": goals},
+            warnings=warnings or None,
+        )
 
     if tool == "metrica.hf.report_time_series":
         counter_id = _require_counter_id(args)

@@ -426,9 +426,9 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise HFError("counter_id, date_from, date_to are required")
 
         request_id = _as_str(args.get("request_id")).strip() or None
-        max_wait_seconds = float(args.get("max_wait_seconds") or 60)
-        poll_interval_seconds = float(args.get("poll_interval_seconds") or 2)
-        max_rows = int(args.get("max_rows") or 20000)
+        max_wait_seconds = float(args["max_wait_seconds"]) if args.get("max_wait_seconds") is not None else 60
+        poll_interval_seconds = float(args["poll_interval_seconds"]) if args.get("poll_interval_seconds") is not None else 2
+        max_rows = int(args["max_rows"]) if args.get("max_rows") is not None else 20000
         cleanup = bool(args.get("cleanup") if args.get("cleanup") is not None else True)
 
         logs_source = _as_str(args.get("logs_source")).strip() or "visits"
@@ -486,12 +486,21 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             if status in {"canceled", "cancelled", "failed", "error"}:
                 raise HFError(f"Logs export status={status}. payload={info_payload}")
             if time.monotonic() - started >= max_wait_seconds:
+                pending_message = "Logs export is not ready yet. Retry the same tool call with request_id."
                 return hf_payload(
                     tool=tool,
                     status="ok",
+                    message=pending_message,
+                    warnings=[
+                        {
+                            "code": "logs_export_pending",
+                            "message": pending_message,
+                            "details": {"request_id": request_id, "last_status": status or "unknown", "counter_id": str(counter_id)},
+                        }
+                    ],
                     result={
                         "status": "pending",
-                        "note": "Logs export is not ready yet. Retry the same tool call with request_id.",
+                        "note": pending_message,
                         "request_id": request_id,
                         "last_status": status or "unknown",
                         "counter_id": str(counter_id),
@@ -661,14 +670,26 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             {"campaign_id": cid, "visits": visits}
             for cid, visits in sorted(by_campaign.items(), key=lambda x: (-x[1], x[0]))
         ]
+        fallback_note = "Direct click id report was not available; used Metrica lastDirectClickBanner -> Direct ads.get mapping."
 
         return hf_payload(
             tool=tool,
             status="ok",
+            message=fallback_note,
+            warnings=[
+                {
+                    "code": "join_mode_fallback",
+                    "message": fallback_note,
+                    "details": {
+                        "join_mode": "banner_id",
+                        **({"click_index_error": click_index_error} if click_index_error else {}),
+                    },
+                }
+            ],
             result={
                 "status": "ok",
                 "join_mode": "banner_id",
-                "note": "Direct click id report was not available; used Metrica lastDirectClickBanner → Direct ads.get mapping.",
+                "note": fallback_note,
                 "request_id": request_id,
                 "logs": {"status": status, **logs_meta, "skipped_no_banner": skipped_no_banner},
                 "direct": {

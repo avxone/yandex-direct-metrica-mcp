@@ -1,0 +1,3016 @@
+[
+  {
+    "name": "accounts.list",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "properties": {
+            "accounts": {
+              "items": {
+                "properties": {
+                  "direct_client_login": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "metrica_counter_ids": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "count": {
+              "type": "integer"
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "path",
+            "count",
+            "accounts"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "dashboard.generate_option1",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "result": {
+          "properties": {
+            "accounts": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "coverage": {
+              "type": "object"
+            },
+            "data": {
+              "type": "object"
+            },
+            "files": {
+              "properties": {
+                "html_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "json_path": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "type": "object"
+            },
+            "html": {
+              "type": "string"
+            },
+            "meta": {
+              "type": "object"
+            },
+            "summary": {
+              "type": "object"
+            },
+            "warnings": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_adgroups",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "adgroups": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "adgroups"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_ads",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "ads": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "ads"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_campaigns",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "campaigns": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "campaigns"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.find_keywords",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "keywords": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "keywords"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.get_bids_summary",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "avg": {
+              "type": "number"
+            },
+            "campaign_id": {
+              "type": "integer"
+            },
+            "count": {
+              "type": "integer"
+            },
+            "max": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "campaign_id",
+            "count"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.get_campaign_summary",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "campaign_id": {
+              "type": "integer"
+            },
+            "counts": {
+              "properties": {
+                "adgroups": {
+                  "type": "integer"
+                },
+                "ads": {
+                  "type": "integer"
+                },
+                "keywords": {
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "campaign_id",
+            "counts"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.pressure_report",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "by_cluster": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "by_cluster_region_device": {
+              "items": {
+                "type": "object"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
+            "coverage_notes": {
+              "type": "object"
+            },
+            "date_from": {
+              "type": "string"
+            },
+            "date_to": {
+              "type": "string"
+            },
+            "grain": {
+              "type": "string"
+            },
+            "placement": {
+              "type": "string"
+            },
+            "raw_refs": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "date_from",
+            "date_to",
+            "grain",
+            "placement",
+            "by_cluster",
+            "coverage_notes",
+            "raw_refs"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_adgroups",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "columns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_ads",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "columns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_keywords",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "columns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_performance",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "columns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "direct.hf.report_search_phrases",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "columns": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join.hf.direct_vs_metrica_by_utm",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "campaign_id": {
+              "type": "integer"
+            },
+            "counter_id": {
+              "type": "string"
+            },
+            "joined_by_date": {
+              "items": {
+                "properties": {
+                  "clicks": {
+                    "type": "number"
+                  },
+                  "cost": {
+                    "type": "number"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "impressions": {
+                    "type": "number"
+                  },
+                  "visits": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "raw": {
+              "type": "object"
+            },
+            "totals": {
+              "type": "object"
+            },
+            "utm_campaign": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "utm_campaign",
+            "campaign_id",
+            "counter_id",
+            "joined_by_date",
+            "totals",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.counter_summary",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter": {
+              "type": "object"
+            },
+            "goals": {
+              "type": [
+                "object",
+                "array",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "counter"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.list_accessible_counters",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counters": {
+              "items": {
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "counters"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_devices",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter_id": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "counter_id",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_geo",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter_id": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "counter_id",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_landing_pages",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter_id": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "counter_id",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_time_series",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter_id": {
+              "type": "string"
+            },
+            "data": {
+              "items": {
+                "properties": {
+                  "metrics": {
+                    "items": {
+                      "type": "number"
+                    },
+                    "type": "array"
+                  },
+                  "period": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "granularity": {
+              "type": "string"
+            },
+            "metric": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "counter_id",
+            "metric",
+            "granularity",
+            "data",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "metrica.hf.report_utm_campaigns",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "choices": {
+          "items": {
+            "properties": {
+              "context": {
+                "type": "object"
+              },
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "type",
+              "context"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "error": {
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "details": {
+              "type": "object"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "type",
+            "retryable"
+          ],
+          "type": "object"
+        },
+        "message": {
+          "type": "string"
+        },
+        "meta": {
+          "properties": {
+            "envelope_version": {
+              "type": "string"
+            },
+            "request_id": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "tool_version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "envelope_version",
+            "request_id",
+            "timestamp"
+          ],
+          "type": "object"
+        },
+        "preview": {
+          "type": "object"
+        },
+        "result": {
+          "properties": {
+            "counter_id": {
+              "type": "string"
+            },
+            "raw": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "counter_id",
+            "raw"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              },
+              "field": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "details"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tool",
+        "status",
+        "meta"
+      ],
+      "type": "object"
+    }
+  }
+]

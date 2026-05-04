@@ -1481,6 +1481,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return hf_payload(
             tool=tool,
             status=status,
+            warnings=warnings,
             result={
                 "date_from": date_from,
                 "date_to": date_to,
