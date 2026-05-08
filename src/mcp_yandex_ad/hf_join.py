@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlsplit
 from typing import Any
 
 from .hf_common import HFError, ensure_hf_enabled, hf_payload
+from .report_names import make_unique_report_name
 
 
 def _as_str(value: Any) -> str:
@@ -121,7 +122,7 @@ def _direct_campaign_performance_params(*, campaign_id: int, date_from: str, dat
             "Filter": [{"Field": "CampaignId", "Operator": "IN", "Values": [str(int(campaign_id))]}],
         },
         "FieldNames": ["Date", "CampaignId", "Impressions", "Clicks", "Cost"],
-        "ReportName": f"HF_join_direct_{campaign_id}",
+        "ReportName": make_unique_report_name(f"HF_join_direct_{campaign_id}"),
         "ReportType": "CAMPAIGN_PERFORMANCE_REPORT",
         "DateRangeType": "CUSTOM_DATE",
         "Format": "TSV",
@@ -551,7 +552,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                     date_to=str(date_to),
                     report_type=direct_report_type,
                     field_names=[str(x) for x in direct_field_names],
-                    report_name=f"HF_join_clickid_{date_from}_{date_to}",
+                    report_name=make_unique_report_name(f"HF_join_clickid_{date_from}_{date_to}"),
                 )
             )
             click_index, direct_meta = _build_clickid_index(

@@ -22,6 +22,7 @@ from .accounts import AccountProfile, load_accounts_registry
 from .accounts_store import delete_account, read_accounts_file, upsert_account
 from .cache import TTLCache
 from .auth import TokenManager
+from .campaign_diagnostics import detect_special_campaign
 from .clients import YandexClients, build_clients, build_direct_client
 from .config import AppConfig, load_config
 from .errors import MissingClientError, NotSupportedError, ToolNotAvailableError, WriteGuardError, normalize_error
@@ -33,9 +34,10 @@ from .hf_wordstat import handle as hf_wordstat_handle
 from .hf_audience import handle as hf_audience_handle
 from .plugins import try_handle as plugins_try_handle
 from .ratelimit import RateLimiter
+from .report_names import make_unique_report_name
 from .retry import with_retries
 from .tools import tool_definitions
-from .wordstat_client import WordstatClient
+from .wordstat_client import WordstatClient, WordstatError
 from .audience_client import AudienceClient
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
@@ -2653,6 +2655,12 @@ def _resolve_account_overrides(
     accounts = _refresh_accounts_registry(ctx)
     profile = (accounts or {}).get(account_id)
     if profile is None:
+        if tool.startswith("direct.") and not _is_write_tool(tool, args):
+            resolved = dict(args)
+            fallback_login = _normalize_direct_client_login(resolved.get("direct_client_login")) or account_id
+            resolved["direct_client_login"] = fallback_login
+            resolved.pop("account_id", None)
+            return resolved
         available = ", ".join(sorted((accounts or {}).keys()))
         raise ValueError(f"Unknown account_id: {account_id}. Available: {available or '<none>'}")
 
@@ -2663,10 +2671,11 @@ def _resolve_account_overrides(
         explicit_login = _normalize_direct_client_login(resolved.get("direct_client_login"))
         profile_login = _normalize_direct_client_login(profile.direct_client_login)
         if explicit_login and profile_login and explicit_login != profile_login:
-            raise ValueError(
-                f"direct_client_login={explicit_login} conflicts with account_id={account_id} "
-                f"(direct_client_login={profile_login})"
-            )
+            if _is_write_tool(tool, args):
+                raise ValueError(
+                    f"direct_client_login={explicit_login} conflicts with account_id={account_id} "
+                    f"(direct_client_login={profile_login})"
+                )
         if not explicit_login and profile_login:
             resolved["direct_client_login"] = profile_login
 
@@ -4271,7 +4280,7 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
     # Important: report names must be unique per Direct client login in multi-account runs
     # to avoid collisions/cache reuse on the Direct Reports API side.
     report_identity = _dashboard_safe_slug(str(args.get("account_id") or args.get("direct_client_login") or "default"))
-    direct_report_name = f"dashboard_option1__{report_identity}__{fetch_from_s}_{fetch_to_s}"[:255]
+    direct_report_name = make_unique_report_name(f"dashboard_option1__{report_identity}__{fetch_from_s}_{fetch_to_s}")
     direct_report_args: dict[str, Any] = {
         "report_type": "CAMPAIGN_PERFORMANCE_REPORT",
         "report_name": direct_report_name,
@@ -5741,9 +5750,19 @@ def _build_report_params(args: dict[str, Any]) -> dict[str, Any]:
         suffix = ""
         if date_from and date_to:
             suffix = f"_{date_from}_{date_to}"
-        params["ReportName"] = f"MCP_{report_type}{suffix}"[:255]
+        params["ReportName"] = make_unique_report_name(f"MCP_{report_type}{suffix}")
     if args.get("report_type") is not None:
         params["ReportType"] = args.get("report_type")
+
+    report_type_value = str(params.get("ReportType") or "").strip().upper()
+    field_names = params.get("FieldNames")
+    if report_type_value == "CUSTOM_REPORT" and isinstance(field_names, list):
+        normalized_fields = {str(field).strip() for field in field_names if str(field).strip()}
+        if "Keyword" in normalized_fields:
+            raise ValueError(
+                "FieldNames.Keyword is not valid for CUSTOM_REPORT. "
+                "Use Criterion instead (and optionally CriterionId, CriterionType)."
+            )
 
     # Safe defaults: reduce UX friction for common report calls.
     # Direct report API expects these parameters even when they are "obvious".
@@ -5932,6 +5951,8 @@ def _build_wordstat_top_requests_payload(args: dict[str, Any]) -> dict[str, Any]
             raise ValueError("phrases must contain at most 128 items")
         payload["phrases"] = resolved
 
+    if "phrase" in payload and "phrases" in payload:
+        raise ValueError("Provide exactly one of phrase or phrases")
     if "phrase" not in payload and "phrases" not in payload:
         raise ValueError("phrase or phrases is required")
 
@@ -5999,6 +6020,33 @@ def _build_wordstat_regions_payload(args: dict[str, Any]) -> dict[str, Any]:
     if devices:
         payload["devices"] = devices
     return payload
+
+
+def _wordstat_top_requests_with_fallback(ctx: AppContext, payload: dict[str, Any]) -> dict[str, Any]:
+    phrases = payload.get("phrases")
+    if not isinstance(phrases, list) or len(phrases) <= 1:
+        return _wordstat_post(ctx, "topRequests", payload)
+
+    try:
+        return _wordstat_post(ctx, "topRequests", payload)
+    except Exception as exc:
+        if not isinstance(exc, WordstatError) and "Unexpected Wordstat response type" not in str(exc):
+            raise
+        per_phrase: list[dict[str, Any]] = []
+        for phrase in phrases:
+            single_payload = dict(payload)
+            single_payload.pop("phrases", None)
+            single_payload["phrase"] = str(phrase)
+            resp = _wordstat_post(ctx, "topRequests", single_payload)
+            per_phrase.append({"phrase": str(phrase), "topRequests": resp.get("topRequests", []), "raw": resp})
+        return {
+            "topRequestsByPhrase": per_phrase,
+            "fallback": {
+                "mode": "single_phrase_loop",
+                "reason": str(exc),
+                "requested_phrases": [str(phrase) for phrase in phrases],
+            },
+        }
 
 
 def _build_items_params(args: dict[str, Any], *, key: str) -> dict[str, Any]:
@@ -6756,7 +6804,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
     if name == "wordstat.top_requests":
         try:
             payload = _build_wordstat_top_requests_payload(args)
-            data = _wordstat_post(ctx, "topRequests", payload)
+            data = _wordstat_top_requests_with_fallback(ctx, payload)
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)
@@ -6781,6 +6829,38 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         try:
             params = _build_campaigns_params(args)
             data = _direct_get(ctx, "campaigns", params, direct_client_login=args.get("direct_client_login"))
+            selection = params.get("SelectionCriteria") or {}
+            campaign_ids = selection.get("Ids") if isinstance(selection, dict) else None
+            campaigns = ((data.get("result") or {}).get("Campaigns")) if isinstance(data, dict) else None
+            if isinstance(campaign_ids, list) and campaign_ids and isinstance(campaigns, list) and not campaigns:
+                scoped = _RequestScopedContext(ctx, args.get("direct_client_login"))
+                special_candidates: list[dict[str, Any]] = []
+                for campaign_id in campaign_ids[:20]:
+                    try:
+                        special = detect_special_campaign(scoped, campaign_id=int(campaign_id), counts={"adgroups": 0, "ads": 0, "keywords": 0})
+                    except Exception:
+                        continue
+                    if special is None:
+                        continue
+                    special_candidates.append(
+                        {
+                            "Id": int(campaign_id),
+                            "CampaignType": special["campaign_type"],
+                            "CountsApplicable": special["counts_applicable"],
+                            "PerformanceSignal": special["performance_signal"],
+                            "Note": special["note"],
+                        }
+                    )
+                if special_candidates:
+                    data = dict(data)
+                    result = dict(data.get("result") or {})
+                    result["Campaigns"] = special_candidates
+                    warnings = list(result.get("Warnings") or [])
+                    warnings.append(
+                        "campaigns.get returned no rows; substituted special campaign candidates based on live performance and zero structure counts."
+                    )
+                    result["Warnings"] = warnings
+                    data["result"] = result
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)

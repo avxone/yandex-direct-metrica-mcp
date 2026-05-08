@@ -8,6 +8,7 @@ import json
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from .campaign_diagnostics import detect_special_campaign
 from .hf_common import (
     HFError,
     ResolveResult,
@@ -21,6 +22,7 @@ from .hf_common import (
     today_plus,
 )
 from .hf_join import _extract_raw_and_columns, _parse_delimited
+from .report_names import make_unique_report_name
 
 
 def _b64encode(obj: dict[str, Any]) -> str:
@@ -143,20 +145,50 @@ def _keywords_action_preview(action: str, ids: list[int]) -> dict[str, Any]:
     return {"resource": "keywords", "method": action, "params": {"SelectionCriteria": {"Ids": ids}}}
 
 
+def _paged_direct_items(
+    ctx: Any,
+    resource: str,
+    params: dict[str, Any],
+    *,
+    result_key: str,
+    max_items: int | None = None,
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    page = dict(params.get("Page") or {})
+    page_limit = int(page.get("Limit") or 1000)
+    page_limit = max(1, min(1000, page_limit))
+    offset = int(page.get("Offset") or 0)
+
+    while True:
+        req = dict(params)
+        req["Page"] = {"Limit": page_limit, "Offset": offset}
+        batch = ctx._direct_get(resource, req).get("result", {}).get(result_key, [])  # type: ignore[attr-defined]
+        batch_items = [item for item in batch if isinstance(item, dict)]
+        out.extend(batch_items)
+        if max_items is not None and len(out) >= max_items:
+            return out[:max_items]
+        if len(batch_items) < page_limit:
+            break
+        offset += page_limit
+
+    return out
+
+
 def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     ensure_hf_enabled(ctx.config)
 
     # Discovery
     if tool == "direct.hf.find_campaigns":
-        res = ctx._direct_get(  # type: ignore[attr-defined]
+        campaigns = _paged_direct_items(
+            ctx,
             "campaigns",
             {
                 "SelectionCriteria": {},
                 "FieldNames": ["Id", "Name", "Type", "Status", "State"],
                 "Page": {"Limit": 1000, "Offset": 0},
             },
+            result_key="Campaigns",
         )
-        campaigns = [c for c in res.get("result", {}).get("Campaigns", []) if isinstance(c, dict)]
         name_contains = args.get("name_contains")
         if name_contains:
             campaigns = [
@@ -186,15 +218,16 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             campaign_id = rr.ids[0]
         if campaign_id is None:
             raise HFError("campaign_id or campaign_name is required")
-        res = ctx._direct_get(  # type: ignore[attr-defined]
+        groups = _paged_direct_items(
+            ctx,
             "adgroups",
             {
                 "SelectionCriteria": {"CampaignIds": [int(campaign_id)]},
                 "FieldNames": ["Id", "Name", "CampaignId", "Status", "Type", "RegionIds"],
                 "Page": {"Limit": 1000, "Offset": 0},
             },
+            result_key="AdGroups",
         )
-        groups = [g for g in res.get("result", {}).get("AdGroups", []) if isinstance(g, dict)]
         name_contains = args.get("name_contains")
         if name_contains:
             groups = [
@@ -202,6 +235,12 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 for g in groups
                 if isinstance(g.get("Name"), str) and name_contains.lower() in g["Name"].lower()
             ]
+        if args.get("statuses"):
+            statuses = set(args["statuses"])
+            groups = [g for g in groups if g.get("Status") in statuses]
+        if args.get("types"):
+            types = set(args["types"])
+            groups = [g for g in groups if g.get("Type") in types]
         groups = groups[: int(args.get("limit") or 50)]
         return hf_payload(tool=tool, status="ok", result={"adgroups": groups})
 
@@ -227,7 +266,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         if adgroup_id is not None:
             selection["AdGroupIds"] = [int(adgroup_id)]
 
-        res = ctx._direct_get(  # type: ignore[attr-defined]
+        ads = _paged_direct_items(
+            ctx,
             "ads",
             {
                 "SelectionCriteria": selection,
@@ -235,11 +275,17 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 "TextAdFieldNames": ["Title", "Title2", "Href"],
                 "Page": {"Limit": 1000, "Offset": 0},
             },
+            result_key="Ads",
         )
-        ads = [a for a in res.get("result", {}).get("Ads", []) if isinstance(a, dict)]
         if args.get("statuses"):
             statuses = set(args["statuses"])
             ads = [a for a in ads if a.get("Status") in statuses]
+        if args.get("states"):
+            states = set(args["states"])
+            ads = [a for a in ads if a.get("State") in states]
+        if args.get("types"):
+            types = set(args["types"])
+            ads = [a for a in ads if a.get("Type") in types]
         title_contains = args.get("title_contains")
         href_contains = args.get("href_contains")
         if title_contains:
@@ -283,15 +329,16 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         if adgroup_id is not None:
             selection["AdGroupIds"] = [int(adgroup_id)]
 
-        res = ctx._direct_get(  # type: ignore[attr-defined]
+        kws = _paged_direct_items(
+            ctx,
             "keywords",
             {
                 "SelectionCriteria": selection,
                 "FieldNames": ["Id", "CampaignId", "AdGroupId", "Keyword", "State", "Status"],
                 "Page": {"Limit": 1000, "Offset": 0},
             },
+            result_key="Keywords",
         )
-        kws = [k for k in res.get("result", {}).get("Keywords", []) if isinstance(k, dict)]
         contains = args.get("contains")
         if contains:
             kws = [
@@ -299,6 +346,12 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 for k in kws
                 if isinstance(k.get("Keyword"), str) and contains.lower() in k["Keyword"].lower()
             ]
+        if args.get("statuses"):
+            statuses = set(args["statuses"])
+            kws = [k for k in kws if k.get("Status") in statuses]
+        if args.get("states"):
+            states = set(args["states"])
+            kws = [k for k in kws if k.get("State") in states]
         kws = kws[: int(args.get("limit") or 50)]
         return hf_payload(tool=tool, status="ok", result={"keywords": kws})
 
@@ -310,23 +363,49 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         if not ids:
             raise HFError("campaign not found")
         cid = ids[0]
-        adgroups = ctx._direct_get(  # type: ignore[attr-defined]
+        adgroups = _paged_direct_items(
+            ctx,
             "adgroups",
             {"SelectionCriteria": {"CampaignIds": [cid]}, "FieldNames": ["Id"], "Page": {"Limit": 1000, "Offset": 0}},
-        ).get("result", {}).get("AdGroups", [])
-        ads = ctx._direct_get(  # type: ignore[attr-defined]
+            result_key="AdGroups",
+        )
+        ads = _paged_direct_items(
+            ctx,
             "ads",
             {"SelectionCriteria": {"CampaignIds": [cid]}, "FieldNames": ["Id"], "Page": {"Limit": 1000, "Offset": 0}},
-        ).get("result", {}).get("Ads", [])
-        kws = ctx._direct_get(  # type: ignore[attr-defined]
+            result_key="Ads",
+        )
+        kws = _paged_direct_items(
+            ctx,
             "keywords",
             {"SelectionCriteria": {"CampaignIds": [cid]}, "FieldNames": ["Id"], "Page": {"Limit": 1000, "Offset": 0}},
-        ).get("result", {}).get("Keywords", [])
-        return hf_payload(
-            tool=tool,
-            status="ok",
-            result={"campaign_id": cid, "counts": {"adgroups": len(adgroups), "ads": len(ads), "keywords": len(kws)}},
+            result_key="Keywords",
         )
+        counts = {"adgroups": len(adgroups), "ads": len(ads), "keywords": len(kws)}
+        special = detect_special_campaign(ctx, campaign_id=cid, counts=counts)
+        warnings: list[dict[str, Any]] | None = None
+        result: dict[str, Any] = {"campaign_id": cid, "counts": counts}
+        if special is not None:
+            warnings = [
+                {
+                    "code": "campaign_type_special_no_structure",
+                    "message": special["note"],
+                    "details": {
+                        "campaign_id": cid,
+                        "campaign_type": special["campaign_type"],
+                        "performance_signal": special["performance_signal"],
+                    },
+                }
+            ]
+            result.update(
+                {
+                    "campaign_type": special["campaign_type"],
+                    "campaign_type_hint": special["note"],
+                    "counts_applicable": special["counts_applicable"],
+                    "performance_signal": special["performance_signal"],
+                }
+            )
+        return hf_payload(tool=tool, status="ok", warnings=warnings, result=result)
 
     if tool == "direct.hf.get_campaign_assets":
         rr = _resolve_campaigns(ctx, ids=[args["campaign_id"]] if args.get("campaign_id") else None, name=args.get("campaign_name"))
@@ -1261,7 +1340,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         params = {
             "SelectionCriteria": selection,
             "FieldNames": field_names,
-            "ReportName": f"HF_{tool}_{date_from}_{date_to}"[:255],
+            "ReportName": make_unique_report_name(f"HF_{tool}_{date_from}_{date_to}"),
             "ReportType": "SEARCH_QUERY_PERFORMANCE_REPORT",
             "DateRangeType": "CUSTOM_DATE",
             "Format": "TSV",
@@ -1511,8 +1590,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             fields = ["Date", "CampaignId", "Impressions", "Clicks", "Cost"]
             report_type = "CAMPAIGN_PERFORMANCE_REPORT"
         elif tool == "direct.hf.report_keywords":
-            fields = ["Date", "CampaignId", "AdGroupId", "KeywordId", "Impressions", "Clicks", "Cost"]
-            report_type = "CRITERIA_PERFORMANCE_REPORT"
+            fields = ["Date", "CampaignId", "AdGroupId", "Criterion", "CriterionId", "CriterionType", "Impressions", "Clicks", "Cost", "Bounces"]
+            report_type = "CUSTOM_REPORT"
         elif tool == "direct.hf.report_ads":
             fields = ["Date", "CampaignId", "AdGroupId", "AdId", "Impressions", "Clicks", "Cost"]
             report_type = "AD_PERFORMANCE_REPORT"
@@ -1543,7 +1622,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         params = {
             "SelectionCriteria": selection,
             "FieldNames": fields,
-            "ReportName": f"HF_{tool}_{date_from}_{date_to}",
+            "ReportName": make_unique_report_name(f"HF_{tool}_{date_from}_{date_to}"),
             "ReportType": report_type,
             "DateRangeType": "CUSTOM_DATE",
             "Format": "TSV",
@@ -1778,7 +1857,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             params = {
                 "SelectionCriteria": selection,
                 "FieldNames": fields,
-                "ReportName": f"HF_direct.hf.bid_sweep_analyze_{date_from}_{date_to}",
+                "ReportName": make_unique_report_name(f"HF_direct.hf.bid_sweep_analyze_{date_from}_{date_to}"),
                 "ReportType": "CRITERIA_PERFORMANCE_REPORT",
                 "DateRangeType": "CUSTOM_DATE",
                 "Format": "TSV",

@@ -64,6 +64,8 @@ def test_tool_contracts_mark_read_only_intent() -> None:
 
     assert tools["accounts.list"].annotations is not None
     assert tools["accounts.list"].annotations.readOnlyHint is True
+    assert tools["dashboard.generate_option1"].annotations is not None
+    assert tools["dashboard.generate_option1"].annotations.readOnlyHint is False
     assert tools["direct.hf.find_campaigns"].annotations is not None
     assert tools["direct.hf.find_campaigns"].annotations.readOnlyHint is True
     assert tools["join.hf.direct_vs_metrica_by_utm"].annotations is not None

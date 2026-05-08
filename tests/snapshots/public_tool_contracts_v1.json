@@ -63,7 +63,7 @@
     "name": "dashboard.generate_option1",
     "annotations": {
       "idempotentHint": true,
-      "readOnlyHint": true
+      "readOnlyHint": false
     },
     "outputSchema": {
       "properties": {

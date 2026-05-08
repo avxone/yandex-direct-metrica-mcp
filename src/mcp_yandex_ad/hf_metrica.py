@@ -8,6 +8,64 @@ from typing import Any
 from .hf_common import HFError, ensure_hf_enabled, ensure_hf_write_enabled, hf_payload, should_apply
 
 
+def _stats_limit(args: dict[str, Any]) -> int | None:
+    if args.get("limit") is None:
+        return None
+    limit = int(args.get("limit") or 0)
+    return max(1, limit)
+
+
+def _fetch_stats_with_pagination(
+    ctx: Any,
+    params: dict[str, Any],
+    *,
+    explicit_limit: int | None,
+    page_size: int = 1000,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    warnings: list[dict[str, Any]] = []
+    first_params = dict(params)
+    first_params["limit"] = explicit_limit or page_size
+    first = ctx._metrica_get_stats(first_params)  # type: ignore[attr-defined]
+    if explicit_limit is not None:
+        total_rows = int(first.get("total_rows") or 0)
+        if total_rows > explicit_limit:
+            warnings.append(
+                {
+                    "code": "metrica_rows_truncated",
+                    "message": "Response was truncated by limit; pass a larger limit or omit it for auto-pagination.",
+                    "details": {"limit": explicit_limit, "total_rows": total_rows},
+                }
+            )
+        return first, warnings
+
+    rows = first.get("data")
+    if not isinstance(rows, list):
+        return first, warnings
+
+    total_rows = int(first.get("total_rows") or len(rows))
+    if total_rows <= len(rows):
+        return first, warnings
+
+    merged = dict(first)
+    all_rows = list(rows)
+    offset = len(rows)
+    while offset < total_rows:
+        page_params = dict(params)
+        page_params["limit"] = page_size
+        page_params["offset"] = offset
+        page = ctx._metrica_get_stats(page_params)  # type: ignore[attr-defined]
+        chunk = page.get("data")
+        if not isinstance(chunk, list) or not chunk:
+            break
+        all_rows.extend(chunk)
+        offset += len(chunk)
+        if len(chunk) < page_size:
+            break
+
+    merged["data"] = all_rows
+    return merged, warnings
+
+
 def _require_counter_id(args: dict[str, Any]) -> str:
     cid = args.get("counter_id")
     if not cid:
@@ -141,8 +199,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         date_to = args.get("date_to")
         if not date_from or not date_to:
             raise HFError("date_from and date_to are required")
-        limit = int(args.get("limit") or 50)
-        raw = ctx._metrica_get_stats(  # type: ignore[attr-defined]
+        raw, warnings = _fetch_stats_with_pagination(
+            ctx,
             {
                 "ids": counter_id,
                 "metrics": "ym:s:visits,ym:s:avgVisitDurationSeconds",
@@ -150,10 +208,10 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 "date1": date_from,
                 "date2": date_to,
                 "sort": "-ym:s:visits",
-                "limit": limit,
-            }
+            },
+            explicit_limit=_stats_limit(args),
         )
-        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw})
+        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw}, warnings=warnings or None)
 
     if tool == "metrica.hf.report_utm_campaigns":
         counter_id = _require_counter_id(args)
@@ -161,8 +219,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         date_to = args.get("date_to")
         if not date_from or not date_to:
             raise HFError("date_from and date_to are required")
-        limit = int(args.get("limit") or 50)
-        raw = ctx._metrica_get_stats(  # type: ignore[attr-defined]
+        raw, warnings = _fetch_stats_with_pagination(
+            ctx,
             {
                 "ids": counter_id,
                 "metrics": "ym:s:visits,ym:s:avgVisitDurationSeconds",
@@ -170,10 +228,10 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 "date1": date_from,
                 "date2": date_to,
                 "sort": "-ym:s:visits",
-                "limit": limit,
-            }
+            },
+            explicit_limit=_stats_limit(args),
         )
-        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw})
+        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw}, warnings=warnings or None)
 
     if tool == "metrica.hf.report_geo":
         counter_id = _require_counter_id(args)
@@ -183,8 +241,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise HFError("date_from and date_to are required")
         level = (args.get("level") or "country").lower()
         dim = "ym:s:geoCountry" if level == "country" else "ym:s:geoCity"
-        limit = int(args.get("limit") or 50)
-        raw = ctx._metrica_get_stats(  # type: ignore[attr-defined]
+        raw, warnings = _fetch_stats_with_pagination(
+            ctx,
             {
                 "ids": counter_id,
                 "metrics": "ym:s:visits,ym:s:avgVisitDurationSeconds",
@@ -192,10 +250,10 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 "date1": date_from,
                 "date2": date_to,
                 "sort": "-ym:s:visits",
-                "limit": limit,
-            }
+            },
+            explicit_limit=_stats_limit(args),
         )
-        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw})
+        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw}, warnings=warnings or None)
 
     if tool == "metrica.hf.report_devices":
         counter_id = _require_counter_id(args)
@@ -203,8 +261,8 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         date_to = args.get("date_to")
         if not date_from or not date_to:
             raise HFError("date_from and date_to are required")
-        limit = int(args.get("limit") or 50)
-        raw = ctx._metrica_get_stats(  # type: ignore[attr-defined]
+        raw, warnings = _fetch_stats_with_pagination(
+            ctx,
             {
                 "ids": counter_id,
                 "metrics": "ym:s:visits,ym:s:avgVisitDurationSeconds",
@@ -212,10 +270,10 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 "date1": date_from,
                 "date2": date_to,
                 "sort": "-ym:s:visits",
-                "limit": limit,
-            }
+            },
+            explicit_limit=_stats_limit(args),
         )
-        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw})
+        return hf_payload(tool=tool, status="ok", result={"counter_id": counter_id, "raw": raw}, warnings=warnings or None)
 
     if tool == "metrica.hf.logs_export_preset":
         counter_id = _require_counter_id(args)

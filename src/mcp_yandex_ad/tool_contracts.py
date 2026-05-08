@@ -253,6 +253,10 @@ def _default_read_annotations() -> ToolAnnotations:
     return ToolAnnotations(readOnlyHint=True, idempotentHint=True)
 
 
+def _artifact_write_annotations() -> ToolAnnotations:
+    return ToolAnnotations(readOnlyHint=False, idempotentHint=True)
+
+
 def prioritized_contract_tools() -> set[str]:
     return set(tool_contracts().keys())
 
@@ -272,7 +276,7 @@ def tool_contracts() -> dict[str, dict[str, Any]]:
         },
         "dashboard.generate_option1": {
             "outputSchema": _dashboard_schema(),
-            "annotations": _default_read_annotations(),
+            "annotations": _artifact_write_annotations(),
         },
         "direct.hf.get_campaign_summary": {
             "outputSchema": _hf_envelope_schema(result_schema=_campaign_counts_schema()),

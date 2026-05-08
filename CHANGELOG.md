@@ -3,6 +3,12 @@
 All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
+
+## 2.0.10 - 2026-05-08
+- Contracts: corrected `dashboard.generate_option1` annotations so it is no longer marked read-only when `output_dir` writes local HTML/JSON artifacts.
+- Docs: added detailed handoff documents for `Marketing2025` pipeline fixes and `yandex.ad` MCP follow-up work, plus session notes linking the execution tracks and release-prep follow-up.
+- Docs: added a focused contract update note for `Marketing2025` consumers covering special-campaign diagnostics, Metrica truncation warnings, Wordstat batch fallback behavior, `direct.report` / `direct.hf.report_keywords` compatibility notes, and read-only Direct login override semantics.
+- MCP review fixes (2026-05-07): made generated Direct report names unique across HF/low-level helpers, fixed `direct.hf.report_keywords` to use a valid `CUSTOM_REPORT` field set, added actionable `CUSTOM_REPORT` validation for `Keyword` vs `Criterion`, auto-paginated `metrica.hf.report_*` stats responses by default, added Wordstat batch fallback for `wordstat.top_requests`, surfaced special no-structure campaign warnings in `direct.hf.get_campaign_summary`, allowed read-only Direct agency login overrides, and paginated/filter-corrected HF discovery helpers (`find_ads` states, large counts over 1000 rows).
 - Path D: added an internal app-safe payload helper seam plus RFC-0003 and tests, without introducing MCP Apps runtime or changing the current MCP surface.
 - Path C: added an internal static bundle manifest module and tests for `marketing2025.analyst_pipeline` without expanding the public/runtime MCP tool surface.
 - Path A: surfaced top-level canonical warnings/messages for `join.hf.direct_vs_metrica_by_yclid` pending/fallback branches, added `metrica.hf.counter_summary` warnings for best-effort goals failures, and fixed explicit `max_wait_seconds=0` handling for immediate pending returns.
