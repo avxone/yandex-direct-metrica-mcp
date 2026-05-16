@@ -155,7 +155,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         raw = ctx._metrica_get_stats({
             "ids": counter_id,
             "metrics": "ym:s:visits,ym:s:users",
-            "dimensions": f"ym:s:date,ym:s:cohort{granularity}Number",
+            "dimensions": f"ym:s:date,ym:s:cohort{granularity.capitalize()}Number",
             "date1": date_from,
             "date2": date_to,
             "limit": 100000,
