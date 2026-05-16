@@ -2408,6 +2408,205 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 },
             },
         ),
+        # ──────────────────────────────────────────────────────
+        # CDP Ingestion (загрузка заказов/контактов в Метрику)
+        # ──────────────────────────────────────────────────────
+        Tool(
+            name="metrica.cdp.upload_simple_orders",
+            description="CDP: upload simple orders (ClientID, OrderID, Status, Revenue, Cost). Dry-run aware.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "rows"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "rows": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "List of order dicts with keys: client_id, order_id, status, revenue, cost, create_date, update_date.",
+                    },
+                    "auto_create_statuses": {"type": "boolean", "description": "Auto-create missing statuses (default: true)."},
+                    "apply": {"type": "boolean", "description": "Set true to execute; false (default) for dry-run preview."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.upload_contacts",
+            description="CDP: upload contacts (email/phone → MD5-hashed). Dry-run aware.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "rows"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "rows": {
+                        "type": "array",
+                        "items": {"type": "object"},
+                        "description": "List of contact dicts with keys: client_id, email, phone.",
+                    },
+                    "apply": {"type": "boolean", "description": "Set true to execute; false (default) for dry-run preview."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.get_uploading_status",
+            description="CDP: check status of a previous upload.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "upload_id"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "upload_id": {"type": "string", "description": "Upload ID from upload_simple_orders / upload_contacts."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.get_order_statuses",
+            description="CDP: list all order statuses for a counter.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.create_order_status",
+            description="CDP: create a new order status. Dry-run aware.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "name"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "name": {"type": "string", "description": "Status name."},
+                    "is_closed": {"type": "boolean", "description": "Final status (completed/cancelled)."},
+                    "apply": {"type": "boolean", "description": "Set true to execute; false (default) for dry-run preview."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.get_attributes",
+            description="CDP: list all user attributes for a counter.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.cdp.create_attribute",
+            description="CDP: create a user attribute. Dry-run aware.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "name"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "name": {"type": "string", "description": "Attribute name."},
+                    "type": {"type": "string", "description": "Attribute type: string | number | date (default: string)."},
+                    "apply": {"type": "boolean", "description": "Set true to execute; false (default) for dry-run preview."},
+                },
+            },
+        ),
+        # ──────────────────────────────────────────────────────
+        # CDP Analytics (воронки, когорты, атрибуция, revenue, ROI, аудит)
+        # ──────────────────────────────────────────────────────
+        Tool(
+            name="metrica.analytics.funnel_report",
+            description="CDP Analytics: funnel report — conversion steps (goals) → drop-offs at each step.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to", "goal_ids"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "goal_ids": {"type": "array", "items": {"type": "string"}, "description": "Ordered list of goal IDs (funnel steps)."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.cohort_report",
+            description="CDP Analytics: cohort analysis — retention by period.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "granularity": {"type": "string", "description": "week | month (default: week)."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.attribution_report",
+            description="CDP Analytics: attribution by traffic sources.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.revenue_report",
+            description="CDP Analytics: revenue report from CDP/ecommerce data.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "granularity": {"type": "string", "description": "day | week | month (default: day)."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.roi_report",
+            description="CDP Analytics: ROI/ROMI + Profit report.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "granularity": {"type": "string", "description": "day | week | month (default: day)."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.crm_match_report",
+            description="CDP Analytics: CRM match — reconcile CRM orders vs Metrica data (find discrepancies).",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                },
+            },
+        ),
+        Tool(
+            name="metrica.analytics.comprehensive_audit",
+            description="CDP Analytics: comprehensive audit — funnel + LTV + attribution in one call.",
+            inputSchema={
+                "type": "object",
+                "required": ["counter_id", "date_from", "date_to", "goal_ids"],
+                "properties": {
+                    "counter_id": {"type": "string", "description": "Metrica counter ID."},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "goal_ids": {"type": "array", "items": {"type": "string"}, "description": "Ordered list of goal IDs for funnel."},
+                },
+            },
+        ),
     ]
 
     hf = _hf_tools()
@@ -2447,6 +2646,10 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             "metrica.goals.create",
             "metrica.goals.update",
             "metrica.goals.delete",
+            "metrica.cdp.upload_simple_orders",
+            "metrica.cdp.upload_contacts",
+            "metrica.cdp.create_order_status",
+            "metrica.cdp.create_attribute",
             "audience.lookalikes.list",
             "audience.lookalikes.get",
             "auth.start",

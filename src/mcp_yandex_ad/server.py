@@ -31,6 +31,7 @@ from .hf_direct import handle as hf_direct_handle
 from .hf_direct_extra import handle as hf_direct_extra_handle
 from .hf_join import handle as hf_join_handle
 from .hf_metrica import handle as hf_metrica_handle
+from .hf_cdp import handle as hf_cdp_handle
 from .hf_wordstat import handle as hf_wordstat_handle
 from .hf_audience import handle as hf_audience_handle
 from .plugins import try_handle as plugins_try_handle
@@ -2542,6 +2543,8 @@ def _is_write_tool(name: str, args: dict[str, Any] | None = None) -> bool:
         return True
     if name.startswith("metrica.hf.") and (args or {}).get("apply"):
         return True
+    if name.startswith("metrica.cdp.") and (args or {}).get("apply"):
+        return True
     return False
 
 
@@ -2707,6 +2710,8 @@ def _resolve_account_overrides(
             "metrica.counter_info",
             "metrica.logs_export",
             "metrica.hf.",
+            "metrica.cdp.",
+            "metrica.analytics.",
             "join.hf.",
             "dashboard.",
         )
@@ -6634,7 +6639,7 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         ctx.clients.metrica_management is not None
         or ctx.clients.metrica_stats is not None
         or ctx.clients.metrica_logs is not None
-    ) and name.startswith("metrica."):
+    ) and name.startswith("metrica.") and not name.startswith(("metrica.cdp.", "metrica.analytics.")):
         return _error_response(name, MissingClientError("metrica", "Metrica client not configured."))
     if name.startswith("audience."):
         if not getattr(ctx.config, "audience_enabled", False):
@@ -6698,6 +6703,17 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         try:
             scoped = _RequestScopedContext(ctx, args.get("direct_client_login"))
             data = hf_join_handle(name, scoped, args)
+            return _ok_result(ctx, name, data)
+        except HFError as exc:
+            return _text_response(hf_payload(tool=name, status="error", message=str(exc)))
+        except Exception as exc:  # pragma: no cover
+            return _error_response(name, exc)
+
+    if name.startswith("metrica.cdp.") or name.startswith("metrica.analytics."):
+        try:
+            if ctx.clients.cdp is None:
+                return _error_response(name, MissingClientError("cdp", "CDP client not configured (access token missing?)."))
+            data = hf_cdp_handle(name, ctx, args)
             return _ok_result(ctx, name, data)
         except HFError as exc:
             return _text_response(hf_payload(tool=name, status="error", message=str(exc)))

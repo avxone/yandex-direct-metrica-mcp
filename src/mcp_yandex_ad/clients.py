@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import logging
 
+from .cdp_client import CDPClient
 from .config import AppConfig
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
@@ -31,6 +32,7 @@ class YandexClients:
     metrica_management: object | None
     metrica_stats: object | None
     metrica_logs: object | None
+    cdp: CDPClient | None
 
 
 def build_direct_client(
@@ -101,4 +103,5 @@ def build_clients(config: AppConfig, access_token: str | None) -> YandexClients:
         metrica_management=metrica_management,
         metrica_stats=metrica_stats,
         metrica_logs=metrica_logs,
+        cdp=CDPClient(access_token) if access_token else None,
     )

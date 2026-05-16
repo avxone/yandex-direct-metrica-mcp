@@ -53,6 +53,7 @@ except ImportError:  # pragma: no cover - optional dependency (tests/dev)
 
     metrica_exceptions = _MetricaExceptions()
 
+from .cdp_client import CDPError
 from .wordstat_client import WordstatError
 from .audience_client import AudienceError
 
@@ -203,6 +204,9 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
             payload["hint"] = HINT_RATE_LIMIT
         elif isinstance(http_status, int) and 500 <= http_status <= 599:
             payload["hint"] = HINT_RATE_LIMIT
+    elif isinstance(exc, CDPError):
+        payload["provider"] = "cdp"
+        payload["message"] = str(exc) or "CDP API error"
     elif isinstance(exc, ValueError):
         payload["message"] = str(exc)
         payload["hint"] = HINT_PARAMS
