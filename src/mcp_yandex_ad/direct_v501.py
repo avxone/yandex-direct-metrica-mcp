@@ -15,6 +15,19 @@ from tapi_yandex_direct.resource_mapping import RESOURCE_MAPPING_V5
 from tapi_yandex_direct.tapi_yandex_direct import YandexDirectClientAdapter
 
 
+# Extra resources not present in the v5 mapping but available in v501/v5 API.
+EXTRA_RESOURCES = {
+    "feeds": {"resource": "json/v501/feeds", "methods": ["get", "add", "delete", "update"]},
+    "smartadtargets": {"resource": "json/v501/smartadtargets", "methods": ["get", "add", "suspend", "resume", "delete"]},
+    "businesses": {"resource": "json/v501/businesses", "methods": ["get"]},
+    "creatives": {"resource": "json/v501/creatives", "methods": ["get", "add"]},
+    "vcards": {"resource": "json/v501/vcards", "methods": ["get", "add", "delete", "update"]},
+    "negativekeywordsharedsets": {"resource": "json/v5/negativekeywordsharedsets", "methods": ["get", "add", "delete", "update"]},
+    "keywordbids": {"resource": "json/v501/keywordbids", "methods": ["get", "setAuto", "deduplicate"]},
+    "retargetinglists": {"resource": "json/v5/retargetinglists", "methods": ["get", "add", "delete"]},
+}
+
+
 def _upgrade_resource_mapping(mapping: dict) -> dict:
     upgraded: dict = {}
     for key, value in mapping.items():
@@ -22,6 +35,10 @@ def _upgrade_resource_mapping(mapping: dict) -> dict:
         if isinstance(resource, str) and "json/v5/" in resource:
             resource = resource.replace("json/v5/", "json/v501/")
         upgraded[key] = {**value, "resource": resource}
+    # Add extra resources that don't exist in v5 mapping at all.
+    for key, value in EXTRA_RESOURCES.items():
+        if key not in upgraded:
+            upgraded[key] = value
     return upgraded
 
 

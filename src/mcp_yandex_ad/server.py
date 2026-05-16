@@ -23,11 +23,12 @@ from .accounts_store import delete_account, read_accounts_file, upsert_account
 from .cache import TTLCache
 from .auth import TokenManager
 from .campaign_diagnostics import detect_special_campaign
-from .clients import YandexClients, build_clients, build_direct_client
+from .clients import YandexClients, build_clients, build_direct_client, build_direct_v501_client
 from .config import AppConfig, load_config
 from .errors import MissingClientError, NotSupportedError, ToolNotAvailableError, WriteGuardError, normalize_error
 from .hf_common import HFError, hf_payload
 from .hf_direct import handle as hf_direct_handle
+from .hf_direct_extra import handle as hf_direct_extra_handle
 from .hf_join import handle as hf_join_handle
 from .hf_metrica import handle as hf_metrica_handle
 from .hf_wordstat import handle as hf_wordstat_handle
@@ -2399,6 +2400,26 @@ class AppContext:
 
     def _wordstat_post(self, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         return _wordstat_post(self, path, payload)
+
+    def _direct_v501_call(
+        self,
+        resource: str,
+        method: str,
+        params: dict[str, Any],
+        *,
+        direct_client_login: str | None = None,
+    ) -> dict[str, Any]:
+        return _direct_v501_call(self, resource, method, params, direct_client_login=direct_client_login)
+
+    def _direct_raw_post(
+        self,
+        url_path: str,
+        payload: dict[str, Any],
+        *,
+        direct_client_login: str | None = None,
+    ) -> dict[str, Any]:
+        """Make a raw POST to a Direct API endpoint by URL path (e.g. 'json/v5/video')."""
+        return _direct_raw_post(self, url_path, payload, direct_client_login=direct_client_login)
 
     def _audience_call(
         self,
@@ -5260,6 +5281,61 @@ def _select_direct_client(ctx: AppContext, direct_client_login: str | None) -> o
         return client
 
 
+def _select_v501_client(ctx: AppContext, direct_client_login: str | None) -> object | None:
+    """Select Direct v501 client based on per-request Client-Login override."""
+    override = _normalize_direct_client_login(direct_client_login)
+    default_login = _normalize_direct_client_login(ctx.config.direct_client_login)
+
+    if override is None or override == default_login:
+        if ctx.clients.v501 is not None:
+            return ctx.clients.v501
+        # fallback: build from scratch if main v501 not available
+        access_token = ctx.tokens.get_access_token()
+        return build_direct_v501_client(ctx.config, access_token) if access_token else None
+
+    with ctx.direct_clients_cache_lock:
+        cached = ctx.direct_clients_cache.get(f"v501:{override}")
+        if cached is not None:
+            return cached
+
+        access_token = ctx.tokens.get_access_token()
+        client = build_direct_v501_client(ctx.config, access_token, direct_client_login=override)
+        if client is None:
+            return None
+
+        if len(ctx.direct_clients_cache) >= ctx.direct_clients_cache_max_size:
+            _evict_one_direct_client(ctx)
+        ctx.direct_clients_cache[f"v501:{override}"] = client
+        return client
+
+
+def _direct_v501_call(
+    ctx: AppContext,
+    resource: str,
+    method: str,
+    params: dict[str, Any],
+    *,
+    direct_client_login: str | None = None,
+) -> dict[str, Any]:
+    client = _select_v501_client(ctx, direct_client_login)
+    if client is None:
+        raise RuntimeError("Direct v501 client not configured.")
+    resource_client = getattr(client, resource)()
+    body = {"method": method, "params": params}
+
+    def _call() -> dict[str, Any]:
+        ctx.direct_rate_limiter.acquire()
+        response = resource_client.post(data=body)
+        return response.data
+
+    return with_retries(
+        _call,
+        max_attempts=ctx.config.retry_max_attempts,
+        base_delay_seconds=ctx.config.retry_base_delay_seconds,
+        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    )
+
+
 @dataclass(frozen=True)
 class _RequestScopedContext:
     """Per-call wrapper that can override Direct Client-Login without mutating AppContext."""
@@ -5290,6 +5366,9 @@ class _RequestScopedContext:
         params: dict[str, Any] | None,
     ) -> dict[str, Any]:
         return self.base._metrica_logs_call(action, path_args, params)
+
+    def _direct_v501_call(self, resource: str, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        return _direct_v501_call(self.base, resource, method, params, direct_client_login=self.direct_client_login)
 
 
 def _direct_get(
@@ -5332,6 +5411,52 @@ def _direct_get(
     if cacheable:
         ctx.cache.set(cache_key, data)
     return data
+
+
+def _direct_raw_post(
+    ctx: AppContext,
+    url_path: str,
+    payload: dict[str, Any],
+    *,
+    direct_client_login: str | None = None,
+) -> dict[str, Any]:
+    """Raw POST to Direct API URL path (e.g. 'json/v5/video')."""
+    import requests as _req
+    override = _normalize_direct_client_login(direct_client_login)
+    default_login = _normalize_direct_client_login(ctx.config.direct_client_login)
+    actual_login = override or default_login
+
+    access_token = ctx.tokens.get_access_token()
+    if not access_token:
+        raise RuntimeError("No Direct access token available.")
+
+    url = f"https://api.direct.yandex.com/{url_path.lstrip('/')}"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept-Language": "ru",
+        "Content-Type": "application/json; charset=utf-8",
+    }
+    if actual_login:
+        headers["Client-Login"] = actual_login
+
+    def _call() -> dict[str, Any]:
+        ctx.direct_rate_limiter.acquire()
+        resp = _req.post(url, json=payload, headers=headers, timeout=30)
+        data = resp.json()
+        if "error" in data or resp.status_code >= 400:
+            err = data.get("error", {})
+            raise RuntimeError(
+                f"Direct API error {err.get('error_code', resp.status_code)}: "
+                f"{err.get('error_detail', err.get('error_string', resp.text[:200]))}"
+            )
+        return data
+
+    return with_retries(
+        _call,
+        max_attempts=ctx.config.retry_max_attempts,
+        base_delay_seconds=ctx.config.retry_base_delay_seconds,
+        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    )
 
 
 def _direct_call(
@@ -6548,6 +6673,11 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
     if name.startswith("direct.hf."):
         try:
             scoped = _RequestScopedContext(ctx, args.get("direct_client_login"))
+            # Try extra handlers first (video, feeds, smart-targets, etc.)
+            data = hf_direct_extra_handle(name, scoped, args)
+            if data is not None:
+                return _ok_result(ctx, name, data)
+            # Fall back to main handler
             data = hf_direct_handle(name, scoped, args)
             return _ok_result(ctx, name, data)
         except HFError as exc:

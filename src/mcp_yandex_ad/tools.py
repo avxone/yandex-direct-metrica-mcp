@@ -738,6 +738,610 @@ def _hf_tools() -> list[Tool]:
                 },
             },
         ),
+        # ═══ Extra tools (hf_direct_extra.py) ════════════════════════
+        Tool(
+            name="direct.hf.video_list",
+            description="List uploaded videos.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.video_upload",
+            description="Upload a video file to Yandex Direct.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Path to video file"},
+                    "name": {"type": "string", "description": "Video name (optional)"},
+                },
+                "required": ["file_path"],
+            },
+        ),
+        Tool(
+            name="direct.hf.feed_list",
+            description="List product feeds.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feed_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.feed_create",
+            description="Create a product feed.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Feed name"},
+                    "business_type": {"type": "string", "enum": ["RETAIL", "HOTELS", "REALTY", "AUTOMOBILES", "FLIGHTS", "OTHER"]},
+                    "url": {"type": "string", "description": "Feed YML URL"},
+                    "login": {"type": "string", "description": "HTTP auth login (optional)"},
+                    "password": {"type": "string", "description": "HTTP auth password (optional)"},
+                    "remove_utm_tags": {"type": "string", "enum": ["YES", "NO"]},
+                },
+                "required": ["name", "business_type", "url"],
+            },
+        ),
+        Tool(
+            name="direct.hf.feed_delete",
+            description="Delete feeds.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feed_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["feed_ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.feed_update",
+            description="Update a feed.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feed_id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "url": {"type": "string"},
+                    "login": {"type": "string"},
+                    "password": {"type": "string"},
+                },
+                "required": ["feed_id"],
+            },
+        ),
+        Tool(
+            name="direct.hf.smart_target_list",
+            description="List smart ad targets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                    "adgroup_ids": {"type": "array", "items": {"type": "integer"}},
+                    "target_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.smart_target_create",
+            description="Create a smart ad target.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "adgroup_id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "available_items_only": {"type": "string", "enum": ["YES", "NO"]},
+                    "conditions": {"type": "array", "items": {"type": "object"}},
+                },
+                "required": ["adgroup_id", "name"],
+            },
+        ),
+        Tool(
+            name="direct.hf.smart_target_action",
+            description="Suspend, resume, or delete smart ad targets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_ids": {"type": "array", "items": {"type": "integer"}},
+                    "action": {"type": "string", "enum": ["suspend", "resume", "delete"]},
+                },
+                "required": ["target_ids", "action"],
+            },
+        ),
+        Tool(
+            name="direct.hf.businesses_get",
+            description="Get organization profiles from Yandex Business.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.creative_add",
+            description="Create a video extension creative.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "video_id": {"type": "string"},
+                },
+                "required": ["video_id"],
+            },
+        ),
+        Tool(
+            name="direct.hf.creative_list",
+            description="List creatives.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "creative_ids": {"type": "array", "items": {"type": "integer"}},
+                    "types": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.vcard_create",
+            description="Create a VCard (business card) for a campaign.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_id": {"type": "integer"},
+                    "country": {"type": "string"},
+                    "city": {"type": "string"},
+                    "city_code": {"type": "string"},
+                    "company": {"type": "string"},
+                    "phone_number": {"type": "string"},
+                    "street": {"type": "string"},
+                    "house": {"type": "string"},
+                    "work_time": {"type": "string"},
+                    "extra_message": {"type": "string"},
+                },
+                "required": ["campaign_id", "company", "city_code", "phone_number", "city", "country"],
+            },
+        ),
+        Tool(
+            name="direct.hf.vcard_list",
+            description="List VCards.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "vcard_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.vcard_delete",
+            description="Delete VCards.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "vcard_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["vcard_ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.blocked_ips_update",
+            description="Set blocked IPs for a campaign (max 25).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_id": {"type": "integer"},
+                    "ips": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["campaign_id", "ips"],
+            },
+        ),
+        Tool(
+            name="direct.hf.excluded_sites_get",
+            description="Get excluded sites (blocked placements) for a campaign.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_id": {"type": "integer"},
+                },
+                "required": ["campaign_id"],
+            },
+        ),
+        Tool(
+            name="direct.hf.excluded_sites_update",
+            description="Set excluded sites for a campaign.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_id": {"type": "integer"},
+                    "sites": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["campaign_id", "sites"],
+            },
+        ),
+        Tool(
+            name="direct.hf.neg_keyword_set_create",
+            description="Create a shared negative keyword set.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "negative_keywords": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["name", "negative_keywords"],
+            },
+        ),
+        Tool(
+            name="direct.hf.neg_keyword_set_list",
+            description="List shared negative keyword sets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.neg_keyword_set_update",
+            description="Update a shared negative keyword set.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "negative_keywords": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["id"],
+            },
+        ),
+        Tool(
+            name="direct.hf.neg_keyword_set_delete",
+            description="Delete shared negative keyword sets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.keyword_bids_set_auto",
+            description="Set automatic bidding for keywords by target position.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bids": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "keyword_id": {"type": "integer"},
+                                "position": {"type": "string", "enum": ["PREMIUMBLOCK", "FOOTERBLOCK", "P11", "P12", "P13", "P14", "P21", "P22", "P23", "P24"]},
+                                "scope": {"type": "string", "enum": ["SEARCH", "NETWORK", "SEARCH_AND_NETWORK"]},
+                                "max_bid": {"type": "number"},
+                                "increase_percent": {"type": "integer"},
+                            },
+                            "required": ["keyword_id"],
+                        },
+                    },
+                },
+                "required": ["bids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.keywords_has_volume",
+            description="Check if keywords have search volume in regions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                    "region_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["keywords", "region_ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.keywords_research",
+            description="Deduplicate keywords: merge duplicates, eliminate overlapping.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "keywords": {"type": "array", "items": {"type": "string"}},
+                    "operations": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": ["MERGE_DUPLICATES", "ELIMINATE_OVERLAPPING"]},
+                    },
+                },
+                "required": ["keywords"],
+            },
+        ),
+        Tool(
+            name="direct.hf.bid_modifiers_toggle",
+            description="Enable or disable bid modifiers.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "bid_modifier_ids": {"type": "array", "items": {"type": "integer"}},
+                    "enabled": {"type": "boolean"},
+                },
+                "required": ["bid_modifier_ids", "enabled"],
+            },
+        ),
+        Tool(
+            name="direct.hf.callouts_link",
+            description="Link callout extensions to an ad.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ad_id": {"type": "integer"},
+                    "callout_ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ad_id", "callout_ids"],
+            },
+        ),
+        # ═══ Batch 2: dynamic/image/shopping ads ──────────���─────────────
+        Tool(
+            name="direct.hf.create_dynamic_ads",
+            description="Create dynamic text ads.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ads": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "ad_group_id": {"type": "integer"},
+                                "title": {"type": "string"},
+                                "text": {"type": "string"},
+                                "href": {"type": "string"},
+                                "sitelink_set_id": {"type": "integer"},
+                            },
+                            "required": ["ad_group_id", "text", "href"],
+                        },
+                    },
+                },
+                "required": ["ads"],
+            },
+        ),
+        Tool(
+            name="direct.hf.create_image_ads",
+            description="Create image/text-image ads.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ads": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "ad_group_id": {"type": "integer"},
+                                "title": {"type": "string"},
+                                "title2": {"type": "string"},
+                                "text": {"type": "string"},
+                                "href": {"type": "string"},
+                                "ad_image_hash": {"type": "string"},
+                            },
+                            "required": ["ad_group_id"],
+                        },
+                    },
+                },
+                "required": ["ads"],
+            },
+        ),
+        Tool(
+            name="direct.hf.create_shopping_ads",
+            description="Create shopping ads.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ads": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "ad_group_id": {"type": "integer"},
+                                "title": {"type": "string"},
+                                "sitelink_set_id": {"type": "integer"},
+                            },
+                            "required": ["ad_group_id", "title"],
+                        },
+                    },
+                },
+                "required": ["ads"],
+            },
+        ),
+        # ═══ Batch 2: ad images ─────────────────────────────────────────
+        Tool(
+            name="direct.hf.ad_images_add",
+            description="Upload ad images (base64-encoded).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "Image name"},
+                                "image_data": {"type": "string", "description": "Base64-encoded image data"},
+                            },
+                            "required": ["name", "image_data"],
+                        },
+                    },
+                },
+                "required": ["images"],
+            },
+        ),
+        Tool(
+            name="direct.hf.ad_images_get",
+            description="Get ad images by hashes or associated status.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "string"}},
+                    "associated": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.ad_images_delete",
+            description="Delete ad images by hashes.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        # ═══ Batch 2: audience targets ─────────────────────────────────
+        Tool(
+            name="direct.hf.audience_targets_add",
+            description="Add audience targeting conditions to ad groups.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "targets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "ad_group_id": {"type": "integer"},
+                                "retargeting_list_id": {"type": "integer"},
+                                "interest_id": {"type": "integer"},
+                                "context_bid": {"type": "number"},
+                                "strategy_priority": {"type": "string", "enum": ["LOW", "NORMAL", "HIGH"]},
+                            },
+                            "required": ["ad_group_id"],
+                        },
+                    },
+                },
+                "required": ["targets"],
+            },
+        ),
+        Tool(
+            name="direct.hf.audience_targets_get",
+            description="Get audience targets by campaign/ad group/target IDs.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "campaign_ids": {"type": "array", "items": {"type": "integer"}},
+                    "ad_group_ids": {"type": "array", "items": {"type": "integer"}},
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.audience_targets_delete",
+            description="Delete audience targeting conditions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        # ═══ Batch 2: retargeting lists ─────────────────────────────────
+        Tool(
+            name="direct.hf.retargeting_lists_add",
+            description="Create retargeting/audience conditions based on Metrika goals.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "operator": {"type": "string", "enum": ["ALL", "ANY", "NONE"]},
+                                "goals": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "goal_id": {"type": "integer"},
+                                            "membership_life_span": {"type": "integer"},
+                                        },
+                                        "required": ["goal_id"],
+                                    },
+                                },
+                            },
+                            "required": ["operator", "goals"],
+                        },
+                    },
+                },
+                "required": ["name", "rules"],
+            },
+        ),
+        Tool(
+            name="direct.hf.retargeting_lists_get",
+            description="Get retargeting lists.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.retargeting_lists_delete",
+            description="Delete retargeting lists.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        # ═══ Batch 2: sitelinks / extensions / interests ────────────────
+        Tool(
+            name="direct.hf.sitelinks_delete",
+            description="Delete sitelinks sets.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.ad_extensions_get",
+            description="Get ad extensions by IDs.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.ad_extensions_delete",
+            description="Delete ad extensions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ids": {"type": "array", "items": {"type": "integer"}},
+                },
+                "required": ["ids"],
+            },
+        ),
+        Tool(
+            name="direct.hf.interests_get",
+            description="Get interest categories (for mobile app targeting).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
     ]
 
 

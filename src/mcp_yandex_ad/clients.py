@@ -27,6 +27,7 @@ except ImportError as exc:  # pragma: no cover - runtime dependency
 @dataclass
 class YandexClients:
     direct: object | None
+    v501: object | None
     metrica_management: object | None
     metrica_stats: object | None
     metrica_logs: object | None
@@ -58,10 +59,28 @@ def build_direct_client(
     )
 
 
+def build_direct_v501_client(
+    config: AppConfig,
+    access_token: str | None,
+    *,
+    direct_client_login: str | None = None,
+) -> object | None:
+    if not access_token or not YandexDirectV501:
+        return None
+    login = (direct_client_login or config.direct_client_login or None)
+    return YandexDirectV501(
+        access_token=access_token,
+        login=login,
+        is_sandbox=config.use_sandbox,
+        retry_if_exceeded_limit=True,
+        retries_if_server_error=5,
+    )
+
+
 def build_clients(config: AppConfig, access_token: str | None) -> YandexClients:
     if not access_token:
         return YandexClients(
-            direct=None, metrica_management=None, metrica_stats=None, metrica_logs=None
+            direct=None, v501=None, metrica_management=None, metrica_stats=None, metrica_logs=None
         )
 
     direct_client = build_direct_client(config, access_token)
@@ -74,8 +93,11 @@ def build_clients(config: AppConfig, access_token: str | None) -> YandexClients:
         metrica_stats = YandexMetrikaStats(access_token=access_token)
         metrica_logs = YandexMetrikaLogsapi(access_token=access_token)
 
+    v501_client = build_direct_v501_client(config, access_token)
+
     return YandexClients(
         direct=direct_client,
+        v501=v501_client,
         metrica_management=metrica_management,
         metrica_stats=metrica_stats,
         metrica_logs=metrica_logs,
