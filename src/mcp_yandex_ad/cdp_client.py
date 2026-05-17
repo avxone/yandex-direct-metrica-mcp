@@ -60,6 +60,10 @@ class CDPClient:
     # ------------------------------------------------------------------
 
     def _url(self, counter_id: str, path: str) -> str:
+        # API requires /counter/ID/... for schema endpoints, and /ID/... for upload endpoints.
+        # Ensure we always map correctly to the base path
+        if path.startswith("schema/"):
+            return urljoin(_CDP_BASE, f"counter/{counter_id}/{path.lstrip('/')}")
         return urljoin(_CDP_BASE, f"{counter_id}/{path.lstrip('/')}")
 
     def _get(self, counter_id: str, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -140,7 +144,7 @@ class CDPClient:
 
     def get_order_statuses(self, counter_id: str) -> list[dict[str, Any]]:
         """List all order statuses for counter."""
-        data = self._get(counter_id, "order_statuses")
+        data = self._get(counter_id, "schema/order_statuses")
         return data.get("statuses", data.get("data", []))
 
     def create_order_status(self, counter_id: str, name: str, *,
@@ -149,31 +153,32 @@ class CDPClient:
         
         `is_closed=True` means order is final (e.g. completed/cancelled).
         """
-        return self._post(counter_id, "order_statuses", {
+        return self._post(counter_id, "schema/order_statuses", {
             "name": name,
             "is_closed": is_closed,
         })
 
     def delete_order_status(self, counter_id: str, status_id: str) -> dict[str, Any]:
-        return self._delete(counter_id, f"order_statuses/{status_id}")
+        return self._delete(counter_id, f"schema/order_statuses/{status_id}")
 
     # ------------------------------------------------------------------
     # CDP: Attributes
     # ------------------------------------------------------------------
 
     def get_attributes(self, counter_id: str) -> list[dict[str, Any]]:
-        data = self._get(counter_id, "attributes")
+        data = self._get(counter_id, "schema/attributes", params={"entity_type": "CONTACT"})
         return data.get("attributes", data.get("data", []))
 
     def create_attribute(self, counter_id: str, name: str, attr_type: str) -> dict[str, Any]:
         """Create a user attribute. attr_type: 'string'|'number'|'date'."""
-        return self._post(counter_id, "attributes", {
+        return self._post(counter_id, "schema/attributes", {
             "name": name,
             "type": attr_type,
+            "entity_type": "CONTACT",
         })
 
     def delete_attribute(self, counter_id: str, attr_id: str) -> dict[str, Any]:
-        return self._delete(counter_id, f"attributes/{attr_id}")
+        return self._delete(counter_id, f"schema/attributes/{attr_id}")
 
 
 # ------------------------------------------------------------------
