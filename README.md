@@ -53,7 +53,7 @@ Create `accounts.json` (multi-account dashboards use this):
 Copy `.env.example` to your state folder and fill in:
 - Direct/Metrica OAuth credentials
 - Audience OAuth credentials (optional)
-- Wordstat OAuth credentials (optional)
+- Wordstat Yandex Search API credentials (optional)
 
 Important: **do not** commit secrets to git.
 
@@ -180,9 +180,9 @@ Audience OAuth (may be shared with Direct/Metrica, but can be separate):
 - `YANDEX_AUDIENCE_ACCESS_TOKEN` or `YANDEX_AUDIENCE_REFRESH_TOKEN`
 - if using refresh: `YANDEX_AUDIENCE_CLIENT_ID`, `YANDEX_AUDIENCE_CLIENT_SECRET`
 
-Wordstat OAuth (often a separate app/token):
-- `YANDEX_WORDSTAT_ACCESS_TOKEN` or `YANDEX_WORDSTAT_REFRESH_TOKEN`
-- if using refresh: `YANDEX_WORDSTAT_CLIENT_ID`, `YANDEX_WORDSTAT_CLIENT_SECRET`
+Wordstat via Yandex Search API:
+- `YANDEX_SEARCH_API_FOLDER_ID`
+- `YANDEX_SEARCH_API_API_KEY` or `YANDEX_SEARCH_API_IAM_TOKEN`
 
 Multi-account registry:
 - `MCP_ACCOUNTS_FILE=/data/accounts.json`

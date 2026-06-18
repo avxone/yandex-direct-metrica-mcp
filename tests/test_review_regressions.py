@@ -9,7 +9,6 @@ from mcp_yandex_ad.accounts import AccountProfile
 from mcp_yandex_ad import server
 from mcp_yandex_ad.hf_direct import handle as hf_direct_handle
 from mcp_yandex_ad.hf_metrica import handle as hf_metrica_handle
-from mcp_yandex_ad.wordstat_client import WordstatError
 
 
 def _ctx_for_overrides() -> SimpleNamespace:
@@ -87,8 +86,6 @@ def test_wordstat_top_requests_falls_back_to_single_phrase_loop() -> None:
     def fake_wordstat_post(_ctx, path: str, payload: dict[str, object] | None = None) -> dict[str, object]:
         assert path == "topRequests"
         calls.append(dict(payload or {}))
-        if payload and "phrases" in payload:
-            raise WordstatError("Unexpected Wordstat response type")
         phrase = str((payload or {}).get("phrase") or "")
         return {"topRequests": [{"phrase": phrase, "count": 10}]}
 
@@ -101,9 +98,8 @@ def test_wordstat_top_requests_falls_back_to_single_phrase_loop() -> None:
 
     assert data["fallback"]["mode"] == "single_phrase_loop"
     assert [item["phrase"] for item in data["topRequestsByPhrase"]] == ["a", "b"]
-    assert "phrases" in calls[0]
-    assert calls[1]["phrase"] == "a"
-    assert calls[2]["phrase"] == "b"
+    assert calls[0]["phrase"] == "a"
+    assert calls[1]["phrase"] == "b"
 
 
 class _Cfg:

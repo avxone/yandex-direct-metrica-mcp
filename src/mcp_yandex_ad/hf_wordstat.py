@@ -34,6 +34,9 @@ def _top_requests_items(resp: dict[str, Any]) -> list[dict[str, Any]]:
     items = resp.get("topRequests")
     if isinstance(items, list):
         return [x for x in items if isinstance(x, dict)]
+    items = resp.get("results")
+    if isinstance(items, list):
+        return [x for x in items if isinstance(x, dict)]
     return []
 
 
@@ -199,4 +202,3 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         return hf_payload(tool=tool, status="ok", result={"negatives": out})
 
     raise HFError(f"Unknown HF Wordstat tool: {tool}")
-

@@ -15,3 +15,13 @@ def test_load_config_direct_api_version(monkeypatch):
     monkeypatch.setenv("YANDEX_DIRECT_API_VERSION", "v501")
     config = load_config()
     assert config.direct_api_version == "v501"
+
+
+def test_load_config_wordstat_search_api(monkeypatch):
+    monkeypatch.setenv("YANDEX_SEARCH_API_FOLDER_ID", "folder-1")
+    monkeypatch.setenv("YANDEX_SEARCH_API_API_KEY", "api-key-1")
+
+    config = load_config()
+
+    assert config.wordstat_search_api_folder_id == "folder-1"
+    assert config.wordstat_search_api_api_key == "api-key-1"

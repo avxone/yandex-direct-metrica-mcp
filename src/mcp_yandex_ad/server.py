@@ -37,7 +37,7 @@ from .ratelimit import RateLimiter
 from .report_names import make_unique_report_name
 from .retry import with_retries
 from .tools import tool_definitions
-from .wordstat_client import WordstatClient, WordstatError
+from .wordstat_client import WORDSTAT_API_BASE, WordstatClient, WordstatError
 from .audience_client import AudienceClient
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
@@ -2433,10 +2433,10 @@ def _missing_envs(config: AppConfig) -> list[str]:
         if config.audience_refresh_token and not (config.audience_client_id and config.audience_client_secret):
             missing.append("YANDEX_AUDIENCE_CLIENT_ID/YANDEX_AUDIENCE_CLIENT_SECRET")
     if getattr(config, "wordstat_enabled", False):
-        if not config.wordstat_access_token and not config.wordstat_refresh_token:
-            missing.append("YANDEX_WORDSTAT_ACCESS_TOKEN or YANDEX_WORDSTAT_REFRESH_TOKEN")
-        if config.wordstat_refresh_token and not (config.wordstat_client_id and config.wordstat_client_secret):
-            missing.append("YANDEX_WORDSTAT_CLIENT_ID/YANDEX_WORDSTAT_CLIENT_SECRET")
+        if not config.wordstat_search_api_folder_id:
+            missing.append("YANDEX_SEARCH_API_FOLDER_ID")
+        if not (config.wordstat_search_api_api_key or config.wordstat_search_api_iam_token):
+            missing.append("YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN")
     return missing
 
 
@@ -2972,7 +2972,10 @@ def _dashboard_build_wordstat_block(
 
     if not getattr(ctx.config, "wordstat_enabled", False):
         return {"available": False, "reason": "disabled"}
-    if ctx.wordstat_tokens is None or not ctx.wordstat_tokens.get_access_token():
+    if not getattr(ctx.config, "wordstat_search_api_folder_id", None) or not (
+        getattr(ctx.config, "wordstat_search_api_api_key", None)
+        or getattr(ctx.config, "wordstat_search_api_iam_token", None)
+    ):
         return {"available": False, "reason": "not_configured"}
 
     max_campaigns = int(args.get("wordstat_max_campaigns") or 5)
@@ -3075,7 +3078,7 @@ def _dashboard_build_wordstat_block(
                 if isinstance(devices, list) and devices:
                     payload["devices"] = [str(x) for x in devices if str(x).strip()]
                 resp = _wordstat_post(ctx, "topRequests", payload)
-                items = resp.get("topRequests")
+                items = resp.get("topRequests") or resp.get("results")
                 if not isinstance(items, list):
                     continue
                 for it in items:
@@ -5500,13 +5503,15 @@ def _metrica_logs_call(
 def _wordstat_post(ctx: AppContext, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     if not getattr(ctx.config, "wordstat_enabled", False):
         raise MissingClientError("wordstat", "Wordstat is disabled (MCP_WORDSTAT_ENABLED=false).")
-    if ctx.wordstat_tokens is None:
-        raise MissingClientError("wordstat", "Wordstat client not configured.")
-    access_token = ctx.wordstat_tokens.get_access_token()
-    if not access_token:
-        raise MissingClientError("wordstat", "Wordstat access token not configured.")
+    folder_id = getattr(ctx.config, "wordstat_search_api_folder_id", None)
+    api_key = getattr(ctx.config, "wordstat_search_api_api_key", None)
+    iam_token = getattr(ctx.config, "wordstat_search_api_iam_token", None)
+    if not folder_id:
+        raise MissingClientError("wordstat", "YANDEX_SEARCH_API_FOLDER_ID is not configured.")
+    if not (api_key or iam_token):
+        raise MissingClientError("wordstat", "YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN is not configured.")
 
-    cacheable = path in {"userInfo", "getRegionsTree"} and ctx.cache is not None
+    cacheable = path in {"getRegionsTree"} and ctx.cache is not None
     cache_key = ""
     if cacheable:
         cache_key = f"wordstat:{path}:{json.dumps(payload or {}, sort_keys=True, ensure_ascii=True)}"
@@ -5514,18 +5519,33 @@ def _wordstat_post(ctx: AppContext, path: str, payload: dict[str, Any] | None = 
         if isinstance(cached, dict):
             return cached
 
-    client = WordstatClient(access_token=access_token)
-
-    def _call() -> dict[str, Any]:
-        ctx.wordstat_rate_limiter.acquire()
-        return client.post(path, payload)
-
-    data = with_retries(
-        _call,
-        max_attempts=ctx.config.retry_max_attempts,
-        base_delay_seconds=ctx.config.retry_base_delay_seconds,
-        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    client = WordstatClient(
+        folder_id=folder_id,
+        api_key=api_key,
+        iam_token=iam_token,
+        base_url=getattr(ctx.config, "wordstat_api_base_url", None) or WORDSTAT_API_BASE,
     )
+
+    def _call(endpoint_path: str = path) -> dict[str, Any]:
+        ctx.wordstat_rate_limiter.acquire()
+        return client.post(endpoint_path, payload)
+
+    try:
+        data = with_retries(
+            _call,
+            max_attempts=ctx.config.retry_max_attempts,
+            base_delay_seconds=ctx.config.retry_base_delay_seconds,
+            max_delay_seconds=ctx.config.retry_max_delay_seconds,
+        )
+    except WordstatError as exc:
+        if path != "regions" or getattr(getattr(exc, "response", None), "status_code", None) != 404:
+            raise
+        data = with_retries(
+            lambda: _call("getRegionsDistribution"),
+            max_attempts=ctx.config.retry_max_attempts,
+            base_delay_seconds=ctx.config.retry_base_delay_seconds,
+            max_delay_seconds=ctx.config.retry_max_delay_seconds,
+        )
     if cacheable:
         ctx.cache.set(cache_key, data)
     return data
@@ -5933,6 +5953,27 @@ def _wordstat_str_list(value: Any) -> list[str] | None:
     return [s] if s else None
 
 
+def _wordstat_date_time(value: Any, *, end: bool = False) -> str:
+    s = str(value or "").strip()
+    if not s:
+        return s
+    if "T" in s:
+        return s
+    if len(s) == 7 and s[4] == "-":
+        if end:
+            year = int(s[:4])
+            month = int(s[5:7])
+            if month == 12:
+                next_month = datetime(year + 1, 1, 1, tzinfo=timezone.utc)
+            else:
+                next_month = datetime(year, month + 1, 1, tzinfo=timezone.utc)
+            return (next_month - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return f"{s}-01T00:00:00Z"
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        return f"{s}T00:00:00Z"
+    return s
+
+
 def _build_wordstat_top_requests_payload(args: dict[str, Any]) -> dict[str, Any]:
     if args.get("params"):
         return args["params"]
@@ -5980,7 +6021,7 @@ def _build_wordstat_dynamics_payload(args: dict[str, Any]) -> dict[str, Any]:
     phrase = str(args.get("phrase") or "").strip()
     if not phrase:
         raise ValueError("phrase is required")
-    from_date = str(args.get("from_date") or "").strip()
+    from_date = _wordstat_date_time(args.get("from_date"))
     if not from_date:
         raise ValueError("from_date is required")
 
@@ -5988,7 +6029,7 @@ def _build_wordstat_dynamics_payload(args: dict[str, Any]) -> dict[str, Any]:
 
     to_date = args.get("to_date")
     if to_date is not None and str(to_date).strip():
-        payload["toDate"] = str(to_date).strip()
+        payload["toDate"] = _wordstat_date_time(to_date, end=True)
 
     period = args.get("period")
     if period is not None and str(period).strip():
@@ -6025,28 +6066,27 @@ def _build_wordstat_regions_payload(args: dict[str, Any]) -> dict[str, Any]:
 def _wordstat_top_requests_with_fallback(ctx: AppContext, payload: dict[str, Any]) -> dict[str, Any]:
     phrases = payload.get("phrases")
     if not isinstance(phrases, list) or len(phrases) <= 1:
+        if isinstance(phrases, list) and len(phrases) == 1:
+            payload = dict(payload)
+            payload.pop("phrases", None)
+            payload["phrase"] = str(phrases[0])
         return _wordstat_post(ctx, "topRequests", payload)
 
-    try:
-        return _wordstat_post(ctx, "topRequests", payload)
-    except Exception as exc:
-        if not isinstance(exc, WordstatError) and "Unexpected Wordstat response type" not in str(exc):
-            raise
-        per_phrase: list[dict[str, Any]] = []
-        for phrase in phrases:
-            single_payload = dict(payload)
-            single_payload.pop("phrases", None)
-            single_payload["phrase"] = str(phrase)
-            resp = _wordstat_post(ctx, "topRequests", single_payload)
-            per_phrase.append({"phrase": str(phrase), "topRequests": resp.get("topRequests", []), "raw": resp})
-        return {
-            "topRequestsByPhrase": per_phrase,
-            "fallback": {
-                "mode": "single_phrase_loop",
-                "reason": str(exc),
-                "requested_phrases": [str(phrase) for phrase in phrases],
-            },
-        }
+    per_phrase: list[dict[str, Any]] = []
+    for phrase in phrases:
+        single_payload = dict(payload)
+        single_payload.pop("phrases", None)
+        single_payload["phrase"] = str(phrase)
+        resp = _wordstat_post(ctx, "topRequests", single_payload)
+        per_phrase.append({"phrase": str(phrase), "topRequests": resp.get("results", []), "raw": resp})
+    return {
+        "topRequestsByPhrase": per_phrase,
+        "fallback": {
+            "mode": "single_phrase_loop",
+            "reason": "Yandex Search API Wordstat accepts one phrase per topRequests call.",
+            "requested_phrases": [str(phrase) for phrase in phrases],
+        },
+    }
 
 
 def _build_items_params(args: dict[str, Any], *, key: str) -> dict[str, Any]:
@@ -6179,17 +6219,6 @@ async def server_lifespan(server: Server) -> AsyncIterator[AppContext]:  # noqa:
             provider="audience",
         )
 
-    wordstat_tokens: TokenManager | None = None
-    if getattr(config, "wordstat_enabled", False):
-        wordstat_tokens = TokenManager(
-            config,
-            access_token=config.wordstat_access_token,
-            refresh_token=config.wordstat_refresh_token,
-            client_id=config.wordstat_client_id,
-            client_secret=config.wordstat_client_secret,
-            provider="wordstat",
-        )
-
     cache: TTLCache | None = None
     if config.cache_enabled and config.cache_ttl_seconds > 0:
         cache = TTLCache(config.cache_ttl_seconds)
@@ -6198,7 +6227,7 @@ async def server_lifespan(server: Server) -> AsyncIterator[AppContext]:  # noqa:
         config=config,
         tokens=tokens,
         audience_tokens=audience_tokens,
-        wordstat_tokens=wordstat_tokens,
+        wordstat_tokens=None,
         clients=clients,
         cache=cache,
         direct_rate_limiter=RateLimiter(config.direct_rate_limit_rps),
@@ -6523,8 +6552,17 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             return _error_response(
                 name, MissingClientError("wordstat", "Wordstat is disabled (MCP_WORDSTAT_ENABLED=false).")
             )
-        if ctx.wordstat_tokens is None or not ctx.wordstat_tokens.get_access_token():
-            return _error_response(name, MissingClientError("wordstat", "Wordstat client not configured."))
+        if not getattr(ctx.config, "wordstat_search_api_folder_id", None) or not (
+            getattr(ctx.config, "wordstat_search_api_api_key", None)
+            or getattr(ctx.config, "wordstat_search_api_iam_token", None)
+        ):
+            return _error_response(
+                name,
+                MissingClientError(
+                    "wordstat",
+                    "Wordstat Search API credentials are not configured. Set YANDEX_SEARCH_API_FOLDER_ID and YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN.",
+                ),
+            )
 
     try:
         args = _resolve_account_overrides(ctx, name, args)
@@ -6601,7 +6639,13 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
 
     if name == "wordstat.user_info":
         try:
-            data = _wordstat_post(ctx, "userInfo", args.get("params") or None)
+            data = {
+                "api": "yandex_search_api_wordstat",
+                "baseUrl": getattr(ctx.config, "wordstat_api_base_url", None) or WORDSTAT_API_BASE,
+                "folderId": getattr(ctx.config, "wordstat_search_api_folder_id", None),
+                "auth": "api_key" if getattr(ctx.config, "wordstat_search_api_api_key", None) else "iam_token",
+                "available": True,
+            }
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)

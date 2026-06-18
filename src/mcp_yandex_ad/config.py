@@ -51,6 +51,10 @@ class AppConfig:
     auth_tools_enabled: bool = False
     two_phase_writes_enabled: bool = False
     confirm_ttl_seconds: int = 300
+    wordstat_search_api_folder_id: str | None = None
+    wordstat_search_api_api_key: str | None = None
+    wordstat_search_api_iam_token: str | None = None
+    wordstat_api_base_url: str | None = None
 
 
 def _split_csv(value: str | None) -> list[str]:
@@ -168,5 +172,9 @@ def load_config() -> AppConfig:
         auth_tools_enabled=os.getenv("MCP_AUTH_TOOLS_ENABLED", "false").lower() in {"1", "true", "yes"},
         two_phase_writes_enabled=os.getenv("MCP_TWO_PHASE_WRITES", "false").lower() in {"1", "true", "yes"},
         confirm_ttl_seconds=int(os.getenv("MCP_CONFIRM_TTL_SECONDS", "300")),
+        wordstat_search_api_folder_id=os.getenv("YANDEX_SEARCH_API_FOLDER_ID"),
+        wordstat_search_api_api_key=os.getenv("YANDEX_SEARCH_API_API_KEY"),
+        wordstat_search_api_iam_token=os.getenv("YANDEX_SEARCH_API_IAM_TOKEN"),
+        wordstat_api_base_url=os.getenv("YANDEX_SEARCH_API_WORDSTAT_BASE_URL"),
     )
     return _apply_public_edition_overrides(config)
