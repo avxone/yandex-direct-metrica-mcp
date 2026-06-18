@@ -3,6 +3,8 @@
 All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
+
+## 2.0.11 - 2026-06-18
 - Wordstat: migrated runtime calls from the retired `api.wordstat.yandex.net/v1` OAuth endpoint to Yandex Search API Wordstat (`searchapi.api.cloud.yandex.net/v2/wordstat`) using `YANDEX_SEARCH_API_FOLDER_ID` plus API key/IAM token credentials.
 
 ## 2.0.10 - 2026-05-08
