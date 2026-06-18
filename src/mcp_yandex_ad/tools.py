@@ -838,7 +838,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "purpose": {"type": "string", "description": "direct_metrica | audience | wordstat."},
+                    "purpose": {"type": "string", "description": "direct_metrica | audience."},
                     "client_id": {"type": "string", "description": "Optional override; defaults to env for given purpose."},
                     "redirect_uri": {"type": "string", "description": "Optional override; defaults to env for given purpose."},
                     "scopes": {"type": "array", "items": {"type": "string"}, "description": "Optional override; defaults to env for given purpose."},
@@ -852,7 +852,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 "type": "object",
                 "required": ["purpose", "code"],
                 "properties": {
-                    "purpose": {"type": "string", "description": "direct_metrica | audience | wordstat."},
+                    "purpose": {"type": "string", "description": "direct_metrica | audience."},
                     "code": {"type": "string"},
                     "client_id": {"type": "string"},
                     "client_secret": {"type": "string"},

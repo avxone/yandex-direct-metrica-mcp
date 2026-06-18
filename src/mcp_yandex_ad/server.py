@@ -6283,8 +6283,12 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                 if value in {"audience"}:
                     return "audience"
                 if value in {"wordstat"}:
-                    return "wordstat"
-                raise ValueError("purpose must be one of: direct_metrica | audience | wordstat")
+                    raise ValueError(
+                        "Wordstat credentials are not managed by auth.*; configure "
+                        "YANDEX_SEARCH_API_FOLDER_ID and YANDEX_SEARCH_API_API_KEY "
+                        "or YANDEX_SEARCH_API_IAM_TOKEN."
+                    )
+                raise ValueError("purpose must be one of: direct_metrica | audience")
 
             def _env_for(purpose: str) -> dict[str, str]:
                 if purpose == "audience":
@@ -6295,15 +6299,6 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                         "refresh_token": "YANDEX_AUDIENCE_REFRESH_TOKEN",
                         "redirect_uri": "YANDEX_AUDIENCE_REDIRECT_URI",
                         "scopes": "YANDEX_AUDIENCE_SCOPES",
-                    }
-                if purpose == "wordstat":
-                    return {
-                        "client_id": "YANDEX_WORDSTAT_CLIENT_ID",
-                        "client_secret": "YANDEX_WORDSTAT_CLIENT_SECRET",
-                        "access_token": "YANDEX_WORDSTAT_ACCESS_TOKEN",
-                        "refresh_token": "YANDEX_WORDSTAT_REFRESH_TOKEN",
-                        "redirect_uri": "YANDEX_WORDSTAT_REDIRECT_URI",
-                        "scopes": "YANDEX_WORDSTAT_SCOPES",
                     }
                 return {
                     "client_id": "YANDEX_CLIENT_ID",

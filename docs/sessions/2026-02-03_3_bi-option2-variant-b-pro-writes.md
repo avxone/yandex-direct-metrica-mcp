@@ -15,5 +15,4 @@
 - Decide what belongs to the **public v1.0.0 contract** (final tool list + stability guarantees) and freeze the snapshot accordingly.
 - Add separate snapshot/contract test for **PRO tool surface** (if we want SemVer guarantees for PRO).
 - Review remaining PRO HF write scope across Direct/Metrica/Wordstat/Audience and confirm any tools that should stay experimental.
-- Document Wordstat OAuth app/scopes and how it differs from Direct/Metrica OAuth for operators.
-
+- Document Wordstat Yandex Search API credentials and how they differ from Direct/Metrica OAuth for operators.

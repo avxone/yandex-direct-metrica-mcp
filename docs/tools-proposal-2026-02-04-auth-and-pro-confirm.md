@@ -33,10 +33,10 @@ Guardrails:
 
 Вход:
 - `provider` (string, optional, default `yandex`) — на будущее, если появятся отдельные provider flows.
-- `client_id` (string, optional) — иначе берём из env (`YANDEX_CLIENT_ID` / `YANDEX_AUDIENCE_CLIENT_ID` / `YANDEX_WORDSTAT_CLIENT_ID`).
+- `client_id` (string, optional) — иначе берём из env (`YANDEX_CLIENT_ID` / `YANDEX_AUDIENCE_CLIENT_ID`).
 - `redirect_uri` (string, optional) — иначе env (`YANDEX_REDIRECT_URI` / …) или дефолт `https://oauth.yandex.ru/verification_code`.
 - `scopes` (string[], optional) — иначе env (`YANDEX_SCOPES` / …).
-- `purpose` (string, optional): `direct_metrica|audience|wordstat` (чтобы выбирать env‑ключи и подсказки).
+- `purpose` (string, optional): `direct_metrica|audience` (чтобы выбирать env‑ключи и подсказки).
 
 Выход:
 - `status`: `ok|error`
@@ -56,7 +56,7 @@ Guardrails:
 - Возвращает секреты в ответе (caller должен понимать риск утечки в чате).
 
 Вход:
-- `purpose` (string, required): `direct_metrica|audience|wordstat`
+- `purpose` (string, required): `direct_metrica|audience`
 - `code` (string, required)
 - `state` (string, optional) — если используем `auth.start` + state validation (внутри tool; no persistence)
 - `client_id` / `client_secret` / `redirect_uri` (optional; default from env keys for given purpose)
@@ -112,4 +112,3 @@ Pro:
 - Показываются в `tools/list` только если включены соответствующие флаги:
   - `MCP_AUTH_TOOLS_ENABLED=true` (для auth.*)
   - `MCP_TWO_PHASE_WRITES=true` (для write.confirm и поведения “planned→confirm”)
-

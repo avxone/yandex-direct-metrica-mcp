@@ -6,6 +6,7 @@ All notable changes to this MCP project will be documented in this file.
 
 ## 2.0.11 - 2026-06-18
 - Wordstat: migrated runtime calls from the retired `api.wordstat.yandex.net/v1` OAuth endpoint to Yandex Search API Wordstat (`searchapi.api.cloud.yandex.net/v2/wordstat`) using `YANDEX_SEARCH_API_FOLDER_ID` plus API key/IAM token credentials.
+- Auth/docs: removed legacy Wordstat from `auth.*` helper wording and refreshed older documentation to use Yandex Search API credentials.
 
 ## 2.0.10 - 2026-05-08
 - Contracts: corrected `dashboard.generate_option1` annotations so it is no longer marked read-only when `output_dir` writes local HTML/JSON artifacts.

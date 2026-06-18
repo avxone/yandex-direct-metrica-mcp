@@ -17,10 +17,6 @@ class AppConfig:
     audience_refresh_token: str | None
     audience_client_id: str | None
     audience_client_secret: str | None
-    wordstat_access_token: str | None
-    wordstat_refresh_token: str | None
-    wordstat_client_id: str | None
-    wordstat_client_secret: str | None
     direct_client_login: str | None
     direct_client_logins: list[str]
     direct_api_version: str
@@ -131,10 +127,6 @@ def load_config() -> AppConfig:
         audience_refresh_token=os.getenv("YANDEX_AUDIENCE_REFRESH_TOKEN"),
         audience_client_id=os.getenv("YANDEX_AUDIENCE_CLIENT_ID"),
         audience_client_secret=os.getenv("YANDEX_AUDIENCE_CLIENT_SECRET"),
-        wordstat_access_token=os.getenv("YANDEX_WORDSTAT_ACCESS_TOKEN"),
-        wordstat_refresh_token=os.getenv("YANDEX_WORDSTAT_REFRESH_TOKEN"),
-        wordstat_client_id=os.getenv("YANDEX_WORDSTAT_CLIENT_ID"),
-        wordstat_client_secret=os.getenv("YANDEX_WORDSTAT_CLIENT_SECRET"),
         direct_client_login=direct_client_login,
         direct_client_logins=direct_client_logins,
         direct_api_version=_normalize_direct_api_version(

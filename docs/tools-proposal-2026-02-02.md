@@ -88,10 +88,9 @@ HF-инструменты работают без изменений Direct/Metr
 
 ## Public env-матрица (норма)
 
-Wordstat OAuth (отдельные от Direct/Metrica):
-- `YANDEX_WORDSTAT_CLIENT_ID`
-- `YANDEX_WORDSTAT_CLIENT_SECRET`
-- `YANDEX_WORDSTAT_ACCESS_TOKEN` **или** `YANDEX_WORDSTAT_REFRESH_TOKEN`
+Wordstat через Yandex Search API:
+- `YANDEX_SEARCH_API_FOLDER_ID`
+- `YANDEX_SEARCH_API_API_KEY` **или** `YANDEX_SEARCH_API_IAM_TOKEN`
 
 Ограничители:
 - `MCP_WORDSTAT_RATE_LIMIT_RPS` (0=disabled)
