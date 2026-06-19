@@ -27,7 +27,7 @@ The pipeline entrypoint that uses these components is:
 
 Primary file:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/audit/build_campaign_audit.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/audit/build_campaign_audit.py:253>)
+- `Marketing2025/scripts/audit/build_campaign_audit.py`
 
 Current behavior:
 
@@ -44,8 +44,8 @@ Impact:
 
 Primary files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/preflight/run_preflight_checks.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/preflight/run_preflight_checks.py:99>)
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/preflight-qa/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/preflight-qa/SKILL.md:21>)
+- `Marketing2025/scripts/preflight/run_preflight_checks.py`
+- `Marketing2025/.claude/skills/preflight-qa/SKILL.md`
 
 Current behavior:
 
@@ -61,7 +61,7 @@ Impact:
 
 Primary file:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/gap-overlay-report/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/gap-overlay-report/SKILL.md:116>)
+- `Marketing2025/.claude/skills/gap-overlay-report/SKILL.md`
 
 Current behavior:
 
@@ -77,8 +77,8 @@ Impact:
 
 Primary files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/synthesis_quality_gate.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/synthesis_quality_gate.py:1>)
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/pipeline/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/pipeline/SKILL.md:245>)
+- `Marketing2025/scripts/pipeline/synthesis_quality_gate.py`
+- `Marketing2025/.claude/skills/pipeline/SKILL.md`
 
 Current behavior:
 
@@ -93,7 +93,7 @@ Impact:
 
 Primary file:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/populate_source_records.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/populate_source_records.py:1>)
+- `Marketing2025/scripts/pipeline/populate_source_records.py`
 
 Current behavior:
 
@@ -117,7 +117,7 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/audit/build_campaign_audit.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/audit/build_campaign_audit.py:253>)
+- `Marketing2025/scripts/audit/build_campaign_audit.py`
 
 Required changes:
 
@@ -146,7 +146,7 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/campaign-audit/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/campaign-audit/SKILL.md:74>)
+- `Marketing2025/.claude/skills/campaign-audit/SKILL.md`
 - collector prompt files used by that skill
 
 Required changes:
@@ -172,8 +172,8 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/preflight/run_preflight_checks.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/preflight/run_preflight_checks.py:99>)
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/preflight-qa/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/preflight-qa/SKILL.md:21>)
+- `Marketing2025/scripts/preflight/run_preflight_checks.py`
+- `Marketing2025/.claude/skills/preflight-qa/SKILL.md`
 
 Dependencies:
 
@@ -220,7 +220,7 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/gap-overlay-report/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/gap-overlay-report/SKILL.md:116>)
+- `Marketing2025/.claude/skills/gap-overlay-report/SKILL.md`
 
 Required changes:
 
@@ -243,8 +243,8 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/.claude/skills/pipeline/SKILL.md`](</Users/georgyagaev/Projects/Marketing2025/.claude/skills/pipeline/SKILL.md:13>)
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/run_pipeline.sh`](</Users/georgyagaev/Projects/Marketing2025/scripts/run_pipeline.sh:17>)
+- `Marketing2025/.claude/skills/pipeline/SKILL.md`
+- `Marketing2025/scripts/run_pipeline.sh`
 
 Required changes:
 
@@ -265,7 +265,7 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/synthesis_quality_gate.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/synthesis_quality_gate.py:1>)
+- `Marketing2025/scripts/pipeline/synthesis_quality_gate.py`
 
 Required changes:
 
@@ -290,7 +290,7 @@ Owner:
 
 Files:
 
-- [`/Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/populate_source_records.py`](</Users/georgyagaev/Projects/Marketing2025/scripts/pipeline/populate_source_records.py:1>)
+- `Marketing2025/scripts/pipeline/populate_source_records.py`
 - pipeline orchestration around `populate_source_records.py`
 
 Required changes:
@@ -343,4 +343,3 @@ The handoff is complete when a fresh autonomous `/pipeline` run:
 - can proceed when `Task()` parallelism is unavailable
 - blocks concrete product hallucinations before review/render
 - exposes missing provenance explicitly instead of hiding it
-

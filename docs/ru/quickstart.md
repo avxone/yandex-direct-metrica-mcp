@@ -41,6 +41,13 @@
 - OAuth‑токены/refresh tokens
 - дефолты Direct (например, `YANDEX_DIRECT_CLIENT_LOGIN`, опционально `YANDEX_DIRECT_CLIENT_LOGINS`)
 - allow‑list счётчиков Метрики (`YANDEX_METRICA_COUNTER_IDS`)
+- опциональные креды Wordstat через Yandex Search API:
+  - `YANDEX_SEARCH_API_FOLDER_ID`
+  - `YANDEX_SEARCH_API_API_KEY` или `YANDEX_SEARCH_API_IAM_TOKEN`
+  - сервисный аккаунт в этой папке с ролью `search-api.webSearch.user`
+  - scope `yc.search-api.execute`, если для API key настроены scopes
+
+Wordstat через Yandex Search API не использует Direct OAuth. При ошибках доступа проверьте folder id, роль сервисного аккаунта и scope API key.
 
 Рекомендованные дефолты для public/read‑only:
 - `MCP_WRITE_ENABLED=false`

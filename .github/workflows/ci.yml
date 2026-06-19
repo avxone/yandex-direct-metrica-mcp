@@ -4,8 +4,28 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
+  lint-changed:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Lint changed Python lines
+        run: |
+          python scripts/agent_lint.py --base-ref "${{ github.event.pull_request.base.sha }}"
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -18,7 +38,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
+      - name: Compile check
+        run: |
+          python -m compileall -q src/mcp_yandex_ad
       - name: Tests
         run: |
           pytest -q
 
+  docker-public-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build public image smoke
+        run: |
+          docker build \
+            --build-arg MCP_PUBLIC_READONLY=true \
+            --build-arg MCP_EDITION=public \
+            -t yandex-direct-metrica-mcp:ci .

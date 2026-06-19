@@ -48,6 +48,8 @@
 
 В multi-account режиме (`all_accounts=true` / `account_ids=[...]`) подсказки Wordstat считаются для выбранного аккаунта и переключаются вместе с селектором.
 
+Dashboard Wordstat expansion очищает Direct keyword syntax (`!`, `+`, скобки, кавычки) перед вызовом Search API Wordstat. Candidate JSON может включать фразы из provider `results` и `associations`; `provider_sources` показывает тип источника.
+
 ## Audience (опционально)
 
 Можно включить блоки с сегментами и пересечениями Audience:

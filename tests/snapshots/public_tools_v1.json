@@ -2055,7 +2055,7 @@
           "type": "object"
         },
         "period": {
-          "description": "monthly | weekly | daily (API-defined).",
+          "description": "monthly | weekly | daily; mapped to PERIOD_MONTHLY/PERIOD_WEEKLY/PERIOD_DAILY.",
           "type": "string"
         },
         "phrase": {
@@ -2068,7 +2068,7 @@
           "type": "array"
         },
         "to_date": {
-          "description": "YYYY-MM (inclusive). Optional.",
+          "description": "Optional. Monthly accepts YYYY-MM or month-end YYYY-MM-DD; weekly requires provider-valid week-end via params.",
           "type": "string"
         }
       },
@@ -2180,7 +2180,7 @@
           "type": "string"
         },
         "region_type": {
-          "description": "cities | regions | all (API-defined).",
+          "description": "all|cities|regions or REGION_ALL|REGION_CITIES|REGION_REGIONS; sent as Search API region.",
           "type": "string"
         }
       },
@@ -2232,7 +2232,7 @@
   },
   {
     "name": "wordstat.user_info",
-    "description": "Wordstat: userInfo (access check).",
+    "description": "Wordstat: Search API access check via getRegionsTree.",
     "inputSchema": {
       "properties": {
         "params": {

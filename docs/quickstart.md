@@ -39,6 +39,13 @@ Copy `.env.example` and fill it:
 - OAuth token(s)
 - Direct defaults (`YANDEX_DIRECT_CLIENT_LOGIN`, optional `YANDEX_DIRECT_CLIENT_LOGINS`)
 - Metrica allow-list (`YANDEX_METRICA_COUNTER_IDS`)
+- Optional Wordstat Search API credentials:
+  - `YANDEX_SEARCH_API_FOLDER_ID`
+  - `YANDEX_SEARCH_API_API_KEY` or `YANDEX_SEARCH_API_IAM_TOKEN`
+  - service account in that folder with `search-api.webSearch.user`
+  - API key scope `yc.search-api.execute` if API key scopes are configured
+
+Wordstat via Yandex Search API does **not** use Direct OAuth. If Wordstat returns permission errors, check the folder id, service-account role, and API key scope.
 
 Recommended defaults for public/read-only usage:
 - `MCP_WRITE_ENABLED=false`

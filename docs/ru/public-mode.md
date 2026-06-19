@@ -49,6 +49,8 @@ Credentials (сервер не хранит секреты на диске):
 - `YANDEX_AUDIENCE_*` (Audience OAuth)
 - `YANDEX_SEARCH_API_FOLDER_ID` + `YANDEX_SEARCH_API_API_KEY` или `YANDEX_SEARCH_API_IAM_TOKEN` (Wordstat через Yandex Search API)
 
+Wordstat Search API настраивается отдельно от Direct OAuth. Сервисный аккаунт должен быть в целевой папке, иметь `search-api.webSearch.user`; для API key нужен scope `yc.search-api.execute`, если scopes включены.
+
 Multi-account registry:
 - `MCP_ACCOUNTS_FILE` (read-only mapping `account_id` → Direct `Client-Login` + default Metrica counters)
 

@@ -61,6 +61,15 @@ HINT_TOKEN = "Check access/refresh token and API permissions."
 HINT_UNITS = "Not enough units; retry later or reduce scope."
 HINT_REPORT = "Report not ready; retry later."
 HINT_PARAMS = "Check required parameters."
+HINT_WORDSTAT_ACCESS = (
+    "Check Yandex Search API Wordstat setup: service account in the target folder, "
+    "search-api.webSearch.user role, API key scope yc.search-api.execute if scopes are configured, "
+    "and matching YANDEX_SEARCH_API_FOLDER_ID."
+)
+HINT_WORDSTAT_FOLDER = "Set YANDEX_SEARCH_API_FOLDER_ID to the Yandex Cloud folder that owns the Search API credentials."
+HINT_WORDSTAT_PERIOD = "Use period monthly/weekly/daily or PERIOD_MONTHLY/PERIOD_WEEKLY/PERIOD_DAILY."
+HINT_WORDSTAT_MONTH = "For monthly Wordstat dynamics, pass to_date as YYYY-MM or the last day of the month."
+HINT_WORDSTAT_WEEK = "For weekly Wordstat dynamics, pass a provider-valid week-end toDate via params or use daily/monthly."
 
 
 class MissingClientError(RuntimeError):
@@ -133,6 +142,39 @@ def _extract_http_info(exc: Exception) -> dict[str, Any]:
     return info
 
 
+def _extract_response_text(response: Any) -> str:
+    try:
+        data = response.json()
+    except Exception:
+        text = getattr(response, "text", "") or ""
+        return str(text)[:1000]
+    if isinstance(data, dict):
+        parts: list[str] = []
+        for key in ("message", "error", "error_description", "details"):
+            value = data.get(key)
+            if value:
+                parts.append(_safe_message(value) or "")
+        return " ".join(parts)[:1000]
+    return _safe_message(data)[:1000] if data is not None else ""
+
+
+def _wordstat_hint(exc: WordstatError, *, http_status: Any) -> str | None:
+    response = getattr(exc, "response", None)
+    text = _extract_response_text(response).lower() if response is not None else str(exc).lower()
+    if "folderid" in text or "folder id" in text or "folder_id" in text:
+        return HINT_WORDSTAT_FOLDER
+    if "period_" in text or ("period" in text and "enum" in text):
+        return HINT_WORDSTAT_PERIOD
+    if "last day of the month" in text or ("month" in text and "todate" in text):
+        return HINT_WORDSTAT_MONTH
+    if "last day of the week" in text or ("week" in text and "todate" in text):
+        return HINT_WORDSTAT_WEEK
+    access_markers = ("permission", "access", "iam", "role", "scope", "unauthorized", "forbidden")
+    if http_status in {401, 403} or any(marker in text for marker in access_markers):
+        return HINT_WORDSTAT_ACCESS
+    return None
+
+
 def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
     payload: dict[str, Any] = {"tool": tool, "type": exc.__class__.__name__}
     payload.update(_extract_http_info(exc))
@@ -187,8 +229,11 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
         payload["provider"] = "wordstat"
         payload["message"] = str(exc) or "Wordstat API error"
         http_status = payload.get("http_status")
-        if http_status == 401 or http_status == 403:
-            payload["hint"] = HINT_TOKEN
+        hint = _wordstat_hint(exc, http_status=http_status)
+        if hint:
+            payload["hint"] = hint
+        elif http_status == 401 or http_status == 403:
+            payload["hint"] = HINT_WORDSTAT_ACCESS
         elif http_status == 429:
             payload["hint"] = HINT_RATE_LIMIT
         elif isinstance(http_status, int) and 500 <= http_status <= 599:

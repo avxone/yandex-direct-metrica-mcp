@@ -199,6 +199,35 @@
     .alert-card.has-danger { border-left-color: var(--danger); background: linear-gradient(180deg, var(--danger-subtle), rgba(255,255,255,.03)); }
     .alert-list { margin: 0; padding-left: 18px; }
     .alert-list li { margin: 8px 0; }
+    .pro-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 980px) { .pro-grid { grid-template-columns: repeat(2, 1fr); } }
+    .pro-stat { border: 1px solid var(--grid-color); border-radius: 12px; padding: 12px; background: rgba(0,0,0,.08); }
+    [data-theme="light"] .pro-stat { background: rgba(17,24,39,.03); }
+    .pro-stat-label { font-size: 12px; color: var(--text-muted); }
+    .pro-stat-value { margin-top: 6px; font-size: 24px; line-height: 1.1; font-weight: 700; font-family: var(--font-display); }
+    .severity-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--grid-color); font-size: 12px; }
+    .severity-badge.high { color: var(--danger); border-color: rgba(251,113,133,.35); }
+    .severity-badge.medium { color: var(--warning); border-color: rgba(255,193,7,.35); }
+    .severity-badge.low, .severity-badge.info { color: var(--text-secondary); }
+    .finding-list { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 10px; }
+    .finding-item { border: 1px solid var(--grid-color); border-radius: 12px; padding: 12px; background: rgba(0,0,0,.08); }
+    [data-theme="light"] .finding-item { background: rgba(17,24,39,.03); }
+    .finding-title { margin-top: 8px; font-weight: 600; }
+    .finding-meta { margin-top: 8px; color: var(--text-secondary); font-size: 12px; }
+    .finding-rec { margin-top: 8px; color: var(--text-primary); }
+    .insight-list { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 10px; }
+    .insight-item { border: 1px solid var(--grid-color); border-radius: 12px; padding: 12px; background: rgba(0,0,0,.08); }
+    [data-theme="light"] .insight-item { background: rgba(17,24,39,.03); }
+    .insight-kicker { color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+    .insight-title { margin-top: 6px; font-weight: 700; }
+    .insight-body { margin-top: 8px; color: var(--text-secondary); font-size: 13px; }
+    .insight-action { margin-top: 8px; color: var(--text-primary); font-size: 13px; }
+    .insight-footer { margin-top: 10px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .evidence-details { margin-top: 10px; border: 1px solid var(--grid-color); border-radius: 12px; overflow: hidden; }
+    .evidence-summary { cursor: pointer; padding: 12px 14px; font-weight: 600; color: var(--text-primary); background: rgba(0,0,0,.08); list-style: none; }
+    .evidence-summary::-webkit-details-marker { display: none; }
+    [data-theme="light"] .evidence-summary { background: rgba(17,24,39,.03); }
+    .evidence-content { padding: 12px 14px 14px; border-top: 1px solid var(--grid-color); }
     .alert-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--grid-color); font-size: 12px; color: var(--text-muted); font-weight: 500; }
     .alert-badge.warn { color: var(--warning); border-color: rgba(255,193,7,.35); }
     .alert-badge.danger { color: var(--danger); border-color: rgba(251,113,133,.35); }
@@ -232,6 +261,10 @@
     .modal-body { margin-top: 14px; }
     .modal-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .small { font-size: 12px; color: var(--text-secondary); }
+    .modal-pro-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+    .modal-pro-section-title { margin: 14px 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); font-family: var(--font-display); font-weight: 700; }
+    .modal-pro-empty { color: var(--text-muted); font-size: 13px; }
+    @media (max-width: 980px) { .modal-pro-columns { grid-template-columns: 1fr; } }
 
     /* Campaigns table mobile scroll */
     @media (max-width: 980px) {
@@ -550,6 +583,103 @@
         </div>
         <div class="note" id="campaignCplNote">Клик по строке откроет детали кампании. Мини-графики рисуются из реальных дневных данных Direct.</div>
       </section>
+
+      <section class="card col-12" id="proSummaryCard" style="display:none;">
+        <div class="title">PRO: диагностический обзор</div>
+        <div class="pro-grid">
+          <div class="pro-stat">
+            <div class="pro-stat-label">Findings</div>
+            <div class="pro-stat-value" id="pro-findings-total">—</div>
+          </div>
+          <div class="pro-stat">
+            <div class="pro-stat-label">Search terms</div>
+            <div class="pro-stat-value" id="pro-search-rows">—</div>
+          </div>
+          <div class="pro-stat">
+            <div class="pro-stat-label">Keywords</div>
+            <div class="pro-stat-value" id="pro-keyword-rows">—</div>
+          </div>
+          <div class="pro-stat">
+            <div class="pro-stat-label">Bid snapshots</div>
+            <div class="pro-stat-value" id="pro-bid-campaigns">—</div>
+          </div>
+        </div>
+        <div class="note" id="proSummaryNote"></div>
+        <div class="note" id="proWarningsNote"></div>
+      </section>
+
+      <section class="card col-12" id="proCampaignsCard" style="display:none;">
+        <div class="title">PRO: campaign watchlist</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Кампания</th>
+                <th>Тип</th>
+                <th>Расход</th>
+                <th>Клики</th>
+                <th>Visits</th>
+                <th>Leads</th>
+                <th>CPL</th>
+                <th>Avg bid</th>
+                <th>Δ Clicks</th>
+                <th>Δ Leads</th>
+              </tr>
+            </thead>
+            <tbody id="proCampaignRows"></tbody>
+          </table>
+        </div>
+        <div class="note" id="proCampaignsNote"></div>
+      </section>
+
+      <section class="card col-12" id="proTermsCard" style="display:none;">
+        <div class="title">PRO: начать здесь</div>
+        <div class="note" id="proTermsNote"></div>
+        <ul class="insight-list" id="proPriorityList"></ul>
+        <div class="note" id="proPriorityNote"></div>
+        <details class="evidence-details">
+          <summary class="evidence-summary">Показать поисковые запросы как доказательства</summary>
+          <div class="evidence-content">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Запрос</th>
+                    <th>Кампания</th>
+                    <th>Почему это важно</th>
+                    <th>Что проверить</th>
+                  </tr>
+                </thead>
+                <tbody id="proSearchTermRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+        <details class="evidence-details">
+          <summary class="evidence-summary">Показать criteria / targeting как доказательства</summary>
+          <div class="evidence-content">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Критерий / targeting</th>
+                    <th>Кампания</th>
+                    <th>Почему это важно</th>
+                    <th>Что проверить</th>
+                  </tr>
+                </thead>
+                <tbody id="proKeywordRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="card col-12" id="proFindingsCard" style="display:none;">
+        <div class="title">PRO: findings и действия</div>
+        <ul class="finding-list" id="proFindingsList"></ul>
+        <div class="note" id="proActionsNote"></div>
+      </section>
     </div>
   </div>
 
@@ -601,6 +731,75 @@
             </div>
             <div class="note">Клики и расход по дням внутри выбранного периода.</div>
           </div>
+          <div class="card" id="modalProCard" style="display:none;">
+            <div class="title">PRO: главный фокус по кампании</div>
+            <div class="pro-grid">
+              <div class="pro-stat">
+                <div class="pro-stat-label">Findings</div>
+                <div class="pro-stat-value" id="modalProFindingsCount">0</div>
+              </div>
+              <div class="pro-stat">
+                <div class="pro-stat-label">Search Terms</div>
+                <div class="pro-stat-value" id="modalProTermsCount">0</div>
+              </div>
+              <div class="pro-stat">
+                <div class="pro-stat-label">Keywords</div>
+                <div class="pro-stat-value" id="modalProKeywordsCount">0</div>
+              </div>
+              <div class="pro-stat">
+                <div class="pro-stat-label">Avg Bid</div>
+                <div class="pro-stat-value" id="modalProAvgBid">—</div>
+              </div>
+            </div>
+            <div class="note" id="modalProSummaryNote"></div>
+            <ul class="insight-list" id="modalProPriorityList"></ul>
+            <details class="evidence-details">
+              <summary class="evidence-summary">Показать findings и действия</summary>
+              <div class="evidence-content">
+                <ul class="finding-list" id="modalProFindingsList"></ul>
+                <div class="note" id="modalProActionsNote">—</div>
+              </div>
+            </details>
+            <details class="evidence-details">
+              <summary class="evidence-summary">Показать tracking notes</summary>
+              <div class="evidence-content">
+                <div class="note" id="modalProTrackingNote">—</div>
+              </div>
+            </details>
+            <details class="evidence-details">
+              <summary class="evidence-summary">Показать search terms и keywords как доказательства</summary>
+              <div class="evidence-content">
+                <div class="modal-pro-columns">
+                  <div>
+                    <div class="modal-pro-section-title">Top Search Terms</div>
+                    <div class="table-scroll">
+                      <table>
+                        <thead>
+                          <tr><th>Query</th><th>Keyword</th><th>Clicks</th><th>CTR</th><th>Cost</th></tr>
+                        </thead>
+                        <tbody id="modalProSearchRows">
+                          <tr><td colspan="5" class="modal-pro-empty">Нет данных</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="modal-pro-section-title">Top Keywords</div>
+                    <div class="table-scroll">
+                      <table>
+                        <thead>
+                          <tr><th>Keyword</th><th>Type</th><th>Clicks</th><th>Bounce</th><th>Cost</th></tr>
+                        </thead>
+                        <tbody id="modalProKeywordRows">
+                          <tr><td colspan="5" class="modal-pro-empty">Нет данных</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
       </div>
     </div>
@@ -632,6 +831,8 @@
     let metricaDirectByCampaign = {};
     let wordstat = {};
     let audience = {};
+    let proData = {};
+    let proCampaignIndex = {};
     let rec = {};
     let REFERENCE_DATE = null;
 
@@ -649,6 +850,8 @@
       metricaDirectByCampaign = ((DATA.metrica || {}).direct_by_campaign) || {};
       wordstat = (DATA.wordstat || {});
       audience = (DATA.audience || {});
+      proData = (DATA.pro || {});
+      proCampaignIndex = (proData.by_campaign || {});
       rec = DATA.recommendations || {};
       REFERENCE_DATE = getLatestDatasetDate();
     }
@@ -2006,6 +2209,337 @@
       otbody.innerHTML = orows || '<tr><td colspan="4" style="color: var(--text-muted)">—</td></tr>';
     }
 
+    function fmtPctMaybe(value) {
+      return (value === null || value === undefined || !Number.isFinite(Number(value))) ? '—' : `${Number(value).toFixed(1)}%`;
+    }
+
+    function fmtRubMaybe(value) {
+      return (value === null || value === undefined || !Number.isFinite(Number(value))) ? '—' : `${fmt2.format(Number(value))} ₽`;
+    }
+
+    function campaignLabelById(campaignId) {
+      const camp = campaignData[String(campaignId)] || {};
+      return camp.shortName || camp.name || `#${campaignId}`;
+    }
+
+    function buildSearchTermSignal(row) {
+      const bits = [];
+      if (row.match_type) bits.push(`match=${row.match_type}`);
+      if (row.matched_keyword) bits.push(`keyword=${row.matched_keyword}`);
+      else bits.push('Direct не вернул matched keyword');
+      bits.push(`clicks=${fmtInt.format(Number(row.clicks || 0))}`);
+      bits.push(`ctr=${fmtPctMaybe(row.ctr)}`);
+      bits.push(`cost=${fmtRubMaybe(row.cost_rub)}`);
+      return bits.join(' · ');
+    }
+
+    function buildSearchTermAction(row) {
+      if (!row.matched_keyword) return 'Проверить, из какого keyword/adgroup реально приходит запрос, и нужен ли отдельный negative или новый adgroup.';
+      if (String(row.match_type || '').toUpperCase() === 'SYNONYM') return 'Проверить, нужен ли этот синонимический матч, или лучше сузить семантику / посадочную.';
+      if (Number(row.ctr || 0) < 2) return 'Проверить сниппет и соответствие запроса офферу: CTR слабый для потраченного бюджета.';
+      return 'Проверить intent запроса и решить: оставить, вынести отдельно или добавить negative.';
+    }
+
+    function buildKeywordSignal(row) {
+      const bits = [];
+      bits.push(`type=${row.criterion_type || '—'}`);
+      bits.push(`clicks=${fmtInt.format(Number(row.clicks || 0))}`);
+      if (row.bounce_rate !== null && row.bounce_rate !== undefined) bits.push(`bounce=${fmtPctMaybe(row.bounce_rate)}`);
+      bits.push(`cost=${fmtRubMaybe(row.cost_rub)}`);
+      return bits.join(' · ');
+    }
+
+    function buildKeywordAction(row) {
+      if (String(row.criterion_type || '').toUpperCase() !== 'KEYWORD') return 'Это не классический keyword, а другой targeting type. Проверить логику таргетинга отдельно от search semantics.';
+      if (Number(row.bounce_rate || 0) >= 60) return 'Проверить посадочную, оффер и соответствие keyword intent: трафик дорогой и слабо вовлекается.';
+      return 'Проверить, нужен ли этот criterion в текущем виде, или его лучше сузить / перегруппировать.';
+    }
+
+    function buildPriorityItems(findings, searchTerms, keywords) {
+      const items = [];
+      findings.slice(0, 4).forEach(item => {
+        const metrics = item.metrics || {};
+        const metricBits = [];
+        if (metrics.cost_rub !== undefined) metricBits.push(`cost=${fmtRubMaybe(metrics.cost_rub)}`);
+        if (metrics.clicks !== undefined) metricBits.push(`clicks=${fmtInt.format(Number(metrics.clicks || 0))}`);
+        if (metrics.leads !== undefined) metricBits.push(`leads=${fmtInt.format(Number(metrics.leads || 0))}`);
+        if (metrics.bounce_rate !== undefined && metrics.bounce_rate !== null) metricBits.push(`bounce=${fmtPctMaybe(metrics.bounce_rate)}`);
+        items.push({
+          severity: item.severity || 'info',
+          campaign_id: item.campaign_id || '',
+          kicker: `Campaign issue · ${campaignLabelById(item.campaign_id || '')}`,
+          title: item.title || 'Проверить campaign issue',
+          body: metricBits.join(' · ') || item.entity_label || '—',
+          action: item.recommendation || 'Проверить кампанию вручную.',
+        });
+      });
+      searchTerms.filter(row => Number(row.cost_rub || 0) > 0).slice(0, 2).forEach(row => {
+        items.push({
+          severity: (!row.matched_keyword || String(row.match_type || '').toUpperCase() === 'SYNONYM') ? 'medium' : 'low',
+          campaign_id: row.campaign_id || '',
+          kicker: `Search term · ${campaignLabelById(row.campaign_id || '')}`,
+          title: row.query || 'Проверить поисковый запрос',
+          body: buildSearchTermSignal(row),
+          action: buildSearchTermAction(row),
+        });
+      });
+      keywords.filter(row => Number(row.cost_rub || 0) > 0).slice(0, 2).forEach(row => {
+        items.push({
+          severity: (Number(row.bounce_rate || 0) >= 60 || String(row.criterion_type || '').toUpperCase() !== 'KEYWORD') ? 'medium' : 'low',
+          campaign_id: row.campaign_id || '',
+          kicker: `Targeting / criterion · ${campaignLabelById(row.campaign_id || '')}`,
+          title: row.keyword || 'Проверить criterion',
+          body: buildKeywordSignal(row),
+          action: buildKeywordAction(row),
+        });
+      });
+      return items.slice(0, 8);
+    }
+
+    function renderCampaignProModal(campaignId) {
+      const card = document.getElementById('modalProCard');
+      const findingsCountEl = document.getElementById('modalProFindingsCount');
+      const termsCountEl = document.getElementById('modalProTermsCount');
+      const keywordsCountEl = document.getElementById('modalProKeywordsCount');
+      const avgBidEl = document.getElementById('modalProAvgBid');
+      const summaryNoteEl = document.getElementById('modalProSummaryNote');
+      const findingsListEl = document.getElementById('modalProFindingsList');
+      const actionsNoteEl = document.getElementById('modalProActionsNote');
+      const trackingNoteEl = document.getElementById('modalProTrackingNote');
+      const searchRowsEl = document.getElementById('modalProSearchRows');
+      const keywordRowsEl = document.getElementById('modalProKeywordRows');
+      const modalPriorityList = document.getElementById('modalProPriorityList');
+      if (!card || !findingsCountEl || !termsCountEl || !keywordsCountEl || !avgBidEl || !summaryNoteEl || !findingsListEl || !actionsNoteEl || !trackingNoteEl || !searchRowsEl || !keywordRowsEl || !modalPriorityList) return;
+
+      const block = (proCampaignIndex && proCampaignIndex[campaignId]) ? proCampaignIndex[campaignId] : null;
+      if (!block || !block.available) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = '';
+      const findings = Array.isArray(block.findings) ? block.findings : [];
+      const searchTerms = Array.isArray(block.search_terms) ? block.search_terms : [];
+      const keywords = Array.isArray(block.keywords) ? block.keywords : [];
+      const trackingNotes = Array.isArray(block.tracking_notes) ? block.tracking_notes : [];
+      const actions = Array.isArray(block.today_actions) ? block.today_actions : [];
+      const bidSummary = block.bid_summary || {};
+      const watch = block.watchlist || {};
+
+      setText('modalProFindingsCount', fmtInt.format(findings.length));
+      setText('modalProTermsCount', fmtInt.format(searchTerms.length));
+      setText('modalProKeywordsCount', fmtInt.format(keywords.length));
+      setText('modalProAvgBid', fmtRubMaybe(bidSummary.avg_rub));
+
+      const summaryBits = [];
+      if (watch.short_name || watch.name) summaryBits.push(`Campaign: ${watch.short_name || watch.name}`);
+      if (watch.leads !== undefined) summaryBits.push(`Leads: ${fmtInt.format(Number(watch.leads || 0))}`);
+      if (watch.cpl !== undefined) summaryBits.push(`CPL: ${fmtRubMaybe(watch.cpl)}`);
+      summaryBits.push(`PRO aggregates are for dashboard source range ${meta.date_from || '—'} … ${meta.date_to || '—'}.`);
+      summaryNoteEl.textContent = summaryBits.join(' · ');
+      const modalPriorityItems = buildPriorityItems(findings, searchTerms, keywords).filter(item => String(item.campaign_id || '') === String(campaignId)).slice(0, 3);
+      modalPriorityList.innerHTML = modalPriorityItems.length ? modalPriorityItems.map(item => `
+        <li class="insight-item">
+          <span class="severity-badge ${esc(item.severity || 'info')}">${esc(String(item.severity || 'info').toUpperCase())}</span>
+          <div class="insight-kicker">${esc(item.kicker || 'PRO issue')}</div>
+          <div class="insight-title">${esc(item.title || '—')}</div>
+          <div class="insight-body">${esc(item.body || '—')}</div>
+          <div class="insight-action">${esc(item.action || '')}</div>
+        </li>
+      `).join('') : '<li class="insight-item"><div class="modal-pro-empty">Для этой кампании пока нет явного следующего шага.</div></li>';
+
+      findingsListEl.innerHTML = findings.length ? findings.map(item => {
+        const metrics = item.metrics || {};
+        const metricBits = [];
+        if (metrics.cost_rub !== undefined) metricBits.push(`cost=${fmtRubMaybe(metrics.cost_rub)}`);
+        if (metrics.clicks !== undefined) metricBits.push(`clicks=${fmtInt.format(Number(metrics.clicks || 0))}`);
+        if (metrics.ctr !== undefined && metrics.ctr !== null) metricBits.push(`ctr=${fmtPctMaybe(metrics.ctr)}`);
+        if (metrics.bounce_rate !== undefined && metrics.bounce_rate !== null) metricBits.push(`bounce=${fmtPctMaybe(metrics.bounce_rate)}`);
+        if (metrics.leads !== undefined) metricBits.push(`leads=${fmtInt.format(Number(metrics.leads || 0))}`);
+        return `
+          <li class="finding-item">
+            <span class="severity-badge ${esc(item.severity || 'info')}">${esc((item.severity || 'info').toUpperCase())} · ${esc(item.category || 'general')}</span>
+            <div class="finding-title">${esc(item.title || '—')}</div>
+            <div class="finding-meta">${esc(item.entity_label || '—')}${metricBits.length ? ` · ${esc(metricBits.join(' · '))}` : ''}</div>
+            <div class="finding-rec">${esc(item.recommendation || '')}</div>
+          </li>
+        `;
+      }).join('') : '<li class="finding-item"><div class="modal-pro-empty">Нет campaign-specific findings.</div></li>';
+
+      actionsNoteEl.textContent = actions.length ? actions.join(' · ') : 'Нет отдельных действий для этой кампании.';
+      trackingNoteEl.textContent = trackingNotes.length ? trackingNotes.join(' · ') : 'Явных tracking notes для этой кампании нет.';
+
+      searchRowsEl.innerHTML = searchTerms.length ? searchTerms.map(row => `
+        <tr>
+          <td>${esc(row.query || '—')}</td>
+          <td>${esc(row.matched_keyword || '—')}</td>
+          <td>${fmtInt.format(Number(row.clicks || 0))}</td>
+          <td>${fmtPctMaybe(row.ctr)}</td>
+          <td>${fmtRubMaybe(row.cost_rub)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="5" class="modal-pro-empty">Нет данных</td></tr>';
+
+      keywordRowsEl.innerHTML = keywords.length ? keywords.map(row => `
+        <tr>
+          <td>${esc(row.keyword || '—')}</td>
+          <td>${esc(row.criterion_type || '—')}</td>
+          <td>${fmtInt.format(Number(row.clicks || 0))}</td>
+          <td>${fmtPctMaybe(row.bounce_rate)}</td>
+          <td>${fmtRubMaybe(row.cost_rub)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="5" class="modal-pro-empty">Нет данных</td></tr>';
+    }
+
+    function renderProDashboard() {
+      const summaryCard = document.getElementById('proSummaryCard');
+      const campaignsCard = document.getElementById('proCampaignsCard');
+      const termsCard = document.getElementById('proTermsCard');
+      const findingsCard = document.getElementById('proFindingsCard');
+      if (!summaryCard || !campaignsCard || !termsCard || !findingsCard) return;
+
+      const blocks = (proData && proData.blocks) ? proData.blocks : {};
+      const findings = (proData && proData.findings && Array.isArray(proData.findings.items)) ? proData.findings.items : [];
+      const summary = (proData && proData.summary) ? proData.summary : {};
+      const warnings = (proData && Array.isArray(proData.warnings)) ? proData.warnings : [];
+      const hasAny = !!(proData && proData.available);
+
+      if (!hasAny) {
+        summaryCard.style.display = 'none';
+        campaignsCard.style.display = 'none';
+        termsCard.style.display = 'none';
+        findingsCard.style.display = 'none';
+        return;
+      }
+
+      summaryCard.style.display = '';
+      setText('pro-findings-total', fmtInt.format(Number(summary.findings_total || 0)));
+      setText('pro-search-rows', fmtInt.format(Number(summary.search_terms_rows || 0)));
+      setText('pro-keyword-rows', fmtInt.format(Number(summary.keywords_rows || 0)));
+      setText('pro-bid-campaigns', fmtInt.format(Number(summary.bids_campaigns || 0)));
+
+      const tracking = (blocks && blocks.tracking_gaps) ? blocks.tracking_gaps : {};
+      const sev = summary.findings_by_severity || {};
+      const trackingBits = [];
+      if (tracking && tracking.available) {
+        trackingBits.push(`UTM coverage: ${fmtPctMaybe(tracking.classified_share_pct)}`);
+        if (Array.isArray(tracking.top_unclassified_utm) && tracking.top_unclassified_utm.length) {
+          trackingBits.push(`unclassified UTM: ${tracking.top_unclassified_utm.length}`);
+        }
+      }
+      const sevBits = [
+        `high=${Number(sev.high || 0)}`,
+        `medium=${Number(sev.medium || 0)}`,
+        `low=${Number(sev.low || 0)}`,
+      ];
+      document.getElementById('proSummaryNote').textContent = `Severity mix: ${sevBits.join(' · ')}${trackingBits.length ? ` · ${trackingBits.join(' · ')}` : ''}`;
+      document.getElementById('proWarningsNote').textContent = warnings.length ? `Warnings: ${warnings.slice(0, 3).join(' · ')}` : '';
+
+      const campaignRows = Array.isArray(blocks.campaign_watchlist) ? blocks.campaign_watchlist : [];
+      const campaignBody = document.getElementById('proCampaignRows');
+      if (campaignRows.length && campaignBody) {
+        campaignsCard.style.display = '';
+        campaignBody.innerHTML = campaignRows.slice(0, 12).map(row => `
+          <tr>
+            <td>${esc(row.short_name || row.name || row.campaign_id)}</td>
+            <td>${esc(row.type || '—')}</td>
+            <td>${fmtRubMaybe(row.cost_rub)}</td>
+            <td>${fmtInt.format(Number(row.clicks || 0))}</td>
+            <td>${fmtInt.format(Number(row.visits || 0))}</td>
+            <td>${fmtInt.format(Number(row.leads || 0))}</td>
+            <td>${fmtRubMaybe(row.cpl)}</td>
+            <td>${fmtRubMaybe(row.avg_bid_rub)}</td>
+            <td>${fmtPctMaybe(row.clicks_delta_pct)}</td>
+            <td>${fmtPctMaybe(row.leads_delta_pct)}</td>
+          </tr>
+        `).join('');
+        const campaignNote = [];
+        const bidSummary = (blocks && blocks.bid_summary) ? blocks.bid_summary : {};
+        if (bidSummary && bidSummary.available) campaignNote.push(`Bid snapshots: ${Number(summary.bids_campaigns || 0)} campaigns`);
+        if (tracking && tracking.available) campaignNote.push(`Tracking method: ${tracking.method || '—'}`);
+        document.getElementById('proCampaignsNote').textContent = campaignNote.join(' · ');
+      } else {
+        campaignsCard.style.display = 'none';
+      }
+
+      const topSearchTerms = Array.isArray(blocks.top_search_terms) ? blocks.top_search_terms : [];
+      const topKeywords = Array.isArray(blocks.top_keywords) ? blocks.top_keywords : [];
+      const searchBody = document.getElementById('proSearchTermRows');
+      const keywordBody = document.getElementById('proKeywordRows');
+      const priorityList = document.getElementById('proPriorityList');
+      if ((topSearchTerms.length || topKeywords.length || findings.length) && searchBody && keywordBody) {
+        termsCard.style.display = '';
+        const priorityItems = buildPriorityItems(findings, topSearchTerms, topKeywords);
+        if (priorityList) {
+          priorityList.innerHTML = priorityItems.length ? priorityItems.map(item => `
+            <li class="insight-item">
+              <span class="severity-badge ${esc(item.severity || 'info')}">${esc(String(item.severity || 'info').toUpperCase())}</span>
+              <div class="insight-kicker">${esc(item.kicker || 'PRO issue')}</div>
+              <div class="insight-title">${esc(item.title || '—')}</div>
+              <div class="insight-body">${esc(item.body || '—')}</div>
+              <div class="insight-action">${esc(item.action || '')}</div>
+              <div class="insight-footer">
+                <span class="small">${esc(item.campaign_id ? `Кампания: ${campaignLabelById(item.campaign_id)}` : 'Откройте связанную кампанию для деталей')}</span>
+                ${item.campaign_id ? `<button class="btn" onclick="openCampaignModal('${esc(item.campaign_id)}')">Открыть кампанию</button>` : ''}
+              </div>
+            </li>
+          `).join('') : '<li class="insight-item"><div class="modal-pro-empty">Явных приоритетных проверок не найдено.</div></li>';
+        }
+        searchBody.innerHTML = topSearchTerms.slice(0, 12).map(row => `
+          <tr>
+            <td>
+              <div>${esc(row.query || '—')}</div>
+              <div style="font-size:11px; color:var(--text-muted);">${esc(row.matched_keyword || 'Matched keyword unavailable')}</div>
+            </td>
+            <td>${esc(campaignLabelById(row.campaign_id || ''))}</td>
+            <td>${esc(buildSearchTermSignal(row))}</td>
+            <td>${esc(buildSearchTermAction(row))}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" style="color: var(--text-muted)">Нет данных</td></tr>';
+        keywordBody.innerHTML = topKeywords.slice(0, 12).map(row => `
+          <tr>
+            <td>
+              <div>${esc(row.keyword || '—')}</div>
+              <div style="font-size:11px; color:var(--text-muted);">${esc(row.criterion_type || '—')}</div>
+            </td>
+            <td>${esc(campaignLabelById(row.campaign_id || ''))}</td>
+            <td>${esc(buildKeywordSignal(row))}</td>
+            <td>${esc(buildKeywordAction(row))}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" style="color: var(--text-muted)">Нет данных</td></tr>';
+        document.getElementById('proTermsNote').textContent = `Сначала выберите 1 карточку из списка ниже и откройте связанную кампанию. Не пытайтесь читать весь блок сверху вниз как отчёт.`;
+        document.getElementById('proPriorityNote').textContent = `Маршрут: 1) выберите приоритет, 2) откройте кампанию, 3) только потом, если нужно, раскройте доказательства.`;
+      } else {
+        termsCard.style.display = 'none';
+      }
+
+      const findingsList = document.getElementById('proFindingsList');
+      if (findings.length && findingsList) {
+        findingsCard.style.display = '';
+        findingsList.innerHTML = findings.slice(0, 12).map(item => {
+          const metrics = item.metrics || {};
+          const metricBits = [];
+          if (metrics.cost_rub !== undefined) metricBits.push(`cost=${fmtRubMaybe(metrics.cost_rub)}`);
+          if (metrics.clicks !== undefined) metricBits.push(`clicks=${fmtInt.format(Number(metrics.clicks || 0))}`);
+          if (metrics.ctr !== undefined && metrics.ctr !== null) metricBits.push(`ctr=${fmtPctMaybe(metrics.ctr)}`);
+          if (metrics.bounce_rate !== undefined && metrics.bounce_rate !== null) metricBits.push(`bounce=${fmtPctMaybe(metrics.bounce_rate)}`);
+          if (metrics.classified_share_pct !== undefined && metrics.classified_share_pct !== null) metricBits.push(`utm coverage=${fmtPctMaybe(metrics.classified_share_pct)}`);
+          if (metrics.leads !== undefined) metricBits.push(`leads=${fmtInt.format(Number(metrics.leads || 0))}`);
+          return `
+            <li class="finding-item">
+              <span class="severity-badge ${esc(item.severity || 'info')}">${esc((item.severity || 'info').toUpperCase())} · ${esc(item.category || 'general')}</span>
+              <div class="finding-title">${esc(item.title || '—')}</div>
+              <div class="finding-meta">${esc(item.entity_label || '—')}${metricBits.length ? ` · ${esc(metricBits.join(' · '))}` : ''}</div>
+              <div class="finding-rec">${esc(item.recommendation || '')}</div>
+            </li>
+          `;
+        }).join('');
+        const todayActions = (proData.recommendations && Array.isArray(proData.recommendations.today_actions)) ? proData.recommendations.today_actions : [];
+        document.getElementById('proActionsNote').textContent = todayActions.length ? `Today actions: ${todayActions.join(' · ')}` : '';
+      } else {
+        findingsCard.style.display = 'none';
+      }
+    }
+
     function updateAlerts(data, tableStats) {
       const card = document.getElementById('alertsCard');
       const listEl = document.getElementById('alertsList');
@@ -2131,6 +2665,7 @@
       fillRecommendations();
       renderWordstat(data.range);
       renderAudience(data.range);
+      renderProDashboard();
       updateAlerts(data, tableStats);
     }
 
@@ -2206,6 +2741,7 @@
       setText('m-cost-only', `Cost ≈ ${fmt2.format(cur.cost)} ₽`);
       setText('m-days', String(dayCount));
       setText('m-vs-prev', (vsPrevClicks === null) ? '—' : `${vsPrevClicks > 0 ? '+' : ''}${vsPrevClicks.toFixed(1)}%`);
+      renderCampaignProModal(String(campaignId));
 
       // Modal chart
       if (modalChart) { modalChart.destroy(); modalChart = null; }

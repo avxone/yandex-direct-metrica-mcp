@@ -4,11 +4,22 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+## 2.0.12 - 2026-06-19
+- Wordstat: hardened Yandex Search API integration by fixing `wordstat.regions` to send `region: REGION_*`, adding `associations` to HF/dashboard keyword candidates, validating `dynamics` date constraints, making `wordstat.user_info` a live `getRegionsTree` access check, and improving Search API setup/error hints.
+- Automation: added a Linear intake harness (`scripts/linear_issue.py`, templates, and docs) for creating Symphony-ready Linear issues from Markdown drafts without manual copy/paste.
+- Automation: added Symphony pipeline docs plus explicit release gates, changed-line lint, live validation helpers, a manual live-validation workflow, and a GitHub Release workflow for tag-driven publishing.
+- Docs: added English/Russian GitHub issue-style handoff drafts for the next Wordstat Search API hardening implementation.
+- Docs: added English/Russian next-release recommendations for hardening Yandex Search API Wordstat integration, including `regions` payload mapping, `associations` handling, `dynamics` date constraints, access-check semantics, and setup docs gaps.
+- Docs: added short English/Russian operator notes for Yandex Search API Web Search async requests, polling, Base64 decoding, and XML fields to parse.
+- Dashboard PRO HTML: added `dashboard.generate_pro_html`, a PRO-only Option 1-derived dashboard generator that enriches the existing HTML design with search-term diagnostics, keyword quality signals, campaign watchlist rows, bid snapshots, tracking-gap findings, and actionable recommendations.
+- Dashboard PRO HTML: added `scripts/generate_dashboard_pro_html.py`, focused regression coverage, and a live-demo generation path for evaluating the new dashboard against real Direct + Metrica data without a separate BI database.
+
 ## 2.0.11 - 2026-06-18
 - Wordstat: migrated runtime calls from the retired `api.wordstat.yandex.net/v1` OAuth endpoint to Yandex Search API Wordstat (`searchapi.api.cloud.yandex.net/v2/wordstat`) using `YANDEX_SEARCH_API_FOLDER_ID` plus API key/IAM token credentials.
 - Auth/docs: removed legacy Wordstat from `auth.*` helper wording and refreshed older documentation to use Yandex Search API credentials.
 
 ## 2.0.10 - 2026-05-08
+- Docs: added a post-release handoff for `Marketing2025` in English and Russian, capturing `v2.0.10` ship status, local `:dev` image alignment, and the remaining joint replay step.
 - Contracts: corrected `dashboard.generate_option1` annotations so it is no longer marked read-only when `output_dir` writes local HTML/JSON artifacts.
 - Docs: added detailed handoff documents for `Marketing2025` pipeline fixes and `yandex.ad` MCP follow-up work, plus session notes linking the execution tracks and release-prep follow-up.
 - Docs: added a focused contract update note for `Marketing2025` consumers covering special-campaign diagnostics, Metrica truncation warnings, Wordstat batch fallback behavior, `direct.report` / `direct.hf.report_keywords` compatibility notes, and read-only Direct login override semantics.

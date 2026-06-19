@@ -1,0 +1,37 @@
+name: Live Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Comma-separated suites: direct,metrica,wordstat"
+        required: false
+        default: "direct,metrica,wordstat"
+
+jobs:
+  live-validation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Materialize live test env
+        env:
+          LIVE_TEST_ENV: ${{ secrets.LIVE_TEST_ENV }}
+        run: |
+          if [ -z "$LIVE_TEST_ENV" ]; then
+            echo "Missing repository secret LIVE_TEST_ENV" >&2
+            exit 1
+          fi
+          printf '%s' "$LIVE_TEST_ENV" > .env
+      - name: Live validation
+        run: |
+          python scripts/live_validation.py --suite "${{ inputs.suite }}"

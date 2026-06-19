@@ -110,7 +110,7 @@
 Примечания:
 - Сервер может автоматически сдвинуть `date_to` на **вчера**, если вы передали сегодня/будущее.
 - В multi‑account режиме HTML содержит переключатель аккаунтов и обновляет view на клиенте.
-- Wordstat блок в дашборде — **best effort** и ограничен `wordstat_*` caps.
+- Wordstat блок в дашборде — **best effort** и ограничен `wordstat_*` caps; seed keywords are cleaned from Direct syntax such as `!`, `+`, and brackets before expansion.
 
 ## Direct: когда raw, а когда HF
 
@@ -170,8 +170,21 @@
 
 ## Wordstat (public read‑only: семантика/спрос)
 
+Wordstat uses Yandex Search API credentials, not Direct OAuth. Required setup:
+- service account belongs to the target folder;
+- service account has `search-api.webSearch.user`;
+- API key is created for that service account;
+- API key includes `yc.search-api.execute` if scopes are configured;
+- `YANDEX_SEARCH_API_FOLDER_ID` matches the folder.
+
+Troubleshooting:
+- 401/403: check folder id, `search-api.webSearch.user`, and API key scope.
+- `folderId` errors: check `YANDEX_SEARCH_API_FOLDER_ID`.
+- monthly `toDate` errors: use `YYYY-MM` or the last day of the month.
+- weekly `toDate` errors: provider week boundary must be confirmed; use raw `params` with provider-valid `toDate` or switch to daily/monthly.
+
 ### Raw слой (форма как у API)
-- `wordstat.user_info` — проверка доступа и контекста аккаунта
+- `wordstat.user_info` — live access check via `getRegionsTree` (there is no native Search API `userInfo`)
 - `wordstat.get_regions_tree` — каталог region ids
 - `wordstat.top_requests` — related queries for one phrase (or a list)
 - `wordstat.dynamics` — time dynamics for a phrase
@@ -180,6 +193,14 @@
 Raw используйте, когда нужно:
 - Максимальная гибкость (вы сами интерпретируете payload)
 - Точные поля ответа для выгрузки/аудита
+
+Provider limitations:
+- Web Wordstat operators such as `!word`, `+word`, and `[phrase]` do not provide full exact-match web UI semantics in Search API.
+- Multi-phrase comparison is not native; this MCP loops phrase-by-phrase where needed.
+- `count` can arrive as a string because protobuf `int64` is JSON-serialized as string.
+- `associations` can be empty or missing.
+- Region names require `wordstat.get_regions_tree` mapping.
+- `wordstat.regions` maps `all|cities|regions` to `REGION_ALL|REGION_CITIES|REGION_REGIONS`.
 
 ### HF слой (agent‑friendly)
 
@@ -190,6 +211,7 @@ Raw используйте, когда нужно:
 Важно:
 - Инструмент может вернуть `status="pending"` и `preview.cursor`.
 - Если pending — вызывайте ещё раз с `cursor`, пока не получите `status="ok"`.
+- Candidates are merged from provider `results` and `associations`; `provider_sources` shows `result`, `association`, or both.
 
 Пример цикла:
 1) Call with `seed_phrases`

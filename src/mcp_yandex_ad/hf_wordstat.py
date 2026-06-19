@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from .hf_common import HFError, ensure_hf_enabled, hf_payload
+from .wordstat_utils import merge_wordstat_candidate, wordstat_provider_items
 
 
 def _b64encode_json(payload: dict[str, Any]) -> str:
@@ -28,16 +29,6 @@ def _b64decode_json(value: str) -> dict[str, Any]:
 
 def _normalize_phrase(value: Any) -> str:
     return str(value or "").strip()
-
-
-def _top_requests_items(resp: dict[str, Any]) -> list[dict[str, Any]]:
-    items = resp.get("topRequests")
-    if isinstance(items, list):
-        return [x for x in items if isinstance(x, dict)]
-    items = resp.get("results")
-    if isinstance(items, list):
-        return [x for x in items if isinstance(x, dict)]
-    return []
 
 
 def _tokenize(phrase: str) -> list[str]:
@@ -125,8 +116,17 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(k, str) and isinstance(v, dict):
                     score = v.get("score")
                     sources = v.get("sources")
+                    provider_sources = v.get("provider_sources")
                     if isinstance(score, (int, float)) and isinstance(sources, list):
-                        acc_map[k] = {"score": float(score), "sources": [str(x) for x in sources if str(x).strip()]}
+                        acc_map[k] = {
+                            "score": float(score),
+                            "sources": [str(x) for x in sources if str(x).strip()],
+                            "provider_sources": [
+                                str(x)
+                                for x in (provider_sources if isinstance(provider_sources, list) else [])
+                                if str(x).strip()
+                            ],
+                        }
 
         for seed in chunk:
             resp = ctx._wordstat_post(  # type: ignore[attr-defined]
@@ -138,27 +138,26 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
                     "numPhrases": num_phrases,
                 },
             )
-            for item in _top_requests_items(resp):
-                phrase = _normalize_phrase(item.get("phrase"))
-                if not phrase:
-                    continue
-                try:
-                    count = float(item.get("count") or 0)
-                except Exception:
-                    continue
-                if count <= 0:
-                    continue
-                cur = acc_map.setdefault(phrase, {"score": 0.0, "sources": []})
-                cur["score"] = float(cur.get("score") or 0.0) + count
-                if seed not in cur["sources"]:
-                    cur["sources"].append(seed)
+            for item in wordstat_provider_items(resp):
+                merge_wordstat_candidate(
+                    acc_map,
+                    phrase=str(item["phrase"]),
+                    score=float(item["score"]),
+                    seed=seed,
+                    provider_source=str(item["provider_source"]),
+                )
 
         # Keep accumulator bounded (cursor size).
         sorted_items = sorted(acc_map.items(), key=lambda kv: float(kv[1].get("score") or 0.0), reverse=True)
         bounded = dict(sorted_items[: max_candidates * 2])
 
         candidates = [
-            {"phrase": phrase, "score": float(meta.get("score") or 0.0), "sources": meta.get("sources") or []}
+            {
+                "phrase": phrase,
+                "score": float(meta.get("score") or 0.0),
+                "sources": meta.get("sources") or [],
+                "provider_sources": meta.get("provider_sources") or [],
+            }
             for phrase, meta in sorted_items[:max_candidates]
         ]
 

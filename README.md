@@ -184,6 +184,15 @@ Wordstat via Yandex Search API:
 - `YANDEX_SEARCH_API_FOLDER_ID`
 - `YANDEX_SEARCH_API_API_KEY` or `YANDEX_SEARCH_API_IAM_TOKEN`
 
+Search API Wordstat does **not** use Direct OAuth. Configure it separately:
+- the service account belongs to the target folder;
+- the service account has `search-api.webSearch.user`;
+- the API key is created for that service account;
+- if API key scopes are configured, include `yc.search-api.execute`;
+- `YANDEX_SEARCH_API_FOLDER_ID` matches that folder.
+
+If `wordstat.user_info` or any `wordstat.*` call returns 401/403, check the role/scope/folder above. For `wordstat.dynamics`, monthly `to_date` must be `YYYY-MM` or the last day of the month; weekly boundaries are provider-specific, so use raw `params` only with a confirmed provider-valid `toDate`.
+
 Multi-account registry:
 - `MCP_ACCOUNTS_FILE=/data/accounts.json`
 

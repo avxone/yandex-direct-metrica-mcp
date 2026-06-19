@@ -38,6 +38,7 @@ from .report_names import make_unique_report_name
 from .retry import with_retries
 from .tools import tool_definitions
 from .wordstat_client import WORDSTAT_API_BASE, WordstatClient, WordstatError
+from .wordstat_utils import merge_wordstat_candidate, wordstat_provider_items
 from .audience_client import AudienceClient
 
 logger = logging.getLogger("yandex-direct-metrica-mcp")
@@ -2947,6 +2948,474 @@ def _dashboard_build_recommendations(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _dashboard_micros_to_rub(value: Any) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value) / 1_000_000.0
+    except Exception:
+        return None
+
+
+def _dashboard_hf_warning_message(item: Any) -> str:
+    if isinstance(item, dict):
+        code = str(item.get("code") or "warning")
+        message = str(item.get("message") or code)
+        return f"{code}: {message}"
+    return str(item)
+
+
+def _dashboard_extract_report_payload(report_payload: dict[str, Any]) -> tuple[str, list[str] | None]:
+    if isinstance(report_payload.get("raw"), str):
+        columns = report_payload.get("columns") if isinstance(report_payload.get("columns"), list) else None
+        return report_payload["raw"], columns
+    result = report_payload.get("result")
+    if isinstance(result, dict) and isinstance(result.get("raw"), str):
+        columns = result.get("columns") if isinstance(result.get("columns"), list) else None
+        return result["raw"], columns
+    return "", None
+
+
+def _dashboard_parse_report_rows(report_payload: dict[str, Any], *, max_rows: int | None = None) -> list[dict[str, str]]:
+    raw, columns = _dashboard_extract_report_payload(report_payload)
+    rows = _dashboard_parse_delimited(raw, delimiter="\t", columns=columns)
+    if max_rows is not None:
+        return rows[: max(0, int(max_rows))]
+    return rows
+
+
+def _dashboard_daily_totals(
+    daily: list[dict[str, Any]],
+    *,
+    start_s: str,
+    end_s: str,
+    fields: list[str],
+) -> dict[str, float]:
+    totals = {field: 0.0 for field in fields}
+    for row in daily or []:
+        if not isinstance(row, dict):
+            continue
+        day = str(row.get("date") or "").strip()
+        if not day or day < start_s or day > end_s:
+            continue
+        for field in fields:
+            totals[field] += _dashboard_float_or_zero(row.get(field))
+    return totals
+
+
+def _dashboard_pct_change(cur: float | None, prev: float | None) -> float | None:
+    try:
+        if cur is None or prev is None:
+            return None
+        prev_f = float(prev)
+        cur_f = float(cur)
+        if prev_f == 0.0:
+            return 0.0 if cur_f == 0.0 else None
+        return ((cur_f / prev_f) - 1.0) * 100.0
+    except Exception:
+        return None
+
+
+def _dashboard_findings_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"high": 0, "medium": 0, "low": 0, "info": 0}
+    for item in items:
+        severity = str(item.get("severity") or "info").lower()
+        if severity not in counts:
+            severity = "info"
+        counts[severity] += 1
+    return counts
+
+
+def _dashboard_build_pro_account_data(ctx: AppContext, *, args: dict[str, Any], base_data: dict[str, Any]) -> dict[str, Any]:
+    warnings: list[str] = []
+    meta = (base_data.get("meta") or {}) if isinstance(base_data, dict) else {}
+    direct_block = (base_data.get("direct") or {}) if isinstance(base_data, dict) else {}
+    metrica_block = (base_data.get("metrica") or {}) if isinstance(base_data, dict) else {}
+    campaign_data = direct_block.get("campaign_data") or {}
+    campaign_summaries = direct_block.get("campaign_summaries") or {}
+    direct_by_campaign = metrica_block.get("direct_by_campaign") or {}
+    current_from_s = str(meta.get("date_from") or "")
+    current_to_s = str(meta.get("date_to") or "")
+    prev_from_s = str(meta.get("prev_date_from") or "")
+    prev_to_s = str(meta.get("prev_date_to") or "")
+    if not current_from_s or not current_to_s:
+        return {"available": False, "warnings": ["missing current date range in base dashboard payload"]}
+
+    total_cost_rub = _dashboard_float_or_zero((((direct_block.get("current") or {}).get("totals") or {}).get("cost_rub")))
+    max_campaigns = max(1, min(50, int(args.get("max_campaigns") or 12)))
+    max_keywords = max(1, min(500, int(args.get("max_keywords") or 100)))
+    max_search_phrases = max(1, min(1000, int(args.get("max_search_phrases") or 200)))
+    max_findings = max(1, min(100, int(args.get("max_findings") or 24)))
+
+    scoped = _RequestScopedContext(ctx, args.get("direct_client_login"))
+
+    def _collect_hf_report_rows(tool: str, *, max_rows: int) -> list[dict[str, str]]:
+        payload = hf_direct_handle(
+            tool,
+            scoped,
+            {
+                "date_from": current_from_s,
+                "date_to": current_to_s,
+            },
+        )
+        if str(payload.get("status") or "") != "ok":
+            warnings.append(f"{tool} returned status={payload.get('status')}")
+            return []
+        for item in payload.get("warnings") or []:
+            warnings.append(f"{tool}: {_dashboard_hf_warning_message(item)}")
+        return _dashboard_parse_report_rows(payload, max_rows=max_rows)
+
+    search_phrase_rows_raw = _collect_hf_report_rows("direct.hf.report_search_phrases", max_rows=max_search_phrases)
+    keyword_rows_raw = _collect_hf_report_rows("direct.hf.report_keywords", max_rows=max_keywords)
+
+    search_phrase_rows: list[dict[str, Any]] = []
+    for row in search_phrase_rows_raw:
+        impressions = _dashboard_float_or_zero(row.get("Impressions"))
+        clicks = _dashboard_float_or_zero(row.get("Clicks"))
+        cost_rub = _dashboard_float_or_zero(row.get("Cost"))
+        ctr = 100.0 * clicks / impressions if impressions > 0 else None
+        search_phrase_rows.append(
+            {
+                "query": str(row.get("Query") or "").strip(),
+                "matched_keyword": str(row.get("MatchedKeyword") or "").strip(),
+                "match_type": str(row.get("MatchType") or "").strip(),
+                "campaign_id": str(row.get("CampaignId") or "").strip(),
+                "adgroup_id": str(row.get("AdGroupId") or "").strip(),
+                "impressions": impressions,
+                "clicks": clicks,
+                "cost_rub": cost_rub,
+                "ctr": ctr,
+            }
+        )
+    search_phrase_rows.sort(key=lambda item: (float(item.get("cost_rub") or 0.0), float(item.get("clicks") or 0.0)), reverse=True)
+
+    keyword_rows: list[dict[str, Any]] = []
+    for row in keyword_rows_raw:
+        impressions = _dashboard_float_or_zero(row.get("Impressions"))
+        clicks = _dashboard_float_or_zero(row.get("Clicks"))
+        cost_rub = _dashboard_float_or_zero(row.get("Cost"))
+        bounces = _dashboard_float_or_zero(row.get("Bounces"))
+        ctr = 100.0 * clicks / impressions if impressions > 0 else None
+        bounce_rate = 100.0 * bounces / clicks if clicks > 0 else None
+        keyword_rows.append(
+            {
+                "keyword": str(row.get("Criterion") or "").strip(),
+                "criterion_id": str(row.get("CriterionId") or "").strip(),
+                "criterion_type": str(row.get("CriterionType") or "").strip(),
+                "campaign_id": str(row.get("CampaignId") or "").strip(),
+                "adgroup_id": str(row.get("AdGroupId") or "").strip(),
+                "impressions": impressions,
+                "clicks": clicks,
+                "cost_rub": cost_rub,
+                "bounces": bounces,
+                "ctr": ctr,
+                "bounce_rate": bounce_rate,
+            }
+        )
+    keyword_rows.sort(key=lambda item: (float(item.get("cost_rub") or 0.0), float(item.get("clicks") or 0.0)), reverse=True)
+
+    watchlist_rows: list[dict[str, Any]] = []
+    top_campaign_ids = sorted(
+        [str(cid) for cid in campaign_summaries.keys()],
+        key=lambda cid: _dashboard_float_or_zero(
+            (((campaign_summaries.get(cid) or {}).get("current") or {}).get("cost_rub"))
+        ),
+        reverse=True,
+    )[:max_campaigns]
+
+    bid_campaign_rows: list[dict[str, Any]] = []
+    for cid in top_campaign_ids[: min(8, max_campaigns)]:
+        try:
+            payload = hf_direct_handle("direct.hf.get_bids_summary", scoped, {"campaign_id": int(cid)})
+            if str(payload.get("status") or "") != "ok":
+                continue
+            result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+            count = int(result.get("count") or 0)
+            if count <= 0:
+                continue
+            bid_campaign_rows.append(
+                {
+                    "campaign_id": str(cid),
+                    "count": count,
+                    "min_rub": _dashboard_micros_to_rub(result.get("min")),
+                    "avg_rub": _dashboard_micros_to_rub(result.get("avg")),
+                    "max_rub": _dashboard_micros_to_rub(result.get("max")),
+                }
+            )
+        except Exception as exc:
+            warnings.append(f"bids summary failed for campaign {cid}: {exc.__class__.__name__}")
+
+    bids_by_campaign = {row["campaign_id"]: row for row in bid_campaign_rows}
+    direct_campaigns_map = direct_by_campaign.get("campaigns") if isinstance(direct_by_campaign, dict) else {}
+    if not isinstance(direct_campaigns_map, dict):
+        direct_campaigns_map = {}
+
+    for cid in top_campaign_ids:
+        summary = (campaign_summaries.get(cid) or {}) if isinstance(campaign_summaries, dict) else {}
+        current = (summary.get("current") or {}) if isinstance(summary, dict) else {}
+        prev = (summary.get("prev") or {}) if isinstance(summary, dict) else {}
+        daily_metrica = ((direct_campaigns_map.get(cid) or {}).get("daily") or []) if isinstance(direct_campaigns_map, dict) else []
+        current_metrica = _dashboard_daily_totals(daily_metrica, start_s=current_from_s, end_s=current_to_s, fields=["visits", "leads", "engaged"])
+        prev_metrica = _dashboard_daily_totals(daily_metrica, start_s=prev_from_s, end_s=prev_to_s, fields=["visits", "leads", "engaged"]) if prev_from_s and prev_to_s else {"visits": 0.0, "leads": 0.0, "engaged": 0.0}
+        leads_cur = float(current_metrica.get("leads") or 0.0)
+        leads_prev = float(prev_metrica.get("leads") or 0.0)
+        cost_cur = _dashboard_float_or_zero(current.get("cost_rub"))
+        cpl_cur = _dashboard_safe_div(cost_cur, leads_cur) if leads_cur > 0 else None
+        clicks_delta = (summary.get("change") or {}).get("clicks_pct") if isinstance(summary.get("change"), dict) else None
+        cost_delta = (summary.get("change") or {}).get("cost_pct") if isinstance(summary.get("change"), dict) else None
+        leads_delta = _dashboard_pct_change(leads_cur, leads_prev)
+        watchlist_rows.append(
+            {
+                "campaign_id": cid,
+                "name": summary.get("name") or f"#{cid}",
+                "short_name": summary.get("shortName") or summary.get("name") or f"#{cid}",
+                "type": summary.get("type") or "unknown",
+                "impressions": _dashboard_float_or_zero(current.get("impressions")),
+                "clicks": _dashboard_float_or_zero(current.get("clicks")),
+                "cost_rub": cost_cur,
+                "ctr": current.get("ctr"),
+                "cpc": current.get("cpc"),
+                "visits": float(current_metrica.get("visits") or 0.0),
+                "engaged": float(current_metrica.get("engaged") or 0.0),
+                "leads": leads_cur,
+                "cpl": cpl_cur,
+                "clicks_delta_pct": clicks_delta,
+                "cost_delta_pct": cost_delta,
+                "leads_delta_pct": leads_delta,
+                "avg_bid_rub": (bids_by_campaign.get(cid) or {}).get("avg_rub"),
+            }
+        )
+
+    findings: list[dict[str, Any]] = []
+    search_cost_threshold = max(1200.0, total_cost_rub * 0.03)
+    for row in search_phrase_rows[:20]:
+        cost_rub = float(row.get("cost_rub") or 0.0)
+        clicks = float(row.get("clicks") or 0.0)
+        ctr = row.get("ctr")
+        if cost_rub < search_cost_threshold or clicks < 5:
+            continue
+        severity = "high" if (ctr is not None and float(ctr) < 2.0) else "medium"
+        findings.append(
+            {
+                "severity": severity,
+                "category": "search_terms",
+                "title": f"Search phrase '{row.get('query') or '—'}' consumes spend with weak click quality",
+                "entity_label": row.get("query") or "—",
+                "campaign_id": row.get("campaign_id"),
+                "adgroup_id": row.get("adgroup_id"),
+                "metrics": {
+                    "cost_rub": cost_rub,
+                    "clicks": clicks,
+                    "ctr": ctr,
+                },
+                "recommendation": "Проверьте запрос, соответствие keyword intent и список минус-слов.",
+            }
+        )
+        if len(findings) >= max_findings:
+            break
+
+    keyword_cost_threshold = max(1000.0, total_cost_rub * 0.025)
+    for row in keyword_rows[:20]:
+        cost_rub = float(row.get("cost_rub") or 0.0)
+        clicks = float(row.get("clicks") or 0.0)
+        bounce_rate = row.get("bounce_rate")
+        if cost_rub < keyword_cost_threshold or clicks < 6:
+            continue
+        if bounce_rate is None or float(bounce_rate) < 55.0:
+            continue
+        findings.append(
+            {
+                "severity": "medium",
+                "category": "keywords",
+                "title": f"Keyword '{row.get('keyword') or '—'}' drives expensive, low-quality visits",
+                "entity_label": row.get("keyword") or "—",
+                "campaign_id": row.get("campaign_id"),
+                "adgroup_id": row.get("adgroup_id"),
+                "criterion_id": row.get("criterion_id"),
+                "metrics": {
+                    "cost_rub": cost_rub,
+                    "clicks": clicks,
+                    "bounce_rate": bounce_rate,
+                },
+                "recommendation": "Проверьте посадочную, соответствие оффера и сегментацию keyword/adgroup.",
+            }
+        )
+        if len(findings) >= max_findings:
+            break
+
+    campaign_cost_threshold = max(2500.0, total_cost_rub * 0.08)
+    for row in watchlist_rows:
+        cost_rub = float(row.get("cost_rub") or 0.0)
+        clicks = float(row.get("clicks") or 0.0)
+        leads = float(row.get("leads") or 0.0)
+        if cost_rub >= campaign_cost_threshold and clicks >= 10 and leads <= 0:
+            findings.append(
+                {
+                    "severity": "high",
+                    "category": "campaigns",
+                    "title": f"Campaign '{row.get('short_name') or row.get('name')}' spends with no attributed leads",
+                    "entity_label": row.get("short_name") or row.get("name") or "—",
+                    "campaign_id": row.get("campaign_id"),
+                    "metrics": {
+                        "cost_rub": cost_rub,
+                        "clicks": clicks,
+                        "visits": row.get("visits"),
+                        "leads": leads,
+                    },
+                    "recommendation": "Проверьте intent, посадочную и корректность атрибуции по UTMCampaign.",
+                }
+            )
+        elif (row.get("cost_delta_pct") or 0) > 20 and (row.get("leads_delta_pct") is None or float(row.get("leads_delta_pct") or 0.0) <= 0.0):
+            findings.append(
+                {
+                    "severity": "medium",
+                    "category": "campaigns",
+                    "title": f"Campaign '{row.get('short_name') or row.get('name')}' grows in spend without lead growth",
+                    "entity_label": row.get("short_name") or row.get("name") or "—",
+                    "campaign_id": row.get("campaign_id"),
+                    "metrics": {
+                        "cost_delta_pct": row.get("cost_delta_pct"),
+                        "clicks_delta_pct": row.get("clicks_delta_pct"),
+                        "leads_delta_pct": row.get("leads_delta_pct"),
+                    },
+                    "recommendation": "Проверьте ставки, поисковые запросы и изменения в оффере/креативах.",
+                }
+            )
+        if len(findings) >= max_findings:
+            break
+
+    tracking_gaps: dict[str, Any] = {"available": False}
+    tracking_meta = (metrica_block.get("direct_split") or {}).get("meta") if isinstance(metrica_block.get("direct_split"), dict) else None
+    if isinstance(tracking_meta, dict):
+        tracking_gaps = {
+            "available": True,
+            "classified_share_pct": tracking_meta.get("classified_share_pct"),
+            "classified_leads_share_pct": tracking_meta.get("classified_leads_share_pct"),
+            "top_unclassified_utm": tracking_meta.get("top_unclassified_utm") or [],
+            "method": (metrica_block.get("direct_split") or {}).get("method"),
+        }
+        share = tracking_meta.get("classified_share_pct")
+        unknown = tracking_meta.get("top_unclassified_utm") or []
+        if share is not None and float(share) < 85.0:
+            findings.append(
+                {
+                    "severity": "high",
+                    "category": "tracking",
+                    "title": "A meaningful share of Direct visits could not be classified by UTMCampaign",
+                    "entity_label": "UTMCampaign mapping",
+                    "metrics": {
+                        "classified_share_pct": share,
+                        "top_unclassified_count": len(unknown) if isinstance(unknown, list) else 0,
+                    },
+                    "recommendation": "Нормализуйте utm_campaign: используйте campaign_id или уникальное стабильное имя кампании.",
+                }
+            )
+        elif isinstance(unknown, list) and unknown:
+            findings.append(
+                {
+                    "severity": "medium",
+                    "category": "tracking",
+                    "title": "Unclassified UTMCampaign values are still present in Direct-attributed traffic",
+                    "entity_label": "UTMCampaign mapping",
+                    "metrics": {
+                        "top_unclassified_count": len(unknown),
+                    },
+                    "recommendation": "Проверьте top unclassified UTMCampaign values и унифицируйте шаблон разметки.",
+                }
+            )
+
+    findings = findings[:max_findings]
+    counts = _dashboard_findings_counts(findings)
+    today_actions: list[str] = []
+    if findings:
+        for item in findings[:5]:
+            today_actions.append(str(item.get("recommendation") or item.get("title") or "Проверить диагностический блок PRO."))
+    else:
+        today_actions.append("Критичных PRO-findings не найдено; проверьте top search phrases и campaign watchlist вручную.")
+
+    top_search_terms = search_phrase_rows[: min(15, max_search_phrases)]
+    top_keywords = keyword_rows[: min(15, max_keywords)]
+    watchlist_by_campaign = {
+        str(row.get("campaign_id") or ""): row
+        for row in watchlist_rows
+        if str(row.get("campaign_id") or "").strip()
+    }
+    bid_summary_by_campaign = {
+        str(row.get("campaign_id") or ""): row
+        for row in bid_campaign_rows
+        if str(row.get("campaign_id") or "").strip()
+    }
+    by_campaign: dict[str, Any] = {}
+    campaign_ids = {
+        *[str(x).strip() for x in top_campaign_ids if str(x).strip()],
+        *[str((row.get("campaign_id") or "")).strip() for row in search_phrase_rows if str((row.get("campaign_id") or "")).strip()],
+        *[str((row.get("campaign_id") or "")).strip() for row in keyword_rows if str((row.get("campaign_id") or "")).strip()],
+        *[str((item.get("campaign_id") or "")).strip() for item in findings if str((item.get("campaign_id") or "")).strip()],
+    }
+    for cid in sorted(campaign_ids):
+        watch = watchlist_by_campaign.get(cid) or {}
+        campaign_search_terms = [row for row in search_phrase_rows if str(row.get("campaign_id") or "") == cid][:8]
+        campaign_keywords = [row for row in keyword_rows if str(row.get("campaign_id") or "") == cid][:8]
+        campaign_findings = [item for item in findings if str(item.get("campaign_id") or "") == cid][:8]
+        bid_summary = bid_summary_by_campaign.get(cid)
+        tracking_notes: list[str] = []
+        if tracking_gaps.get("available"):
+            if float(watch.get("cost_rub") or 0.0) > 0.0 and float(watch.get("visits") or 0.0) <= 0.0:
+                tracking_notes.append("Есть расход без визитов Metrica в attribution mapping: проверьте utm_campaign и counter binding.")
+            if tracking_gaps.get("classified_share_pct") is not None and float(tracking_gaps.get("classified_share_pct") or 0.0) < 85.0:
+                tracking_notes.append(
+                    f"Общий UTM coverage по dashboard = {float(tracking_gaps.get('classified_share_pct') or 0.0):.1f}%."
+                )
+        today_actions_campaign: list[str] = []
+        for item in campaign_findings:
+            rec = str(item.get("recommendation") or "").strip()
+            if rec and rec not in today_actions_campaign:
+                today_actions_campaign.append(rec)
+        if not today_actions_campaign and tracking_notes:
+            today_actions_campaign.append(tracking_notes[0])
+        by_campaign[cid] = {
+            "available": bool(watch or campaign_search_terms or campaign_keywords or campaign_findings or bid_summary or tracking_notes),
+            "watchlist": watch,
+            "search_terms": campaign_search_terms,
+            "keywords": campaign_keywords,
+            "findings": campaign_findings,
+            "bid_summary": bid_summary,
+            "tracking_notes": tracking_notes,
+            "today_actions": today_actions_campaign[:4],
+        }
+
+    return {
+        "available": True,
+        "warnings": warnings,
+        "summary": {
+            "findings_total": len(findings),
+            "findings_by_severity": counts,
+            "search_terms_rows": len(search_phrase_rows),
+            "keywords_rows": len(keyword_rows),
+            "watchlist_rows": len(watchlist_rows),
+            "bids_campaigns": len(bid_campaign_rows),
+        },
+        "blocks": {
+            "top_search_terms": top_search_terms,
+            "top_keywords": top_keywords,
+            "campaign_watchlist": watchlist_rows,
+            "tracking_gaps": tracking_gaps,
+            "bid_summary": {
+                "available": bool(bid_campaign_rows),
+                "campaigns": bid_campaign_rows,
+            },
+        },
+        "findings": {
+            "items": findings,
+            "counts": counts,
+        },
+        "by_campaign": by_campaign,
+        "recommendations": {
+            "today_actions": today_actions[:5],
+        },
+    }
+
+
 def _dashboard_wordstat_clean_seed(value: str) -> str:
     value = (value or "").strip()
     if not value:
@@ -3069,7 +3538,7 @@ def _dashboard_build_wordstat_block(
             seeds = [_dashboard_wordstat_clean_seed(name)]
             seeds = [s for s in seeds if s]
 
-        acc: dict[str, float] = {}
+        acc: dict[str, dict[str, Any]] = {}
         for seed in seeds:
             try:
                 payload: dict[str, Any] = {"phrase": seed, "numPhrases": num_phrases}
@@ -3078,26 +3547,28 @@ def _dashboard_build_wordstat_block(
                 if isinstance(devices, list) and devices:
                     payload["devices"] = [str(x) for x in devices if str(x).strip()]
                 resp = _wordstat_post(ctx, "topRequests", payload)
-                items = resp.get("topRequests") or resp.get("results")
-                if not isinstance(items, list):
-                    continue
-                for it in items:
-                    if not isinstance(it, dict):
-                        continue
-                    phrase = str(it.get("phrase") or "").strip()
-                    if not phrase:
-                        continue
-                    try:
-                        cnt = float(it.get("count") or 0.0)
-                    except Exception:
-                        continue
-                    if cnt <= 0:
-                        continue
-                    acc[phrase] = acc.get(phrase, 0.0) + cnt
+                for it in wordstat_provider_items(resp):
+                    merge_wordstat_candidate(
+                        acc,
+                        phrase=str(it["phrase"]),
+                        score=float(it["score"]),
+                        seed=seed,
+                        provider_source=str(it["provider_source"]),
+                    )
             except Exception as exc:
                 warnings.append(f"Wordstat topRequests failed for campaign {cid}: {exc.__class__.__name__}")
 
-        candidates = [{"phrase": p, "score": s} for p, s in sorted(acc.items(), key=lambda x: x[1], reverse=True)[:max_candidates]]
+        candidates = [
+            {
+                "phrase": phrase,
+                "score": float(meta.get("score") or 0.0),
+                "sources": meta.get("sources") or [],
+                "provider_sources": meta.get("provider_sources") or [],
+            }
+            for phrase, meta in sorted(acc.items(), key=lambda x: float(x[1].get("score") or 0.0), reverse=True)[
+                :max_candidates
+            ]
+        ]
         negatives: list[dict[str, Any]] = []
         if max_negatives > 0 and candidates:
             try:
@@ -5232,6 +5703,122 @@ def _dashboard_generate_option1(ctx: AppContext, args: dict[str, Any]) -> dict[s
     return {"result": result}
 
 
+def _dashboard_generate_pro_html(ctx: AppContext, args: dict[str, Any]) -> dict[str, Any]:
+    option1_args = dict(args)
+    option1_args["include_html"] = False
+    option1_args["output_dir"] = None
+    option1_args["return_data"] = True
+    if option1_args.get("include_raw_reports") is None:
+        option1_args["include_raw_reports"] = False
+
+    base = _dashboard_generate_option1(ctx, option1_args)
+    data = ((base.get("result") or {}).get("data")) if isinstance(base, dict) else None
+    if not isinstance(data, dict):
+        raise RuntimeError("dashboard.generate_pro_html: failed to build base dashboard payload")
+
+    include_html = args.get("include_html")
+    output_dir = args.get("output_dir")
+    if include_html is None:
+        include_html = not bool(output_dir)
+    return_data = args.get("return_data")
+    if return_data is None:
+        return_data = not bool(output_dir)
+
+    if bool((data.get("meta") or {}).get("multi")):
+        accounts = data.get("accounts")
+        if not isinstance(accounts, dict):
+            raise RuntimeError("dashboard.generate_pro_html: multi-account payload is malformed")
+        for account_id, per_data in accounts.items():
+            if not isinstance(per_data, dict):
+                continue
+            per_meta = per_data.get("meta") if isinstance(per_data.get("meta"), dict) else {}
+            per_args = dict(args)
+            per_args.pop("all_accounts", None)
+            per_args.pop("account_ids", None)
+            per_args["account_id"] = account_id
+            if per_meta.get("direct_client_login") is not None:
+                per_args["direct_client_login"] = per_meta.get("direct_client_login")
+            if per_meta.get("counter_id") is not None:
+                per_args["counter_id"] = per_meta.get("counter_id")
+            per_data["pro"] = _dashboard_build_pro_account_data(ctx, args=per_args, base_data=per_data)
+            if isinstance(per_data.get("meta"), dict):
+                per_data["meta"]["tool"] = "dashboard.generate_pro_html"
+        if isinstance(data.get("meta"), dict):
+            data["meta"]["tool"] = "dashboard.generate_pro_html"
+    else:
+        data["pro"] = _dashboard_build_pro_account_data(ctx, args=args, base_data=data)
+        if isinstance(data.get("meta"), dict):
+            data["meta"]["tool"] = "dashboard.generate_pro_html"
+
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    date_from_s = str(meta.get("date_from") or "")
+    date_to_s = str(meta.get("date_to") or "")
+    ident = "multi" if bool(meta.get("multi")) else str(meta.get("account_id") or meta.get("direct_client_login") or "default")
+    base_name = f"yandexad_dashboard_pro__{_dashboard_safe_slug(ident)}__{date_from_s}_{date_to_s}"
+    if args.get("dashboard_slug"):
+        base_name += f"__{_dashboard_safe_slug(str(args.get('dashboard_slug')))}"
+
+    data_json = json.dumps(data, ensure_ascii=False)
+    html: str | None = None
+    html_path: str | None = None
+    json_path: str | None = None
+
+    if include_html or output_dir:
+        html = _dashboard_render_html(_dashboard_get_option1_template(), data_json=data_json)
+
+    if output_dir:
+        out_dir = Path(str(output_dir)).expanduser()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        data_path = out_dir / f"{base_name}.json"
+        page_path = out_dir / f"{base_name}.html"
+        data_path.write_text(data_json, encoding="utf-8")
+        if html is not None:
+            page_path.write_text(html, encoding="utf-8")
+        html_path = str(page_path)
+        json_path = str(data_path)
+
+    result: dict[str, Any] = {}
+    if return_data:
+        result["data"] = data
+    else:
+        if bool(meta.get("multi")):
+            compact_accounts: list[dict[str, Any]] = []
+            for account_id, per_data in ((data.get("accounts") or {}) if isinstance(data.get("accounts"), dict) else {}).items():
+                if not isinstance(per_data, dict):
+                    continue
+                compact = _dashboard_build_compact_result(
+                    per_data,
+                    warnings=(per_data.get("warnings") if isinstance(per_data.get("warnings"), list) else []),
+                    coverage=(per_data.get("coverage") if isinstance(per_data.get("coverage"), dict) else {}),
+                )
+                compact_accounts.append(
+                    {
+                        "account_id": account_id,
+                        "project_name": ((per_data.get("meta") or {}).get("project_name") if isinstance(per_data.get("meta"), dict) else None),
+                        "summary": compact.get("summary"),
+                        "pro_summary": (((per_data.get("pro") or {}).get("summary")) if isinstance(per_data.get("pro"), dict) else None),
+                    }
+                )
+            result["meta"] = meta
+            result["accounts"] = compact_accounts
+            result["warnings"] = data.get("warnings") if isinstance(data.get("warnings"), list) else []
+        else:
+            result.update(
+                _dashboard_build_compact_result(
+                    data,
+                    warnings=(data.get("warnings") if isinstance(data.get("warnings"), list) else []),
+                    coverage=(data.get("coverage") if isinstance(data.get("coverage"), dict) else {}),
+                )
+            )
+            if isinstance(data.get("pro"), dict):
+                result["pro_summary"] = data["pro"].get("summary")
+    if include_html:
+        result["html"] = html
+    if html_path or json_path:
+        result["files"] = {"html_path": html_path, "json_path": json_path}
+    return {"result": result}
+
+
 def _evict_one_direct_client(ctx: AppContext) -> None:
     if not ctx.direct_clients_cache:
         return
@@ -5953,6 +6540,55 @@ def _wordstat_str_list(value: Any) -> list[str] | None:
     return [s] if s else None
 
 
+def _wordstat_normalize_period(value: Any) -> str:
+    normalized = str(value or "").strip().upper()
+    aliases = {
+        "MONTH": "PERIOD_MONTHLY",
+        "MONTHLY": "PERIOD_MONTHLY",
+        "PERIOD_MONTHLY": "PERIOD_MONTHLY",
+        "WEEK": "PERIOD_WEEKLY",
+        "WEEKLY": "PERIOD_WEEKLY",
+        "PERIOD_WEEKLY": "PERIOD_WEEKLY",
+        "DAY": "PERIOD_DAILY",
+        "DAILY": "PERIOD_DAILY",
+        "PERIOD_DAILY": "PERIOD_DAILY",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _wordstat_normalize_region_type(value: Any) -> str:
+    normalized = str(value or "").strip().upper()
+    aliases = {
+        "ALL": "REGION_ALL",
+        "REGION_ALL": "REGION_ALL",
+        "CITIES": "REGION_CITIES",
+        "CITY": "REGION_CITIES",
+        "REGION_CITIES": "REGION_CITIES",
+        "REGIONS": "REGION_REGIONS",
+        "REGION": "REGION_REGIONS",
+        "REGION_REGIONS": "REGION_REGIONS",
+    }
+    out = aliases.get(normalized)
+    if not out:
+        raise ValueError("region_type must be one of all, cities, regions, REGION_ALL, REGION_CITIES, REGION_REGIONS")
+    return out
+
+
+def _wordstat_ymd(value: str) -> date | None:
+    if len(value) != 10 or value[4] != "-" or value[7] != "-":
+        return None
+    try:
+        return date(int(value[:4]), int(value[5:7]), int(value[8:10]))
+    except Exception:
+        return None
+
+
+def _wordstat_month_last_day(day: date) -> date:
+    if day.month == 12:
+        return date(day.year + 1, 1, 1) - timedelta(days=1)
+    return date(day.year, day.month + 1, 1) - timedelta(days=1)
+
+
 def _wordstat_date_time(value: Any, *, end: bool = False) -> str:
     s = str(value or "").strip()
     if not s:
@@ -5970,8 +6606,30 @@ def _wordstat_date_time(value: Any, *, end: bool = False) -> str:
             return (next_month - timedelta(seconds=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
         return f"{s}-01T00:00:00Z"
     if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        if end:
+            return f"{s}T23:59:59Z"
         return f"{s}T00:00:00Z"
     return s
+
+
+def _wordstat_dynamics_to_date(value: Any, *, period: str | None) -> str:
+    s = str(value or "").strip()
+    if not s:
+        return s
+    normalized_period = _wordstat_normalize_period(period) if period else ""
+    if len(s) == 7 and s[4] == "-":
+        if normalized_period and normalized_period != "PERIOD_MONTHLY":
+            raise ValueError("YYYY-MM to_date is only supported for monthly Wordstat dynamics.")
+        return _wordstat_date_time(s, end=True)
+    day = _wordstat_ymd(s)
+    if normalized_period == "PERIOD_MONTHLY" and day is not None and day != _wordstat_month_last_day(day):
+        raise ValueError("Monthly Wordstat dynamics to_date must be YYYY-MM or the last day of the month.")
+    if normalized_period == "PERIOD_WEEKLY" and day is not None:
+        raise ValueError(
+            "Weekly Wordstat dynamics to_date must use the provider's week-end boundary. "
+            "Because the boundary is provider-specific, pass raw params with a confirmed toDate or use daily/monthly."
+        )
+    return _wordstat_date_time(s, end=True)
 
 
 def _build_wordstat_top_requests_payload(args: dict[str, Any]) -> dict[str, Any]:
@@ -6027,13 +6685,17 @@ def _build_wordstat_dynamics_payload(args: dict[str, Any]) -> dict[str, Any]:
 
     payload: dict[str, Any] = {"phrase": phrase, "fromDate": from_date}
 
+    period = args.get("period")
+    normalized_period = ""
+    if period is not None and str(period).strip():
+        normalized_period = _wordstat_normalize_period(period)
+        if normalized_period not in {"PERIOD_MONTHLY", "PERIOD_WEEKLY", "PERIOD_DAILY"}:
+            raise ValueError("period must be monthly, weekly, daily, PERIOD_MONTHLY, PERIOD_WEEKLY, or PERIOD_DAILY")
+        payload["period"] = str(period).strip()
+
     to_date = args.get("to_date")
     if to_date is not None and str(to_date).strip():
-        payload["toDate"] = _wordstat_date_time(to_date, end=True)
-
-    period = args.get("period")
-    if period is not None and str(period).strip():
-        payload["period"] = str(period).strip()
+        payload["toDate"] = _wordstat_dynamics_to_date(to_date, period=normalized_period)
 
     regions = _wordstat_int_list(args.get("regions"))
     if regions:
@@ -6056,7 +6718,7 @@ def _build_wordstat_regions_payload(args: dict[str, Any]) -> dict[str, Any]:
     payload: dict[str, Any] = {"phrase": phrase}
     region_type = args.get("region_type")
     if region_type is not None and str(region_type).strip():
-        payload["regionType"] = str(region_type).strip()
+        payload["region"] = _wordstat_normalize_region_type(region_type)
     devices = _wordstat_str_list(args.get("devices"))
     if devices:
         payload["devices"] = devices
@@ -6632,14 +7294,24 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)
 
+    if name == "dashboard.generate_pro_html":
+        try:
+            data = _dashboard_generate_pro_html(ctx, args)
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
     if name == "wordstat.user_info":
         try:
+            access_check = _wordstat_post(ctx, "getRegionsTree", args.get("params") or None)
             data = {
                 "api": "yandex_search_api_wordstat",
                 "baseUrl": getattr(ctx.config, "wordstat_api_base_url", None) or WORDSTAT_API_BASE,
                 "folderId": getattr(ctx.config, "wordstat_search_api_folder_id", None),
                 "auth": "api_key" if getattr(ctx.config, "wordstat_search_api_api_key", None) else "iam_token",
+                "access_check": "getRegionsTree",
                 "available": True,
+                "raw": access_check,
             }
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety

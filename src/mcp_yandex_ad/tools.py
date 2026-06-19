@@ -789,6 +789,55 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             },
         ),
         Tool(
+            name="dashboard.generate_pro_html",
+            description="Pro-only: generate an enriched HTML+JSON dashboard with search terms, keyword diagnostics, campaign watchlist, bids, and tracking gap findings.",
+            inputSchema={
+                "type": "object",
+                "required": ["date_from", "date_to"],
+                "properties": {
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD."},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "all_accounts": {
+                        "type": "boolean",
+                        "description": "When true, generate one dashboard containing data for all configured account profiles (account switcher in UI).",
+                    },
+                    "account_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional explicit list of account profile ids to include in a multi-account dashboard.",
+                    },
+                    "counter_id": {"type": "string", "description": "Metrica counter id (optional if account profile has exactly one)."},
+                    "goal_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional Metrica goal IDs. When set, dashboard will include leads based on goal{ID}reaches (best effort).",
+                    },
+                    "dashboard_slug": {"type": "string", "description": "Optional suffix for output file names."},
+                    "output_dir": {"type": "string", "description": "When set, write HTML+JSON files to this directory."},
+                    "include_raw_reports": {"type": "boolean", "description": "Include raw Direct/Metrica payloads in output data (default: false)."},
+                    "include_wordstat": {"type": "boolean", "description": "Include Wordstat suggestions block (default: false)."},
+                    "include_audience": {"type": "boolean", "description": "Include Audience segments blocks (default: false)."},
+                    "max_campaigns": {"type": "integer", "description": "Max campaigns to include in the PRO watchlist (default: 12)."},
+                    "max_keywords": {"type": "integer", "description": "Max keyword report rows to parse for PRO insights (default: 100)."},
+                    "max_search_phrases": {"type": "integer", "description": "Max search phrase report rows to parse for PRO insights (default: 200)."},
+                    "max_findings": {"type": "integer", "description": "Max findings to include in the PRO insights panel (default: 24)."},
+                    "wordstat_max_campaigns": {"type": "integer", "description": "Max campaigns to analyze with Wordstat (default: 5)."},
+                    "wordstat_max_seed_phrases_per_campaign": {"type": "integer", "description": "Max seed phrases per campaign (default: 3)."},
+                    "wordstat_num_phrases": {"type": "integer", "description": "Wordstat numPhrases (default: 50, max: 2000)."},
+                    "wordstat_max_candidates_per_campaign": {"type": "integer", "description": "Max Wordstat candidates per campaign (default: 20)."},
+                    "wordstat_max_negatives_per_campaign": {"type": "integer", "description": "Max negative tokens per campaign (default: 25)."},
+                    "wordstat_language": {"type": "string", "description": "Negative lexicon language ru|en (default: ru)."},
+                    "wordstat_regions": {"type": "array", "items": {"type": "integer"}, "description": "Optional Wordstat region ids."},
+                    "wordstat_devices": {"type": "array", "items": {"type": "string"}, "description": "Optional Wordstat devices filter."},
+                    "include_html": {"type": "boolean", "description": "Include HTML content in response (default: true if output_dir is not set)."},
+                    "return_data": {
+                        "type": "boolean",
+                        "description": "Return the full data payload in response (default: false if output_dir is set, otherwise true).",
+                    },
+                },
+            },
+        ),
+        Tool(
             name="accounts.list",
             description="List configured project profiles from the accounts registry file.",
             inputSchema={"type": "object", "properties": {}},
@@ -1743,7 +1792,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
         ),
         Tool(
             name="wordstat.user_info",
-            description="Wordstat: userInfo (access check).",
+            description="Wordstat: Search API access check via getRegionsTree.",
             inputSchema={"type": "object", "properties": {"params": {"type": "object"}}},
         ),
         Tool(
@@ -1782,8 +1831,11 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 "properties": {
                     "phrase": {"type": "string"},
                     "from_date": {"type": "string", "description": "YYYY-MM (inclusive)."},
-                    "to_date": {"type": "string", "description": "YYYY-MM (inclusive). Optional."},
-                    "period": {"type": "string", "description": "monthly | weekly | daily (API-defined)."},
+                    "to_date": {
+                        "type": "string",
+                        "description": "Optional. Monthly accepts YYYY-MM or month-end YYYY-MM-DD; weekly requires provider-valid week-end via params.",
+                    },
+                    "period": {"type": "string", "description": "monthly | weekly | daily; mapped to PERIOD_MONTHLY/PERIOD_WEEKLY/PERIOD_DAILY."},
                     "regions": {"type": "array", "items": {"type": "integer"}},
                     "devices": {"type": "array", "items": {"type": "string"}},
                     "params": {"type": "object", "description": "Raw Wordstat payload override (advanced)."},
@@ -1798,7 +1850,10 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                 "required": ["phrase"],
                 "properties": {
                     "phrase": {"type": "string"},
-                    "region_type": {"type": "string", "description": "cities | regions | all (API-defined)."},
+                    "region_type": {
+                        "type": "string",
+                        "description": "all|cities|regions or REGION_ALL|REGION_CITIES|REGION_REGIONS; sent as Search API region.",
+                    },
                     "devices": {"type": "array", "items": {"type": "string"}},
                     "params": {"type": "object", "description": "Raw Wordstat payload override (advanced)."},
                 },
@@ -1829,6 +1884,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             "metrica.raw_call",
             "audience.raw_call",
             "join.hf.direct_vs_metrica_by_yclid",
+            "dashboard.generate_pro_html",
             "dashboard.schema",
             "dashboard.sync.start",
             "dashboard.sync.next",

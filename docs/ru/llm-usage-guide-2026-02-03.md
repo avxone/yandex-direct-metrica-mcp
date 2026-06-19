@@ -110,7 +110,7 @@
 Примечания:
 - Сервер может автоматически сдвинуть `date_to` на **вчера**, если вы передали сегодня/будущее.
 - В multi‑account режиме HTML содержит переключатель аккаунтов и обновляет view на клиенте.
-- Wordstat блок в дашборде — **best effort** и ограничен `wordstat_*` caps.
+- Wordstat блок в дашборде — **best effort** и ограничен `wordstat_*` caps; seed keywords очищаются от синтаксиса Direct (`!`, `+`, скобки) перед расширением.
 
 ## Direct: когда raw, а когда HF
 
@@ -170,8 +170,21 @@
 
 ## Wordstat (public read‑only: семантика/спрос)
 
+Wordstat использует Yandex Search API credentials, а не Direct OAuth. Требования:
+- сервисный аккаунт находится в целевой папке;
+- сервисный аккаунт имеет роль `search-api.webSearch.user`;
+- API key создан для этого сервисного аккаунта;
+- API key включает `yc.search-api.execute`, если scopes настроены;
+- `YANDEX_SEARCH_API_FOLDER_ID` совпадает с этой папкой.
+
+Troubleshooting:
+- 401/403: проверьте folder id, `search-api.webSearch.user` и scope API key.
+- ошибки `folderId`: проверьте `YANDEX_SEARCH_API_FOLDER_ID`.
+- ошибки monthly `toDate`: используйте `YYYY-MM` или последний день месяца.
+- ошибки weekly `toDate`: границу недели нужно подтвердить у провайдера; используйте raw `params` с валидным `toDate` или daily/monthly.
+
 ### Raw слой (форма как у API)
-- `wordstat.user_info` — проверка доступа и контекста аккаунта
+- `wordstat.user_info` — live access check через `getRegionsTree` (в Search API нет native `userInfo`)
 - `wordstat.get_regions_tree` — каталог region ids
 - `wordstat.top_requests` — related queries for one phrase (or a list)
 - `wordstat.dynamics` — time dynamics for a phrase
@@ -180,6 +193,14 @@
 Raw используйте, когда нужно:
 - Максимальная гибкость (вы сами интерпретируете payload)
 - Точные поля ответа для выгрузки/аудита
+
+Ограничения провайдера:
+- Web Wordstat operators вроде `!word`, `+word`, `[phrase]` не дают полной exact-match семантики web UI в Search API.
+- Нативного сравнения нескольких фраз нет; MCP при необходимости делает loop phrase-by-phrase.
+- `count` может прийти строкой, потому что protobuf `int64` JSON-сериализуется как string.
+- `associations` могут быть пустыми или отсутствовать.
+- Названия регионов требуют mapping через `wordstat.get_regions_tree`.
+- `wordstat.regions` мапит `all|cities|regions` в `REGION_ALL|REGION_CITIES|REGION_REGIONS`.
 
 ### HF слой (agent‑friendly)
 
@@ -190,6 +211,7 @@ Raw используйте, когда нужно:
 Важно:
 - Инструмент может вернуть `status="pending"` и `preview.cursor`.
 - Если pending — вызывайте ещё раз с `cursor`, пока не получите `status="ok"`.
+- Candidates объединяются из provider `results` и `associations`; `provider_sources` показывает `result`, `association` или оба источника.
 
 Пример цикла:
 1) Call with `seed_phrases`
