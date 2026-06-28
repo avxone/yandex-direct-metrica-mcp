@@ -13,6 +13,7 @@ SCRIPTS = {
     "direct": ROOT / "scripts" / "check_direct_access.py",
     "metrica": ROOT / "scripts" / "check_metrica_access.py",
     "wordstat": ROOT / "scripts" / "check_wordstat_access.py",
+    "search": ROOT / "scripts" / "check_search_serp_access.py",
 }
 
 
@@ -21,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--suite",
         default="direct,metrica,wordstat",
-        help="Comma-separated suites to run: direct,metrica,wordstat",
+        help="Comma-separated suites to run: direct,metrica,wordstat,search",
     )
     return parser.parse_args()
 

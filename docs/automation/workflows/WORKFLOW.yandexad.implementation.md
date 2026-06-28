@@ -1,0 +1,124 @@
+---
+tracker:
+  kind: linear
+  api_key: $LINEAR_API_KEY
+  project_slug: "ca8365801feb"
+  required_labels:
+    - symphony
+  active_states:
+    - Todo
+    - In Progress
+  terminal_states:
+    - Done
+    - Canceled
+    - Cancelled
+    - Duplicate
+workspace:
+  root: /Users/georgyagaev/Projects/Symphony_yaad/workspaces
+hooks:
+  after_create: |
+    git clone --depth 1 https://github.com/georgy-agaev/yandex-direct-metrica-mcp.git .
+agent:
+  max_concurrent_agents: 1
+  max_turns: 4
+codex:
+  command: codex --config shell_environment_policy.inherit=all app-server
+  approval_policy: never
+  thread_sandbox: workspace-write
+  turn_sandbox_policy:
+    type: workspaceWrite
+    networkAccess: true
+---
+You are the implementation lane for the `yandex.ad` repository.
+
+Issue:
+- Identifier: {{ issue.identifier }}
+- Title: {{ issue.title }}
+- State: {{ issue.state }}
+
+Determine the stage from labels:
+
+- `issue-type:release` -> release issue
+- `issue-type:pr` -> PR issue
+- otherwise -> feature issue
+
+General rules:
+
+1. If the issue is `Todo`, move it to `In Progress`.
+2. Work only inside this isolated workspace.
+3. Keep changes scoped to the current issue type.
+4. Write `SYMPHONY_WORK_RESULT.md`.
+5. Leave one concise Linear comment with the stage result.
+6. Move the issue to `In Review` when the stage completes.
+
+## Feature issue
+
+Do:
+
+- implement only the scoped code and docs change;
+- run local non-live gates:
+  - `python -m compileall -q src/mcp_yandex_ad`
+  - targeted `pytest`
+  - `python scripts/agent_lint.py`
+
+Do not:
+
+- push
+- create PRs
+- tag releases
+- publish images
+- run live Yandex API validation
+
+## PR issue
+
+Do:
+
+- re-run local non-live gates:
+  - `python -m compileall -q src/mcp_yandex_ad`
+  - `pytest -q`
+  - `python scripts/agent_lint.py`
+- generate PR metadata:
+  - `python scripts/prepare_pr.py --issue-id {{ issue.identifier }} --title "{{ issue.title }}" --output PR_BODY.md`
+- create or reuse the suggested issue branch;
+- commit the workspace changes;
+- push the branch to GitHub;
+- create or update the GitHub PR;
+- comment the PR URL back to Linear.
+
+Do not:
+
+- tag releases
+- create GitHub Releases
+- publish Docker images
+
+If any gate or GitHub step fails, comment the blocker and move the issue back to `Todo`.
+
+## Release issue
+
+Only proceed if the issue is explicitly a release issue and carries `release-required`.
+
+Do:
+
+- run full gates:
+  - `python -m compileall -q src/mcp_yandex_ad`
+  - `pytest -q`
+  - `python scripts/agent_lint.py`
+  - `python scripts/live_validation.py --suite direct,metrica,wordstat,search`
+  - `python scripts/release_guard.py --version X.Y.Z --require-release-notes`
+- finalize release metadata if needed;
+- commit and push the release commit if required;
+- create and push tags:
+  - `vX.Y.Z`
+  - `pro-vX.Y.Z`
+- create the GitHub Release;
+- verify release and Docker publish workflows;
+- refresh local Docker aliases:
+  - `python scripts/sync_local_docker_release.py --version X.Y.Z --include-pro`
+
+If any gate fails, stop immediately, comment the blocker, and move the issue back to `Todo`.
+
+Hard rules:
+
+- never read or print `.env` contents;
+- never widen scope beyond the current stage;
+- never create follow-up issues from the implementation lane.

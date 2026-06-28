@@ -4,18 +4,31 @@ Date: 2026-06-19
 
 This document defines the hard gates for agent-driven delivery in this repository.
 
-## Required Flow
+## Required Flows
 
-Every implementation task must pass these gates in order:
+### Feature Issue Flow
+
+Every feature or bug issue must pass these gates in order:
 
 1. Implementation completed in an isolated Symphony workspace.
 2. Review completed by a separate agent role.
-3. CI checks passed.
-4. Live validation passed against real configured providers.
-5. Release guard passed.
-6. Commit, push, tags, GitHub Release, and image publishing completed.
+3. CI-equivalent local gates passed.
+4. Feature review passes and the issue moves to `Done`.
+5. PR follow-up issue is created.
 
-The release lane must stop on the first failing gate.
+If the feature has label `release-required`, continue with the release flow only after the PR follow-up issue passes review.
+
+### Release Issue Flow
+
+Every release issue must pass these gates in order:
+
+1. All release-bound changes already landed on the release target branch.
+2. CI checks passed.
+3. Live validation passed against real configured providers.
+4. Release guard passed.
+5. Commit, push, tags, GitHub Release, and image publishing completed.
+
+The release implementation step must stop on the first failing gate.
 
 ## Gate 1: Implementation
 
@@ -33,9 +46,12 @@ Review agent requirements:
 - review from a separate run/state;
 - check behavioral regressions, public/pro boundaries, docs drift, missing tests, and secrets exposure;
 - return the issue to rework if findings exist;
-- only pass the issue forward when findings are empty.
+- only pass the issue forward when findings are empty;
+- create the next follow-up issue when the current stage is complete:
+  - feature -> PR
+  - PR + `release-required` -> release
 
-## Gate 3: CI
+## Gate 3: CI / Local Gates
 
 CI must pass:
 
@@ -57,6 +73,7 @@ Current suites:
 - `direct`
 - `metrica`
 - `wordstat`
+- `search`
 
 Rules:
 
@@ -88,7 +105,8 @@ Publish steps:
 3. create and push public tag `vX.Y.Z`;
 4. create and push gated pro tag `pro-vX.Y.Z`;
 5. create GitHub Release for `vX.Y.Z`;
-6. verify public and pro Docker workflows succeeded.
+6. verify public and pro Docker workflows succeeded;
+7. pull the published images into local Docker and refresh local `latest` aliases.
 
 ## Approval Boundary
 
@@ -100,3 +118,15 @@ The process is agent-driven, but approval-sensitive operations still need explic
 - public/pro image publication.
 
 Those actions should be executed only after the previous five gates are green.
+
+## PR Publication Gate
+
+The PR follow-up issue must:
+
+1. create the issue branch;
+2. commit the approved workspace change;
+3. push the branch;
+4. open or update the GitHub PR;
+5. comment the PR URL back to Linear.
+
+Feature issues should not tag or publish releases directly.

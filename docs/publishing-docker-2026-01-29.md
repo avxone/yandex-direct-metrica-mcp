@@ -29,6 +29,11 @@ Pro (отдельный артефакт; планируется для плат
 3) Public workflow соберёт и запушит:
    - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:vX.Y.Z`
    - `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest`
+4) После завершения publish обновите локальные aliases:
+
+```bash
+python scripts/sync_local_docker_release.py --version X.Y.Z
+```
 
 ## Как релизить PRO (ограниченный доступ)
 
@@ -37,6 +42,11 @@ Pro (отдельный артефакт; планируется для плат
 - Публиковать PRO только по необходимости:
   - вручную (через `workflow_dispatch`), или
   - через тег `pro-vX.Y.Z`.
+- После публикации PRO обновить локальные aliases:
+
+```bash
+python scripts/sync_local_docker_release.py --version X.Y.Z --include-pro
+```
 
 ## Ручная публикация (опционально)
 
@@ -93,3 +103,18 @@ claude mcp add yandex-direct-metrica-mcp-pro -- \
     -v /path/to/your/state:/data \
     ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:<TAG>
 ```
+
+## Локальные aliases после релиза
+
+Скрипт `scripts/sync_local_docker_release.py` подтягивает опубликованный GHCR
+образ и ставит локальные aliases:
+
+Public:
+- `yandex-direct-metrica-mcp:latest`
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp:latest`
+- `docker.io/<OWNER>/yandex-direct-metrica-mcp:latest`
+
+Pro:
+- `yandex-direct-metrica-mcp-pro:latest`
+- `ghcr.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest`
+- `docker.io/<OWNER>/yandex-direct-metrica-mcp-pro:latest`

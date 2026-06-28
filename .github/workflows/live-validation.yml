@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: "Comma-separated suites: direct,metrica,wordstat"
+        description: "Comma-separated suites: direct,metrica,wordstat,search"
         required: false
-        default: "direct,metrica,wordstat"
+        default: "direct,metrica,wordstat,search"
 
 jobs:
   live-validation:

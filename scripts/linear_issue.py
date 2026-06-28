@@ -18,6 +18,9 @@ from typing import Any
 
 DEFAULT_CONFIG = Path("/Users/georgyagaev/Projects/Symphony_yaad/linear.yandexad.json")
 LINEAR_ENDPOINT = "https://api.linear.app/graphql"
+ISSUE_TYPE_PREFIX = "issue-type:"
+FOLLOWUP_LABEL = "generated-followup"
+RELEASE_REQUIRED_LABEL = "release-required"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -189,6 +192,294 @@ def create_issue(api_key: str, input_payload: dict[str, Any]) -> dict[str, Any]:
     return data["data"]["issueCreate"]["issue"]
 
 
+def update_issue(api_key: str, issue_id: str, input_payload: dict[str, Any]) -> dict[str, Any]:
+    query = """
+    mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
+        success
+        issue {
+          id
+          identifier
+          title
+          url
+          state { name }
+          labels { nodes { name } }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"id": issue_id, "input": input_payload})
+    return data["data"]["issueUpdate"]["issue"]
+
+
+def update_issue_state(api_key: str, issue_id: str, state_id: str) -> dict[str, Any]:
+    query = """
+    mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
+        success
+        issue {
+          id
+          identifier
+          title
+          url
+          state { name }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"id": issue_id, "input": {"stateId": state_id}})
+    return data["data"]["issueUpdate"]["issue"]
+
+
+def comment_issue(api_key: str, issue_id: str, body: str) -> dict[str, Any]:
+    query = """
+    mutation($issueId: String!, $body: String!) {
+      commentCreate(input: {issueId: $issueId, body: $body}) {
+        success
+        comment {
+          id
+          body
+          issue { identifier }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"issueId": issue_id, "body": body})
+    return data["data"]["commentCreate"]["comment"]
+
+
+def get_issue(api_key: str, issue_id: str) -> dict[str, Any]:
+    query = """
+    query($id: String!) {
+      issue(id: $id) {
+        id
+        identifier
+        title
+        description
+        url
+        state { name }
+        team { id }
+        project { id name }
+        labels(first: 100) {
+          nodes { id name }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"id": issue_id})
+    issue = data["data"]["issue"]
+    if not issue:
+        raise SystemExit(f"Linear issue not found: {issue_id}")
+    return issue
+
+
+def update_issue_labels(api_key: str, issue_id: str, label_ids: list[str]) -> dict[str, Any]:
+    query = """
+    mutation($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
+        success
+        issue {
+          id
+          identifier
+          title
+          url
+          labels { nodes { name } }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"id": issue_id, "input": {"labelIds": label_ids}})
+    return data["data"]["issueUpdate"]["issue"]
+
+
+def find_project_issue_by_title(api_key: str, project_id: str, title: str) -> dict[str, Any] | None:
+    query = """
+    query($projectId: String!) {
+      project(id: $projectId) {
+        issues(first: 250) {
+          nodes {
+            id
+            identifier
+            title
+            url
+            labels(first: 100) {
+              nodes { name }
+            }
+          }
+        }
+      }
+    }
+    """
+    data = graphql(api_key, query, {"projectId": project_id})
+    nodes = data["data"]["project"]["issues"]["nodes"]
+    for node in nodes:
+        if node["title"].strip() == title.strip():
+            return node
+    return None
+
+
+def issue_label_names(issue: dict[str, Any]) -> list[str]:
+    return [node["name"] for node in issue["labels"]["nodes"]]
+
+
+def classify_issue_type(label_names: list[str]) -> str:
+    lowered = {label.strip().lower() for label in label_names}
+    if f"{ISSUE_TYPE_PREFIX}release" in lowered:
+        return "release"
+    if f"{ISSUE_TYPE_PREFIX}pr" in lowered:
+        return "pr"
+    return "feature"
+
+
+def inherited_followup_labels(label_names: list[str], stage: str, extra_labels: list[str]) -> list[str]:
+    kept: list[str] = []
+    for label in label_names:
+        lowered = label.strip().lower()
+        if lowered.startswith(ISSUE_TYPE_PREFIX):
+            continue
+        if lowered == FOLLOWUP_LABEL:
+            continue
+        kept.append(label)
+    merged = [*kept, f"{ISSUE_TYPE_PREFIX}{stage}", FOLLOWUP_LABEL, *extra_labels]
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for label in merged:
+        key = label.strip().lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(label)
+    return deduped
+
+
+def followup_title(stage: str, source_issue: dict[str, Any], explicit_title: str | None) -> str:
+    if explicit_title:
+        return explicit_title
+    prefix = "PR" if stage == "pr" else "Release"
+    return f"{prefix}: {source_issue['identifier']} {source_issue['title']}"
+
+
+def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
+    source_type = classify_issue_type(issue_label_names(source_issue))
+    source_label_list = ", ".join(issue_label_names(source_issue)) or "none"
+    common = [
+        f"# {stage.upper()} follow-up for {source_issue['identifier']}",
+        "",
+        "## Source Issue",
+        f"- Identifier: {source_issue['identifier']}",
+        f"- Title: {source_issue['title']}",
+        f"- URL: {source_issue['url']}",
+        f"- Source type: {source_type}",
+        f"- Source labels: {source_label_list}",
+        "",
+        "## Boundary",
+        "- This follow-up issue owns only this stage.",
+        "- Do not widen scope beyond the source issue contract.",
+        "- Read the source issue body, comments, and generated artifacts before starting.",
+        "",
+    ]
+    if stage == "pr":
+        common.extend(
+            [
+                "## Goal",
+                "Publish the already-reviewed change as a branch and GitHub PR.",
+                "",
+                "## Scope",
+                "- Re-run non-live gates.",
+                "- Prepare deterministic PR metadata.",
+                "- Commit the approved change.",
+                "- Push the branch.",
+                "- Create or update the GitHub PR.",
+                "- Comment the PR URL back to Linear.",
+                "",
+                "## Non-goals",
+                "- No version tag.",
+                "- No GitHub Release.",
+                "- No Docker publish.",
+                "",
+                "## Acceptance Criteria",
+                "- Branch exists on GitHub.",
+                "- PR exists or was updated.",
+                "- Linear contains the PR URL.",
+                "",
+                "## Validation",
+                "- `python -m compileall -q src/mcp_yandex_ad`",
+                "- `pytest -q`",
+                "- `python scripts/agent_lint.py`",
+                "- GitHub PR command succeeds.",
+            ]
+        )
+    else:
+        common.extend(
+            [
+                "## Goal",
+                "Publish a versioned release and refresh local Docker aliases after successful publication.",
+                "",
+                "## Scope",
+                "- Run full local gates.",
+                "- Run bounded live validation.",
+                "- Finalize version and release notes.",
+                "- Push release commit if needed.",
+                "- Create public and gated pro tags.",
+                "- Create the GitHub Release.",
+                "- Verify Docker publication workflows.",
+                "- Refresh local Docker `latest` aliases from the published tag.",
+                "",
+                "## Non-goals",
+                "- No new feature work.",
+                "- No client-repo edits.",
+                "",
+                "## Acceptance Criteria",
+                "- Release tag exists.",
+                "- GitHub Release exists.",
+                "- Docker publish workflows completed.",
+                "- Local Docker aliases refreshed.",
+                "",
+                "## Validation",
+                "- `python -m compileall -q src/mcp_yandex_ad`",
+                "- `pytest -q`",
+                "- `python scripts/agent_lint.py`",
+                "- `python scripts/live_validation.py --suite direct,metrica,wordstat,search`",
+                "- `python scripts/release_guard.py --version X.Y.Z --require-release-notes`",
+            ]
+        )
+    return "\n".join(common).strip()
+
+
+def build_followup_input(
+    api_key: str,
+    source_issue: dict[str, Any],
+    stage: str,
+    state: str,
+    explicit_title: str | None,
+    extra_labels: list[str],
+    create_missing_labels: bool,
+) -> dict[str, Any]:
+    team_id = source_issue["team"]["id"]
+    project = source_issue.get("project") or {}
+    project_id = project.get("id")
+    if not project_id:
+        raise SystemExit(f"Source issue {source_issue['identifier']} has no project")
+    label_names = inherited_followup_labels(issue_label_names(source_issue), stage, extra_labels)
+    return {
+        "teamId": team_id,
+        "projectId": project_id,
+        "title": followup_title(stage, source_issue, explicit_title),
+        "description": followup_description(stage, source_issue),
+        "stateId": resolve_state_id(api_key, team_id, state),
+        "labelIds": resolve_label_ids(api_key, team_id, label_names, create_missing_labels),
+    }
+
+
+def comment_for_followup(stage: str, source_issue: dict[str, Any], created_issue: dict[str, Any]) -> str:
+    stage_name = "PR publication" if stage == "pr" else "release publication"
+    return (
+        f"{stage_name.capitalize()} follow-up linked: "
+        f"`{created_issue['identifier']}` {created_issue['url']} "
+        f"for source `{source_issue['identifier']}`."
+    )
+
+
 def render_preview(input_payload: dict[str, Any]) -> str:
     visible = dict(input_payload)
     description = visible.get("description", "")
@@ -199,11 +490,24 @@ def render_preview(input_payload: dict[str, Any]) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["preview", "create"])
+    parser.add_argument(
+        "command",
+        choices=[
+            "preview",
+            "create",
+            "update",
+            "state",
+            "comment",
+            "labels",
+            "followup-pr",
+            "followup-release",
+        ],
+    )
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--from", dest="body_file", type=Path)
     parser.add_argument("--body")
-    parser.add_argument("--title", required=True)
+    parser.add_argument("--title")
+    parser.add_argument("--issue-id", help="Linear issue UUID or shorthand identifier, e.g. GEO-7")
     parser.add_argument("--labels", help="Comma-separated labels to add")
     parser.add_argument("--state", help="Linear state name; defaults to config defaultState or Backlog")
     parser.add_argument("--team-id")
@@ -213,7 +517,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Create missing team-level issue labels before creating the issue",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.command in {"preview", "create", "update"} and not args.title:
+        parser.error("--title is required for preview/create/update")
+    if args.command in {"state", "comment", "followup-pr", "followup-release"} and not args.issue_id:
+        parser.error("--issue-id is required for state/comment")
+    if args.command == "comment" and not (args.body_file or args.body):
+        parser.error("--from or --body is required for comment")
+    if args.command == "state" and not args.state:
+        parser.error("--state is required for state")
+    if args.command == "labels" and not args.labels:
+        parser.error("--labels is required for labels")
+    return args
 
 
 def main() -> int:
@@ -221,12 +536,81 @@ def main() -> int:
     config = load_json(args.config)
 
     api_key = os.environ.get("LINEAR_API_KEY")
-    if args.command == "create" and not api_key:
-        raise SystemExit("LINEAR_API_KEY is required for create")
+    if args.command in {"create", "update", "state", "comment", "labels", "followup-pr", "followup-release"} and not api_key:
+        raise SystemExit(
+            "LINEAR_API_KEY is required for create/update/state/comment/labels/followup-pr/followup-release"
+        )
 
-    input_payload = build_input(args, config, api_key if args.command == "create" else None)
+    if args.command == "state":
+        team_id = args.team_id or config.get("teamId")
+        if not team_id:
+            raise SystemExit("Missing teamId in config or --team-id")
+        state_id = resolve_state_id(api_key or "", team_id, args.state)
+        issue = update_issue_state(api_key or "", args.issue_id or "", state_id)
+        print(f"{issue['identifier']} {issue['state']['name']} {issue['url']}")
+        return 0
+
+    if args.command == "comment":
+        body = read_markdown(args.body_file, args.body)
+        comment = comment_issue(api_key or "", args.issue_id or "", body)
+        print(f"{comment['issue']['identifier']} {comment['id']}")
+        return 0
+
+    if args.command == "labels":
+        issue = get_issue(api_key or "", args.issue_id or "")
+        team_id = issue["team"]["id"]
+        current_ids = [node["id"] for node in issue["labels"]["nodes"]]
+        wanted_ids = resolve_label_ids(
+            api_key or "",
+            team_id,
+            parse_csv(args.labels),
+            args.create_missing_labels,
+        )
+        merged_ids = sorted(dict.fromkeys([*current_ids, *wanted_ids]))
+        updated = update_issue_labels(api_key or "", args.issue_id or "", merged_ids)
+        label_names = ",".join(node["name"] for node in updated["labels"]["nodes"])
+        print(f"{updated['identifier']} {label_names}")
+        return 0
+
+    if args.command in {"followup-pr", "followup-release"}:
+        stage = "pr" if args.command == "followup-pr" else "release"
+        source_issue = get_issue(api_key or "", args.issue_id or "")
+        if stage == "release" and RELEASE_REQUIRED_LABEL not in {
+            label.strip().lower() for label in issue_label_names(source_issue)
+        }:
+            raise SystemExit(
+                f"Source issue {source_issue['identifier']} is not marked `{RELEASE_REQUIRED_LABEL}`"
+            )
+        followup_state = args.state or "Todo"
+        input_payload = build_followup_input(
+            api_key or "",
+            source_issue,
+            stage,
+            followup_state,
+            args.title,
+            parse_csv(args.labels),
+            args.create_missing_labels,
+        )
+        existing = find_project_issue_by_title(api_key or "", input_payload["projectId"], input_payload["title"])
+        issue = existing or create_issue(api_key or "", input_payload)
+        comment_issue(api_key or "", source_issue["id"], comment_for_followup(stage, source_issue, issue))
+        print(f"{issue['identifier']} {issue['url']}")
+        return 0
+
+    input_payload = build_input(args, config, api_key if args.command in {"create", "update"} else None)
     if args.command == "preview":
         print(render_preview(input_payload))
+        return 0
+
+    if args.command == "update":
+        if not args.issue_id:
+            raise SystemExit("--issue-id is required for update")
+        update_payload = {
+            "title": input_payload["title"],
+            "description": input_payload["description"],
+        }
+        issue = update_issue(api_key or "", args.issue_id, update_payload)
+        print(f"{issue['identifier']} {issue['url']}")
         return 0
 
     issue = create_issue(api_key or "", input_payload)
@@ -236,4 +620,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

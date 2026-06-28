@@ -4,6 +4,12 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+- Automation: replaced the broken state-based `Approved` / `Releasing` Symphony model with a two-lane `implementation + review` pipeline driven by `issue-type:*` labels and follow-up Linear issues.
+- Automation: extended `scripts/linear_issue.py` with `followup-pr` and `followup-release` commands that create next-stage issues in the same Linear team/project, inherit context labels, and backlink the created issue to the source issue.
+- Automation: added focused follow-up harness tests in `tests/test_linear_issue_followups.py`.
+- Docs: rewrote the Symphony pipeline, launch, release-gates, workflow, and intake guidance to match the new `feature -> PR -> release` issue chain.
+- Skills: added a repo-local `linear-symphony-intake` skill for shaping new Symphony-ready Linear issues with explicit ownership, handoff, and release-routing decisions.
+
 ## 2.0.12 - 2026-06-19
 - Wordstat: hardened Yandex Search API integration by fixing `wordstat.regions` to send `region: REGION_*`, adding `associations` to HF/dashboard keyword candidates, validating `dynamics` date constraints, making `wordstat.user_info` a live `getRegionsTree` access check, and improving Search API setup/error hints.
 - Automation: added a Linear intake harness (`scripts/linear_issue.py`, templates, and docs) for creating Symphony-ready Linear issues from Markdown drafts without manual copy/paste.

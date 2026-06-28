@@ -1,147 +1,170 @@
 # Symphony Pipeline
 
-Date: 2026-06-19
+Date: 2026-06-27
 
-This repository uses Symphony as the execution harness and Linear as the work queue.
+This repository uses:
 
-The goal is to let the user describe work in Codex, then have agents execute, review, validate, and release it with explicit guardrails.
+- `Linear` as the visible work queue;
+- `Symphony` as the execution harness;
+- `Codex` as the implementation and review agent inside each Symphony lane.
 
-## Linear State Machine
+The pipeline now uses **two active lanes** and **follow-up issues**.
 
-Recommended issue states:
+We do not depend on custom Linear states such as `Approved` or `Releasing`.
+
+## Active Lanes
+
+1. `implementation`
+2. `review`
+
+Both lanes watch the normal Linear state loop:
+
+- `Todo`
+- `In Progress`
+- `In Review`
+- `Done`
+
+## Issue Types
+
+Every Symphony-managed issue should carry one of these labels:
+
+- `issue-type:feature`
+- `issue-type:pr`
+- `issue-type:release`
+
+Common labels:
+
+- `symphony`
+- domain labels such as `search-api`, `wordstat`, `dashboard`
+
+Optional routing labels:
+
+- `release-required`
+- `generated-followup`
+
+If an old issue has no `issue-type:*` label, treat it as `issue-type:feature`.
+
+## End-to-End Flow
+
+### 1. Feature issue
+
+Path:
+
+- `Backlog` -> `Todo` -> `In Progress` -> `In Review` -> `Done`
+
+Behavior:
+
+- implementation lane performs the code change, tests, docs, and handoff;
+- review lane verifies the work;
+- when review passes, the review lane moves the feature issue to `Done` and auto-creates a PR follow-up issue in `Todo`.
+
+### 2. PR issue
+
+Path:
+
+- `Todo` -> `In Progress` -> `In Review` -> `Done`
+
+Behavior:
+
+- implementation lane re-runs non-live gates, commits, pushes, and creates or updates the GitHub PR;
+- review lane verifies the PR stage artifacts;
+- when review passes:
+  - if the source chain does not need release publication, the PR issue ends at `Done`;
+  - if the chain carries `release-required`, the review lane moves the PR issue to `Done` and auto-creates a release follow-up issue in `Todo`.
+
+### 3. Release issue
+
+Path:
+
+- `Todo` -> `In Progress` -> `In Review` -> `Done`
+
+Behavior:
+
+- implementation lane performs the release stage: full gates, live validation, tags, GitHub Release, Docker publish verification, local Docker alias refresh;
+- review lane verifies the release artifacts and closes the issue.
+
+## Why this model
+
+This model fits the current Linear team workflow because the available states are:
 
 - `Backlog`
 - `Todo`
 - `In Progress`
 - `In Review`
-- `Approved`
-- `Releasing`
 - `Done`
 - `Canceled`
+- `Duplicate`
 
-## Agent Roles
+It also keeps each issue single-purpose:
 
-### 1. Intake Agent
+- feature implementation
+- PR publication
+- release publication
 
-Input:
-- user task in Codex
-- optional markdown draft
+## Follow-up Issue Creation
 
-Responsibilities:
-- create or refine the issue body;
-- split large work into bounded implementation issues when necessary;
-- create the Linear issue via `scripts/linear_issue.py`;
-- attach the correct labels.
+The harness command is:
 
-### 2. Implementation Agent
+```bash
+python scripts/linear_issue.py followup-pr --issue-id GEO-7 --create-missing-labels
+python scripts/linear_issue.py followup-release --issue-id GEO-8 --create-missing-labels
+```
 
-Trigger:
-- label `symphony`
-- state `Todo` or `In Progress`
+Behavior:
 
-Responsibilities:
-- clone repo into isolated workspace;
-- move `Todo` -> `In Progress`;
-- implement only the scoped issue;
-- update tests, docs, changelog;
-- run local gates;
-- leave `SYMPHONY_WORK_RESULT.md`;
-- move to `In Review`.
+- `followup-pr` creates a PR issue in the same team and project as the source issue;
+- `followup-release` creates a release issue in the same team and project as the source issue;
+- the new issue inherits context labels, replaces the old `issue-type:*` label, and adds:
+  - `generated-followup`
+  - `issue-type:pr` or `issue-type:release`
+- the source issue gets an automatic Linear comment with the created follow-up link.
 
-Guardrails:
-- no push;
-- no tags;
-- no release;
-- no Docker publish;
-- no destructive API writes;
-- no secrets written to files.
+## Release Required
 
-### 3. Review Agent
+`release-required` means:
 
-Trigger:
-- label `symphony`
-- state `In Review`
+- the feature is not operationally complete for the client until a published image exists;
+- the feature issue still ends at `Done`;
+- the PR follow-up still happens first;
+- the release follow-up is created only after the PR issue passes review.
 
-Responsibilities:
-- inspect the isolated workspace diff;
-- verify acceptance criteria, tests, docs, and boundaries;
-- either:
-  - comment findings and send back to `Todo`, or
-  - mark `Approved`.
+It does **not** mean “keep the same issue open until release”.
 
-Guardrails:
-- default posture is review, not feature implementation;
-- no release operations.
+## Stage Responsibilities
 
-### 4. Release Agent
+### Implementation lane
 
-Trigger:
-- label `symphony`
-- state `Approved`
+- `issue-type:feature`
+  - code, tests, docs, handoff
+  - no push, no tags, no release
+- `issue-type:pr`
+  - non-live gates
+  - commit, push, PR creation/update
+  - no tags, no release
+- `issue-type:release`
+  - full gates
+  - live validation
+  - release tags
+  - GitHub Release
+  - Docker verification
+  - local Docker alias refresh
 
-Responsibilities:
-- merge the validated change into the main repo;
-- run full local gates;
-- run live validation;
-- bump version;
-- update release notes;
-- commit;
-- push;
-- create public/pro tags;
-- create GitHub Release;
-- move issue to `Done`.
+### Review lane
 
-Guardrails:
-- release only after all gates are green;
-- publish only using the project-approved artifact channels.
+- verify the stage result for the current issue type;
+- return to `Todo` on findings;
+- move to `Done` on approval;
+- create the next follow-up issue when the current stage requires it.
 
-## Labels
+## What the user does
 
-Minimum labels:
+1. Create or refine the initial feature issue in Codex.
+2. Keep it in `Backlog` until ready.
+3. Move it to `Todo`.
+4. Keep the two Symphony lanes running.
+5. Watch Linear:
+   - feature issue
+   - PR follow-up
+   - release follow-up when needed
 
-- `symphony`
-- task-specific labels such as `wordstat`, `dashboard`, `release`, `bug`, `enhancement`
-
-Optional routing labels:
-
-- `release`
-- `live-validation`
-- `needs-review`
-
-## Required Local Gates
-
-Implementation agent:
-
-- `python -m compileall -q src/mcp_yandex_ad`
-- `pytest -q`
-- `python scripts/agent_lint.py`
-
-Release agent:
-
-- `python -m compileall -q src/mcp_yandex_ad`
-- `pytest -q`
-- `python scripts/agent_lint.py`
-- `python scripts/live_validation.py`
-- `python scripts/release_guard.py --version X.Y.Z --require-release-notes`
-
-## GitHub Actions
-
-The repo should treat GitHub Actions as an independent arbiter, not as a substitute for local agent checks.
-
-Required workflows:
-
-- CI
-- live validation
-- GitHub Release publish
-- Docker Publish (Public)
-- Docker Publish (Pro)
-
-## Slack Notification
-
-Preferred completion signal:
-
-- release agent moves issue to `Done`;
-- Linear sends project/channel notification to Slack;
-- GitHub Release and Docker workflows provide the technical source of truth.
-
-This avoids sending “done” notifications before the actual release artifacts exist.
+The user does not need to manually create PR and release issues if the harness is working.

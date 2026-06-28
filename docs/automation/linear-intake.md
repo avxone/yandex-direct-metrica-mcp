@@ -7,6 +7,7 @@ This repo uses Linear as the work queue for Symphony-driven agent tasks. The int
 - `LINEAR_API_KEY` is read from the environment only.
 - The default target state is `Backlog`, so Symphony will not run the task until a human moves it to `Todo`.
 - The default dispatch label is `symphony`.
+- New feature issues should also carry `issue-type:feature`.
 - The script never reads Yandex credentials.
 - Use `--dry-run` before `create` when shaping a new task.
 
@@ -19,7 +20,7 @@ Keep local Linear routing outside this repo:
   "teamId": "3460d8b7-42f7-498a-8917-784237f318ff",
   "projectId": "aadd4324-b828-4dd8-a0ca-eebd65b16683",
   "defaultState": "Backlog",
-  "defaultLabels": ["symphony"]
+  "defaultLabels": ["symphony", "issue-type:feature"]
 }
 ```
 
@@ -28,6 +29,14 @@ Recommended path:
 ```bash
 /path/to/Symphony_yaad/linear.yandexad.json
 ```
+
+## Available Drafts
+
+- generic feature: `docs/automation/templates/linear-feature.md`
+- generic bug: `docs/automation/templates/linear-bug.md`
+- generic investigation: `docs/automation/templates/linear-investigation.md`
+- generic release: `docs/automation/templates/linear-release.md`
+- Marketing2025 workflow: `docs/automation/templates/linear-marketing2025-workflow.md`
 
 ## Create From A Draft
 
@@ -46,7 +55,86 @@ python scripts/linear_issue.py create \
   --config /path/to/Symphony_yaad/linear.yandexad.json \
   --from docs/wordstat-search-api-hardening-issue-2026-06-19.md \
   --title "Harden Wordstat Search API regions and associations handling" \
-  --labels symphony,wordstat
+  --labels symphony,issue-type:feature,wordstat
 ```
 
 Move the issue to `Todo` only when it is approved for Symphony execution.
+
+## Update An Existing Issue
+
+```bash
+set -a
+. /path/to/Symphony_yaad/.env
+set +a
+
+python scripts/linear_issue.py update \
+  --config /path/to/Symphony_yaad/linear.yandexad.json \
+  --issue-id GEO-7 \
+  --from docs/yandex-search-api-web-tools-issue-2026-06-20.md \
+  --title "Add search_serp MCP tool and migrate gap-overlay-report SERP flow off Playwright"
+```
+
+Use the shorthand issue identifier, for example `GEO-7`, when replacing the title and description of an existing task.
+
+## Create Follow-up Issues
+
+Use follow-up issue creation after the previous stage is genuinely complete.
+
+PR follow-up from a feature issue:
+
+```bash
+set -a
+. /path/to/Symphony_yaad/.env
+set +a
+
+python scripts/linear_issue.py followup-pr \
+  --config /path/to/Symphony_yaad/linear.yandexad.json \
+  --issue-id GEO-7 \
+  --create-missing-labels
+```
+
+Release follow-up from a PR issue:
+
+```bash
+set -a
+. /path/to/Symphony_yaad/.env
+set +a
+
+python scripts/linear_issue.py followup-release \
+  --config /path/to/Symphony_yaad/linear.yandexad.json \
+  --issue-id GEO-8 \
+  --create-missing-labels
+```
+
+Both commands:
+
+- create the next-stage issue in the same team and project;
+- inherit context labels;
+- replace the previous `issue-type:*` label with the new stage label;
+- comment the created follow-up link back onto the source issue.
+
+## Comment On An Issue
+
+```bash
+set -a
+. /path/to/Symphony_yaad/.env
+set +a
+
+python scripts/linear_issue.py comment \
+  --config /path/to/Symphony_yaad/linear.yandexad.json \
+  --issue-id GEO-7 \
+  --body "Review findings: returning to Todo."
+```
+
+## Move An Issue Between States
+
+```bash
+set -a
+. /path/to/Symphony_yaad/.env
+set +a
+
+python scripts/linear_issue.py state \
+  --config /path/to/Symphony_yaad/linear.yandexad.json \
+  --issue-id GEO-7 \
+  --state Todo
+```
