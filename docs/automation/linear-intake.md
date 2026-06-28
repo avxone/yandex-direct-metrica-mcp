@@ -10,6 +10,10 @@ This repo uses Linear as the work queue for Symphony-driven agent tasks. The int
 - New feature issues should also carry `issue-type:feature`.
 - The script never reads Yandex credentials.
 - Use `--dry-run` before `create` when shaping a new task.
+- Validation must be written per stage:
+  - `Feature Validation`
+  - `PR Validation`
+  - `Release Validation`
 
 ## Local Config
 
@@ -37,6 +41,24 @@ Recommended path:
 - generic investigation: `docs/automation/templates/linear-investigation.md`
 - generic release: `docs/automation/templates/linear-release.md`
 - Marketing2025 workflow: `docs/automation/templates/linear-marketing2025-workflow.md`
+
+## Required Intake Fields
+
+Every Symphony-managed issue should explicitly define:
+
+- `Issue Class`
+- `Risk`
+- `Ownership Boundary`
+- `Acceptance Criteria`
+- `Feature Validation`
+- `PR Validation`
+- `Release Validation`
+
+Rule:
+
+- implementation lane executes only the current stage validation;
+- review lane verifies only the current stage validation;
+- later-stage validation must not be used to reject an earlier stage.
 
 ## Create From A Draft
 

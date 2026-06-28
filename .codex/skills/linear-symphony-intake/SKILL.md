@@ -25,14 +25,17 @@ Choose the smallest fitting template:
 
 Before creating or updating an issue, capture or infer:
 
-1. owner repo
-2. out-of-scope repos
-3. feature vs bug vs investigation vs release
-4. `Release Required: yes/no`
-5. client handoff required: yes/no
-6. compatibility task vs migration task
-7. acceptance criteria
-8. validation that the owner repo can execute directly
+1. issue class: `bug` / `feature` / `investigation` / `release`
+2. risk: `low` / `medium` / `high`
+3. owner repo
+4. out-of-scope repos
+5. `Release Required: yes/no`
+6. client handoff required: yes/no
+7. compatibility task vs migration task
+8. acceptance criteria
+9. `Feature Validation`
+10. `PR Validation`
+11. `Release Validation`
 
 If the task is ambiguous, default to the smaller producer-side issue and create a downstream follow-up issue later.
 
@@ -54,9 +57,10 @@ Do not create `issue-type:pr` or `issue-type:release` manually during normal int
 
 1. Draft or refine the Markdown issue body.
 2. Check that repo ownership and handoff boundaries are explicit.
-3. Ensure the issue does not require client-repo edits unless that repo is explicitly in scope.
-4. Preview the Linear payload with `python scripts/linear_issue.py preview`.
-5. Create or update the Linear issue only when the user asks for the actual Linear change.
+3. Ensure validation is defined per stage, not as one mixed checklist.
+4. Ensure the issue does not require client-repo edits unless that repo is explicitly in scope.
+5. Preview the Linear payload with `python scripts/linear_issue.py preview`.
+6. Create or update the Linear issue only when the user asks for the actual Linear change.
 
 ## Commands
 

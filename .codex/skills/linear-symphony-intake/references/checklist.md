@@ -4,13 +4,17 @@ Use this checklist before creating or updating a Symphony-managed issue.
 
 ## Mandatory fields
 
+- `Issue Class: bug / feature / investigation / release`
+- `Risk: low / medium / high`
 - `Owned by: <repo>`
 - `Out of scope without a separate issue: <repos/systems>`
 - `Goal`
 - `Scope`
 - `Non-goals`
 - `Acceptance Criteria`
-- `Validation`
+- `Feature Validation`
+- `PR Validation`
+- `Release Validation`
 - `Handoff` or `Notes`
 
 ## Mandatory decisions
@@ -40,7 +44,15 @@ split them unless the user explicitly wants both repos in scope.
 
 ## Validation guard
 
-Validation must be executable from the owner repo:
+Validation must be defined per stage:
+
+- `Feature Validation`: what the feature-stage implementation and review must prove
+- `PR Validation`: what the PR-stage implementation and review must prove
+- `Release Validation`: what the release-stage implementation and review must prove
+
+Only the current stage should execute its validation section.
+
+Validation must remain executable from the owner repo:
 
 - tests
 - contract checks

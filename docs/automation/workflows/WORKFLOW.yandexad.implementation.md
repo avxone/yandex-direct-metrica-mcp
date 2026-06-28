@@ -50,16 +50,24 @@ General rules:
 4. Write `SYMPHONY_WORK_RESULT.md`.
 5. Leave one concise Linear comment with the stage result.
 6. Move the issue to `In Review` when the stage completes.
+7. Execute only the validation section for the current stage from the issue body:
+   - feature issue -> `Feature Validation`
+   - PR issue -> `PR Validation`
+   - release issue -> `Release Validation`
+8. Do not pull requirements from later stages when deciding whether the current stage is complete.
 
 ## Feature issue
 
 Do:
 
 - implement only the scoped code and docs change;
-- run local non-live gates:
-  - `python -m compileall -q src/mcp_yandex_ad`
-  - targeted `pytest`
-  - `python scripts/agent_lint.py`
+- satisfy `Feature Validation` from the issue body.
+
+Default fallback only when the issue body does not define `Feature Validation`:
+
+- `python -m compileall -q src/mcp_yandex_ad`
+- targeted `pytest`
+- `python scripts/agent_lint.py`
 
 Do not:
 
@@ -67,16 +75,19 @@ Do not:
 - create PRs
 - tag releases
 - publish images
-- run live Yandex API validation
+- run live Yandex API validation unless `Feature Validation` explicitly requires bounded read-only live validation
 
 ## PR issue
 
 Do:
 
-- re-run local non-live gates:
-  - `python -m compileall -q src/mcp_yandex_ad`
-  - `pytest -q`
-  - `python scripts/agent_lint.py`
+- satisfy `PR Validation` from the issue body.
+
+Default fallback only when the issue body does not define `PR Validation`:
+
+- `python -m compileall -q src/mcp_yandex_ad`
+- `pytest -q`
+- `python scripts/agent_lint.py`
 - generate PR metadata:
   - `python scripts/prepare_pr.py --issue-id {{ issue.identifier }} --title "{{ issue.title }}" --output PR_BODY.md`
 - create or reuse the suggested issue branch;
@@ -99,12 +110,15 @@ Only proceed if the issue is explicitly a release issue and carries `release-req
 
 Do:
 
-- run full gates:
-  - `python -m compileall -q src/mcp_yandex_ad`
-  - `pytest -q`
-  - `python scripts/agent_lint.py`
-  - `python scripts/live_validation.py --suite direct,metrica,wordstat,search`
-  - `python scripts/release_guard.py --version X.Y.Z --require-release-notes`
+- satisfy `Release Validation` from the issue body.
+
+Default fallback only when the issue body does not define `Release Validation`:
+
+- `python -m compileall -q src/mcp_yandex_ad`
+- `pytest -q`
+- `python scripts/agent_lint.py`
+- `python scripts/live_validation.py --suite direct,metrica,wordstat,search`
+- `python scripts/release_guard.py --version X.Y.Z --require-release-notes`
 - finalize release metadata if needed;
 - commit and push the release commit if required;
 - create and push tags:

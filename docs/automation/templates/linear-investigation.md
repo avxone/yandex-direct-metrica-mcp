@@ -1,5 +1,10 @@
 # {{title}}
 
+## Execution Profile
+
+- Issue Class: investigation
+- Risk: low / medium / high
+
 ## Background
 
 ## Question
@@ -12,7 +17,10 @@
 
 ## Acceptance Criteria
 
-## Validation
+## Feature Validation
+
+## PR Validation
+
+## Release Validation
 
 ## Notes
-

@@ -1,5 +1,10 @@
 # {{title}}
 
+## Execution Profile
+
+- Issue Class: feature / bug / release
+- Risk: low / medium / high
+
 ## Ownership Boundary
 
 - Owned by:
@@ -48,12 +53,16 @@ Describe the exact workflow change needed in `Marketing2025`, not just the gener
 - fallback behavior is explicit;
 - human approval points are explicit if the workflow touches writes or releases.
 
-## Validation
+## Feature Validation
 
 - local/path assumptions checked against `Marketing2025/`;
 - affected skills/prompts/scripts reviewed;
 - MCP smoke or fixture validation defined;
 - downstream artifact or dashboard verification defined.
+
+## PR Validation
+
+## Release Validation
 
 ## Handoff Notes
 

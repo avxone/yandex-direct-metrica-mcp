@@ -12,7 +12,7 @@ Every feature or bug issue must pass these gates in order:
 
 1. Implementation completed in an isolated Symphony workspace.
 2. Review completed by a separate agent role.
-3. CI-equivalent local gates passed.
+3. `Feature Validation` passed.
 4. Feature review passes and the issue moves to `Done`.
 5. PR follow-up issue is created.
 
@@ -51,20 +51,46 @@ Review agent requirements:
   - feature -> PR
   - PR + `release-required` -> release
 
-## Gate 3: CI / Local Gates
+## Gate 3: Stage-Specific Validation
 
-CI must pass:
+The current stage must execute only its own validation section from the issue body.
+
+### Feature Validation
+
+Typical feature-stage gates:
+
+- `python -m compileall -q src/mcp_yandex_ad`
+- targeted or full `pytest`, as explicitly required by the issue
+- changed-line lint via `python scripts/agent_lint.py`
+- contract/schema/snapshot alignment when the tool surface changes
+- docs/handoff checks when the issue requires them
+
+If the feature issue explicitly requires bounded read-only live validation, that requirement belongs in `Feature Validation` and may be executed at feature stage.
+
+### PR Validation
+
+Typical PR-stage gates:
 
 - `python -m compileall -q src/mcp_yandex_ad`
 - `pytest -q`
-- changed-line lint via `python scripts/agent_lint.py`
-- public Docker build smoke
+- `python scripts/agent_lint.py`
+- branch / commit / push / PR creation checks
+
+### Release Validation
+
+Typical release-stage gates:
+
+- `python -m compileall -q src/mcp_yandex_ad`
+- `pytest -q`
+- `python scripts/agent_lint.py`
+- `python scripts/live_validation.py`
+- `python scripts/release_guard.py --version X.Y.Z --require-release-notes`
 
 Note: repository-wide `ruff check .` is not yet a valid hard gate because the repo has an existing lint baseline outside current agent work. The gate is intentionally scoped to changed lines.
 
 ## Gate 4: Live Validation
 
-Live validation must use real credentials and bounded read-only checks:
+Live validation must use real credentials and bounded read-only checks when it is required by the current stage validation:
 
 - `python scripts/live_validation.py`
 

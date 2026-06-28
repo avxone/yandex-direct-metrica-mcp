@@ -4,6 +4,8 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
+- Automation: split Symphony validation into stage-specific `Feature Validation`, `PR Validation`, and `Release Validation` sections to stop feature issues from bouncing between implementation and review over later-stage gates.
+- Automation: updated follow-up issue generation so PR/release Linear issues carry explicit execution profile metadata and stage-scoped validation contracts.
 - Automation: replaced the broken state-based `Approved` / `Releasing` Symphony model with a two-lane `implementation + review` pipeline driven by `issue-type:*` labels and follow-up Linear issues.
 - Automation: extended `scripts/linear_issue.py` with `followup-pr` and `followup-release` commands that create next-stage issues in the same Linear team/project, inherit context labels, and backlink the created issue to the source issue.
 - Automation: added focused follow-up harness tests in `tests/test_linear_issue_followups.py`.

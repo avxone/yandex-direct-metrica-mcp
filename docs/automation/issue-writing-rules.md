@@ -55,6 +55,16 @@ Bad:
 
 ## 6. Validation must be executable by the owning repo
 
+Validation should be written per stage:
+
+- `Feature Validation`
+- `PR Validation`
+- `Release Validation`
+
+Do not put one mixed validation list into a multi-stage issue chain.
+
+The current stage should only be judged against its own validation section.
+
 Validation should default to what the owning repo can prove directly:
 
 - tests;
@@ -64,6 +74,22 @@ Validation should default to what the owning repo can prove directly:
 - handoff doc review.
 
 Cross-repo end-to-end runs should be separate unless explicitly in scope.
+
+## 6a. Add issue class and risk explicitly
+
+Every Symphony-managed issue should declare:
+
+- `Issue Class`: `bug` / `feature` / `investigation` / `release`
+- `Risk`: `low` / `medium` / `high`
+
+These fields determine how strong the current stage validation should be.
+
+Examples:
+
+- `bug` + `low` -> targeted tests are often enough
+- `feature` + `medium` -> targeted/full tests plus schema/docs alignment
+- `feature` + `high` -> bounded live smoke may be required if the feature integrates with a real provider
+- `release` + `high` -> full release validation is mandatory
 
 ## 7. Runtime payload and published schema must match
 
@@ -111,12 +137,15 @@ Do not rely on implied release expectations.
 
 Every agent-facing issue should include:
 
+- `Execution Profile`
 - `Ownership Boundary`
 - `Goal`
 - `Scope`
 - `Non-goals`
 - `Acceptance Criteria`
-- `Validation`
+- `Feature Validation`
+- `PR Validation`
+- `Release Validation`
 - `Handoff` or `Notes`
 
 ## 11. Add machine-readable routing labels

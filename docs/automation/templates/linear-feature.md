@@ -1,5 +1,10 @@
 # {{title}}
 
+## Execution Profile
+
+- Issue Class: feature
+- Risk: low / medium / high
+
 ## Ownership Boundary
 
 - Owned by:
@@ -15,7 +20,11 @@
 
 ## Acceptance Criteria
 
-## Validation
+## Feature Validation
+
+## PR Validation
+
+## Release Validation
 
 ## Handoff
 

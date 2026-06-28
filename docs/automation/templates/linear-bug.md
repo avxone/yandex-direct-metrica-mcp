@@ -1,5 +1,10 @@
 # {{title}}
 
+## Execution Profile
+
+- Issue Class: bug
+- Risk: low / medium / high
+
 ## Background
 
 ## Problem
@@ -12,7 +17,10 @@
 
 ## Acceptance Criteria
 
-## Validation
+## Feature Validation
+
+## PR Validation
+
+## Release Validation
 
 ## Notes
-

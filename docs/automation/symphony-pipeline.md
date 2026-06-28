@@ -44,6 +44,27 @@ Optional routing labels:
 
 If an old issue has no `issue-type:*` label, treat it as `issue-type:feature`.
 
+## Validation Model
+
+Every Symphony-managed issue should define validation per stage:
+
+- `Feature Validation`
+- `PR Validation`
+- `Release Validation`
+
+Rule:
+
+- implementation executes only the current stage validation;
+- review verifies only the current stage validation;
+- later-stage validation must not be used to reject an earlier stage.
+
+Also define:
+
+- `Issue Class`
+- `Risk`
+
+These fields explain how strong the current stage validation should be.
+
 ## End-to-End Flow
 
 ### 1. Feature issue

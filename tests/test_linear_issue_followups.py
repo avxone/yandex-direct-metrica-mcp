@@ -42,9 +42,12 @@ def test_inherited_followup_labels_replace_issue_type_and_preserve_context() -> 
 
 def test_followup_description_for_pr_contains_pr_contract() -> None:
     body = linear_issue.followup_description("pr", _issue(["symphony", "issue-type:feature"]))
-    assert "## Goal" in body
-    assert "GitHub PR" in body
-    assert "No GitHub Release." in body
+    assert "## Execution Profile" in body
+    assert "- Issue Class: feature" in body
+    assert "## PR Validation" in body
+    assert "GitHub PR command succeeds." in body
+    assert "## Release Validation" in body
+    assert "Use `n/a`. Release publication is owned by a separate release follow-up issue." in body
 
 
 def test_followup_description_for_release_contains_release_contract() -> None:
@@ -52,6 +55,10 @@ def test_followup_description_for_release_contains_release_contract() -> None:
         "release",
         _issue(["symphony", "issue-type:pr", "release-required"]),
     )
+    assert "## Execution Profile" in body
+    assert "- Issue Class: release" in body
+    assert "- Risk: high" in body
     assert "GitHub Release exists." in body
-    assert "scripts/live_validation.py" in body
+    assert "## Release Validation" in body
+    assert "python scripts/live_validation.py --suite direct,metrica,wordstat,search" in body
     assert "No new feature work." in body

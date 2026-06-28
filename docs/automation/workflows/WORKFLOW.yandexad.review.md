@@ -51,11 +51,15 @@ Execution:
 
 1. Read `SYMPHONY_WORK_RESULT.md`.
 2. Inspect the workspace diff and relevant artifacts.
-3. Re-run the local gates appropriate for the stage.
-4. If you find issues:
+3. Re-run only the validation appropriate for the current stage:
+   - feature issue -> `Feature Validation`
+   - PR issue -> `PR Validation`
+   - release issue -> `Release Validation`
+4. Do not reject the current stage for missing later-stage validation.
+5. If you find issues:
    - leave one concise Linear comment with findings,
    - move the issue back to `Todo`.
-5. If findings are empty:
+6. If findings are empty:
    - leave one concise approval comment,
    - move the issue to `Done`,
    - create the next follow-up issue when required.
