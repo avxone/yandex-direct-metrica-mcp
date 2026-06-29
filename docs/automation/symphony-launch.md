@@ -14,6 +14,18 @@ Recommended ports:
 
 Before relaunching, stop any old `3323` / `3324` PR or release lane sessions. They belong to the deprecated state-based model.
 
+## Secret Source
+
+Do not copy provider credentials into the repo or into `Symphony_yaad/`.
+
+For Yandex live validation, export them into the parent Symphony process directly from:
+
+- `/Users/georgyagaev/mcp/state/yandex.ad/.env`
+
+This keeps the credentials in one place while still making them available to the isolated Codex worker via inherited process environment.
+
+If a live-validation command still reports missing Search API credentials, the implementation/review lane may source `/Users/georgyagaev/mcp/state/yandex.ad/.env` directly in that command. Do not print values and do not copy the file into the repo or workspace.
+
 ## Implementation lane
 
 ```bash
@@ -21,6 +33,7 @@ cd /Users/georgyagaev/Projects/Symphony_yaad/symphony/elixir
 mkdir -p /Users/georgyagaev/Projects/Symphony_yaad/logs
 set -a
 . /Users/georgyagaev/Projects/Symphony_yaad/.env
+. /Users/georgyagaev/mcp/state/yandex.ad/.env
 set +a
 /opt/homebrew/bin/mise exec -- ./bin/symphony \
   /Users/georgyagaev/Projects/Symphony_yaad/workflows/WORKFLOW.yandexad.implementation.md \
@@ -36,6 +49,7 @@ cd /Users/georgyagaev/Projects/Symphony_yaad/symphony/elixir
 mkdir -p /Users/georgyagaev/Projects/Symphony_yaad/logs
 set -a
 . /Users/georgyagaev/Projects/Symphony_yaad/.env
+. /Users/georgyagaev/mcp/state/yandex.ad/.env
 set +a
 /opt/homebrew/bin/mise exec -- ./bin/symphony \
   /Users/georgyagaev/Projects/Symphony_yaad/workflows/WORKFLOW.yandexad.review.md \
@@ -64,3 +78,12 @@ cp docs/automation/workflows/WORKFLOW.yandexad.review.md \
 5. the same two lanes process the PR issue
 6. if the chain carries `release-required`, review creates the release follow-up issue
 7. the same two lanes process the release issue
+
+## Blocked Input Policy
+
+If the current stage cannot proceed because required external credentials, operator-provided inputs, or manual validation evidence are unavailable:
+
+1. implementation or review leaves one concise blocker comment;
+2. the issue moves to `Backlog`, not `Todo`;
+3. the operator restores the missing input;
+4. the operator moves the issue back to `Todo`.

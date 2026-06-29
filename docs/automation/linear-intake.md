@@ -49,6 +49,9 @@ Every Symphony-managed issue should explicitly define:
 - `Issue Class`
 - `Risk`
 - `Ownership Boundary`
+- `Required Capabilities`
+- `External Inputs / Secrets`
+- `Blocked Input Policy`
 - `Acceptance Criteria`
 - `Feature Validation`
 - `PR Validation`
@@ -59,6 +62,20 @@ Rule:
 - implementation lane executes only the current stage validation;
 - review lane verifies only the current stage validation;
 - later-stage validation must not be used to reject an earlier stage.
+- if a required capability or external input is missing, the issue must move to `Backlog`, not loop in `Todo`.
+
+`Required Capabilities` should explicitly answer:
+
+- browser: `none` / `playwright` / `chrome-devtools` / `operator-browser`
+- live-api: `yes/no`
+- manual-check: `yes/no`
+- operator step required: `yes/no`
+
+`External Inputs / Secrets` should explicitly answer:
+
+- which env vars are required
+- where they are sourced from
+- whether they are expected in the parent Symphony process before the issue moves to `Todo`
 
 ## Create From A Draft
 

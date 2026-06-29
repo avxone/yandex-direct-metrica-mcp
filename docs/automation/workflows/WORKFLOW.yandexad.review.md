@@ -55,10 +55,12 @@ Execution:
    - feature issue -> `Feature Validation`
    - PR issue -> `PR Validation`
    - release issue -> `Release Validation`
+   - for Yandex live validation, you may source `/Users/georgyagaev/mcp/state/yandex.ad/.env` in the validation command, but never print its contents and never copy it into the repo or the Symphony workspace.
 4. Do not reject the current stage for missing later-stage validation.
 5. If you find issues:
    - leave one concise Linear comment with findings,
-   - move the issue back to `Todo`.
+   - move the issue back to `Todo` for code/test/doc defects,
+   - move the issue to `Backlog` for missing credentials, missing external inputs, or required manual validation that is impossible in the current environment.
 6. If findings are empty:
    - leave one concise approval comment,
    - move the issue to `Done`,

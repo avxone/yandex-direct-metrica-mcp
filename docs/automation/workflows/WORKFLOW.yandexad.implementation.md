@@ -55,6 +55,12 @@ General rules:
    - PR issue -> `PR Validation`
    - release issue -> `Release Validation`
 8. Do not pull requirements from later stages when deciding whether the current stage is complete.
+9. If the current stage is blocked by missing external credentials, missing operator input, or required manual evidence that is impossible in the current environment:
+   - write the blocker into `SYMPHONY_WORK_RESULT.md`;
+   - leave one concise Linear blocker comment;
+   - move the issue to `Backlog`;
+   - stop the turn.
+10. Use `Todo` only for code/test/doc defects that another implementation pass can fix immediately.
 
 ## Feature issue
 
@@ -62,6 +68,10 @@ Do:
 
 - implement only the scoped code and docs change;
 - satisfy `Feature Validation` from the issue body.
+- if `Feature Validation` explicitly requires bounded read-only live validation, run it in this stage.
+- for Yandex live validation, the approved credential source is `/Users/georgyagaev/mcp/state/yandex.ad/.env`.
+- you may source that file in the shell command that runs the live validation, but never print its contents and never copy it into the repo or the Symphony workspace.
+- if the required live-validation credentials are still unavailable after checking that external state file, stop immediately and move the issue to `Backlog` instead of retrying in `Todo`.
 
 Default fallback only when the issue body does not define `Feature Validation`:
 
@@ -103,6 +113,7 @@ Do not:
 - publish Docker images
 
 If any gate or GitHub step fails, comment the blocker and move the issue back to `Todo`.
+If the failure is caused by missing external credentials, missing operator input, or missing manual approval rather than code defects, move the issue to `Backlog` instead.
 
 ## Release issue
 
@@ -130,6 +141,7 @@ Default fallback only when the issue body does not define `Release Validation`:
   - `python scripts/sync_local_docker_release.py --version X.Y.Z --include-pro`
 
 If any gate fails, stop immediately, comment the blocker, and move the issue back to `Todo`.
+If the failure is caused by missing external credentials, missing operator input, or missing manual approval rather than code defects, move the issue to `Backlog` instead.
 
 Hard rules:
 

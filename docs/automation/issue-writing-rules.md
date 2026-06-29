@@ -91,6 +91,34 @@ Examples:
 - `feature` + `high` -> bounded live smoke may be required if the feature integrates with a real provider
 - `release` + `high` -> full release validation is mandatory
 
+## 6b. Declare required capabilities and secret dependencies
+
+Every Symphony-managed issue should declare:
+
+- `Required Capabilities`
+- `External Inputs / Secrets`
+- `Blocked Input Policy`
+
+`Required Capabilities` must explicitly answer:
+
+- browser: `none` / `playwright` / `chrome-devtools` / `operator-browser`
+- live-api: `yes/no`
+- manual-check: `yes/no`
+- operator step required: `yes/no`
+
+`External Inputs / Secrets` must explicitly answer:
+
+- required env vars
+- source of truth
+- whether the Symphony parent process must already export them before the issue moves to `Todo`
+
+`Blocked Input Policy` must explicitly answer:
+
+- which missing inputs should move the issue to `Backlog`
+- which failures should return the issue to `Todo`
+
+This prevents hidden assumptions about browser access, live provider access, and manual operator evidence.
+
 ## 7. Runtime payload and published schema must match
 
 If an issue adds or changes a tool response:
@@ -133,12 +161,19 @@ Process:
 
 Do not rely on implied release expectations.
 
+If `Feature Validation` requires live provider validation, the operator must ensure the Symphony parent process already exports the required credentials from the external state store before moving the issue to `Todo`.
+
+If `Feature Validation` requires browser-visible comparison, the issue must also state which browser mode is allowed and whether the agent or the operator owns that step.
+
 ## 9. Use these required sections in issue drafts
 
 Every agent-facing issue should include:
 
 - `Execution Profile`
 - `Ownership Boundary`
+- `Required Capabilities`
+- `External Inputs / Secrets`
+- `Blocked Input Policy`
 - `Goal`
 - `Scope`
 - `Non-goals`

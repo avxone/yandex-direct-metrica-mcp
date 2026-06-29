@@ -8,6 +8,9 @@ Use this checklist before creating or updating a Symphony-managed issue.
 - `Risk: low / medium / high`
 - `Owned by: <repo>`
 - `Out of scope without a separate issue: <repos/systems>`
+- `Required Capabilities`
+- `External Inputs / Secrets`
+- `Blocked Input Policy`
 - `Goal`
 - `Scope`
 - `Non-goals`
@@ -22,6 +25,10 @@ Use this checklist before creating or updating a Symphony-managed issue.
 - `Release Required: yes/no`
 - client handoff required: yes/no
 - `Compatibility task` or `Migration task`
+- browser mode: `none / playwright / chrome-devtools / operator-browser`
+- live-api required: `yes/no`
+- manual-check required: `yes/no`
+- operator step required: `yes/no`
 
 ## Label mapping
 
@@ -60,3 +67,11 @@ Validation must remain executable from the owner repo:
 - docs / handoff review
 
 Cross-repo adoption tests belong in a separate consumer issue unless explicitly in scope.
+
+## Capability guard
+
+Do not require browser-visible comparison, live provider validation, or operator evidence unless the issue also states:
+
+- which browser mode is allowed;
+- whether the agent or the operator owns that step;
+- which secret source feeds the validation environment.

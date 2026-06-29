@@ -32,10 +32,20 @@ Before creating or updating an issue, capture or infer:
 5. `Release Required: yes/no`
 6. client handoff required: yes/no
 7. compatibility task vs migration task
-8. acceptance criteria
-9. `Feature Validation`
-10. `PR Validation`
-11. `Release Validation`
+8. required capabilities:
+   - browser mode
+   - live-api yes/no
+   - manual-check yes/no
+   - operator step required yes/no
+9. external inputs / secrets:
+   - required env vars
+   - source of truth
+   - expected parent-process availability
+10. blocked input policy
+11. acceptance criteria
+12. `Feature Validation`
+13. `PR Validation`
+14. `Release Validation`
 
 If the task is ambiguous, default to the smaller producer-side issue and create a downstream follow-up issue later.
 
@@ -57,10 +67,11 @@ Do not create `issue-type:pr` or `issue-type:release` manually during normal int
 
 1. Draft or refine the Markdown issue body.
 2. Check that repo ownership and handoff boundaries are explicit.
-3. Ensure validation is defined per stage, not as one mixed checklist.
-4. Ensure the issue does not require client-repo edits unless that repo is explicitly in scope.
-5. Preview the Linear payload with `python scripts/linear_issue.py preview`.
-6. Create or update the Linear issue only when the user asks for the actual Linear change.
+3. Ensure capability requirements and secret dependencies are explicit before the issue can move to `Todo`.
+4. Ensure validation is defined per stage, not as one mixed checklist.
+5. Ensure the issue does not require client-repo edits unless that repo is explicitly in scope.
+6. Preview the Linear payload with `python scripts/linear_issue.py preview`.
+7. Create or update the Linear issue only when the user asks for the actual Linear change.
 
 ## Commands
 

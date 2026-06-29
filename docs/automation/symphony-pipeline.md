@@ -65,6 +65,15 @@ Also define:
 
 These fields explain how strong the current stage validation should be.
 
+## Blocked Input Policy
+
+If a stage cannot complete because of missing external credentials, missing operator input, or required manual validation that is impossible in the current environment:
+
+- do not keep the issue in the active `Todo` / `In Progress` loop;
+- leave one concise blocker comment;
+- move the issue to `Backlog`;
+- resume only after the missing input is restored and the operator moves the issue back to `Todo`.
+
 ## End-to-End Flow
 
 ### 1. Feature issue
