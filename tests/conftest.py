@@ -4,10 +4,8 @@ import sys
 from pathlib import Path
 
 
-def pytest_configure() -> None:
-    # Ensure `src/` layout works without editable installs.
-    root = Path(__file__).resolve().parents[1]
-    src = root / "src"
-    if str(src) not in sys.path:
-        sys.path.insert(0, str(src))
-
+REPO_ROOT = Path(__file__).resolve().parents[1]
+for path in (REPO_ROOT, REPO_ROOT / "src"):
+    path_str = str(path)
+    if path_str not in sys.path:
+        sys.path.insert(0, path_str)
