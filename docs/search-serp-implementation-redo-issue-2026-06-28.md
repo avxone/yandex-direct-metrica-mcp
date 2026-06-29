@@ -59,6 +59,34 @@ Not part of this issue unless explicitly approved in a separate task:
 
 If client-side adaptation is needed, this issue must end with an explicit handoff that tells the client what to change.
 
+## Required Capabilities
+
+- browser: `operator-browser`
+- live-api: yes
+- manual-check: yes
+- operator step required: yes
+
+## External Inputs / Secrets
+
+- required env:
+  - `YANDEX_SEARCH_API_FOLDER_ID`
+  - `YANDEX_SEARCH_API_API_KEY` or equivalent active Search API credential
+- source of truth:
+  - `/Users/georgyagaev/mcp/state/yandex.ad/.env`
+- available to Symphony parent process before `Todo`: yes
+
+## Blocked Input Policy
+
+- move to `Backlog` if:
+  - Search API credentials are unavailable in the Symphony parent process and cannot be sourced from the approved external state file
+  - bounded live Search API validation cannot run
+  - required manual browser-visible SERP comparison cannot be completed in the current environment
+- return to `Todo` only for:
+  - code defects
+  - test failures
+  - parser/contract/docs drift
+  - missing artifacts that the agent can generate inside this repo
+
 ## Background
 
 `Marketing2025` currently has a SERP workflow that depends on Playwright against live Yandex result pages.
@@ -186,6 +214,7 @@ Update:
 - client handoff document exists in this repo
 - bounded read-only live validation for `search` is required because this is a high-risk external API parsing feature
 - 3 to 5 real project queries with a short manual sanity note comparing API-derived output to browser-visible SERP structure
+- manual browser-visible SERP comparison is an `operator-browser` step; the agent must prepare the checklist and evidence note, but the operator owns the visible browser check when anti-bot gating prevents deterministic automation
 
 ## PR Validation
 
