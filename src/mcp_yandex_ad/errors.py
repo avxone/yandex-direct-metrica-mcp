@@ -55,6 +55,7 @@ except ImportError:  # pragma: no cover - optional dependency (tests/dev)
 
 from .wordstat_client import WordstatError
 from .audience_client import AudienceError
+from .search_client import SearchApiError
 
 HINT_RATE_LIMIT = "Rate limit exceeded; retry with backoff."
 HINT_TOKEN = "Check access/refresh token and API permissions."
@@ -70,6 +71,11 @@ HINT_WORDSTAT_FOLDER = "Set YANDEX_SEARCH_API_FOLDER_ID to the Yandex Cloud fold
 HINT_WORDSTAT_PERIOD = "Use period monthly/weekly/daily or PERIOD_MONTHLY/PERIOD_WEEKLY/PERIOD_DAILY."
 HINT_WORDSTAT_MONTH = "For monthly Wordstat dynamics, pass to_date as YYYY-MM or the last day of the month."
 HINT_WORDSTAT_WEEK = "For weekly Wordstat dynamics, pass a provider-valid week-end toDate via params or use daily/monthly."
+HINT_SEARCH_API_ACCESS = (
+    "Check Yandex Search API Web Search setup: service account in the target folder, "
+    "search-api.webSearch.user role, API key scope yc.search-api.execute if scopes are configured, "
+    "and matching YANDEX_SEARCH_API_FOLDER_ID."
+)
 
 
 class MissingClientError(RuntimeError):
@@ -182,7 +188,7 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
     if isinstance(exc, MissingClientError):
         payload["provider"] = exc.provider
         payload["message"] = str(exc)
-        payload["hint"] = HINT_TOKEN
+        payload["hint"] = HINT_SEARCH_API_ACCESS if exc.provider == "search_api" else HINT_TOKEN
     elif isinstance(exc, ToolNotAvailableError):
         payload["provider"] = "mcp"
         payload["message"] = str(exc)
@@ -234,6 +240,16 @@ def normalize_error(tool: str, exc: Exception) -> dict[str, Any]:
             payload["hint"] = hint
         elif http_status == 401 or http_status == 403:
             payload["hint"] = HINT_WORDSTAT_ACCESS
+        elif http_status == 429:
+            payload["hint"] = HINT_RATE_LIMIT
+        elif isinstance(http_status, int) and 500 <= http_status <= 599:
+            payload["hint"] = HINT_RATE_LIMIT
+    elif isinstance(exc, SearchApiError):
+        payload["provider"] = "search_api"
+        payload["message"] = str(exc) or "Search API error"
+        http_status = payload.get("http_status")
+        if http_status == 401 or http_status == 403:
+            payload["hint"] = HINT_SEARCH_API_ACCESS
         elif http_status == 429:
             payload["hint"] = HINT_RATE_LIMIT
         elif isinstance(http_status, int) and 500 <= http_status <= 599:

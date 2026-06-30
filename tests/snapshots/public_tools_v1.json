@@ -2036,6 +2036,58 @@
     }
   },
   {
+    "name": "search_serp",
+    "description": "Search API Web Search: normalized Yandex SERP ads and organic results.",
+    "inputSchema": {
+      "properties": {
+        "device": {
+          "description": "desktop|phone|mobile|tablet. Implemented via Search API userAgent.",
+          "type": "string"
+        },
+        "format": {
+          "description": "html|xml. Use html for ads extraction (default).",
+          "type": "string"
+        },
+        "include_raw": {
+          "description": "Include decoded raw HTML/XML in response. Default: false.",
+          "type": "boolean"
+        },
+        "mode": {
+          "description": "sync only in this implementation.",
+          "type": "string"
+        },
+        "n_results": {
+          "description": "HTML: 5-50 groups; XML: 1-100 groups. Default: 10.",
+          "type": "integer"
+        },
+        "page": {
+          "description": "Zero-based result page. Default: 0.",
+          "type": "integer"
+        },
+        "query": {
+          "description": "Search query text, max 400 characters.",
+          "type": "string"
+        },
+        "region": {
+          "description": "Yandex Search region id. Defaults to server config.",
+          "type": "integer"
+        },
+        "search_type": {
+          "description": "Search API search type, e.g. SEARCH_TYPE_RU (default).",
+          "type": "string"
+        },
+        "user_agent": {
+          "description": "Advanced override for Search API userAgent.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "name": "wordstat.dynamics",
     "description": "Wordstat: dynamics (frequency dynamics by period).",
     "inputSchema": {

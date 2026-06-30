@@ -25,6 +25,10 @@
     - либо через профили: `account_id` + `MCP_ACCOUNTS_FILE`
 - Metrica:
   - Для `metrica.*` нужен доступ токена к счётчику (`counter_id`), иногда Logs API.
+- Yandex Search API:
+  - `YANDEX_SEARCH_API_FOLDER_ID` + `YANDEX_SEARCH_API_API_KEY` или `YANDEX_SEARCH_API_IAM_TOKEN`.
+  - Сервисный аккаунт должен иметь `search-api.webSearch.user`.
+  - Web Search SERP по умолчанию использует `YANDEX_SEARCH_API_DEFAULT_REGION=213`.
 
 ## Accounts registry (уровень E)
 | Tool | Type | Requires | Guards | Notes |
@@ -68,6 +72,11 @@
 | `metrica.report` | Read | Metrica stats client | — | Raw JSON отчёт Stats API. |
 | `metrica.logs_export` | Read | Metrica logs client | — | Поддерживает create/info/allinfo/download/cancel/clean/evaluate (через `action`). |
 | `metrica.raw_call` | Read/Write* | Metrica clients | — | Stats: только GET. Management: поддерживает write (если токен/права позволяют). |
+
+## Search API Web Search
+| Tool | Type | Requires | Guards | Notes |
+| --- | --- | --- | --- | --- |
+| `search_serp` | Read | Yandex Search API folder + API key/IAM token | `MCP_SEARCH_API_ENABLED` | Возвращает нормализованные `ads`, `ads_count_top`, `organic`, `captcha`; `format=html` нужен для рекламы, raw HTML/XML только при `include_raw=true`. |
 
 ## HF tools (Direct)
 Примечание: HF-инструменты Direct **выполняют запись только при `apply=true`**.

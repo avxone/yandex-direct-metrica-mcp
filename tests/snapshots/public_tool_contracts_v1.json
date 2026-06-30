@@ -3012,5 +3012,124 @@
       ],
       "type": "object"
     }
+  },
+  {
+    "name": "search_serp",
+    "annotations": {
+      "idempotentHint": true,
+      "readOnlyHint": true
+    },
+    "outputSchema": {
+      "properties": {
+        "ads": {
+          "items": {
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "snippet": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain",
+              "title",
+              "position"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "ads_count_top": {
+          "type": "integer"
+        },
+        "captcha": {
+          "type": "boolean"
+        },
+        "device": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "found_docs_human": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "n_results": {
+          "type": "integer"
+        },
+        "organic": {
+          "items": {
+            "properties": {
+              "domain": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "snippet": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "domain",
+              "title",
+              "position"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "page": {
+          "type": "integer"
+        },
+        "query": {
+          "type": "string"
+        },
+        "raw_html": {
+          "type": "string"
+        },
+        "raw_xml": {
+          "type": "string"
+        },
+        "region": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "search_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "region",
+        "device",
+        "ads",
+        "ads_count_top",
+        "organic",
+        "captcha"
+      ],
+      "type": "object"
+    }
   }
 ]

@@ -90,3 +90,55 @@ For downstream parsing, extract:
 - `//found-docs-human`
 - `//reqid` for support/debug correlation
 
+## MCP tool: `search_serp`
+
+`search_serp` is the bounded MCP surface for Web Search SERP use cases. It uses
+the synchronous REST endpoint (`/v2/web/search`), decodes `rawData`, and returns
+normalized result buckets so agents do not parse raw SERP HTML in prompt space.
+
+Request:
+
+```json
+{
+  "query": "гарнитура для колл центра купить",
+  "region": 213,
+  "device": "desktop",
+  "format": "html",
+  "mode": "sync",
+  "n_results": 10
+}
+```
+
+Response shape:
+
+```json
+{
+  "query": "гарнитура для колл центра купить",
+  "region": 213,
+  "device": "DEVICE_DESKTOP",
+  "format": "html",
+  "mode": "sync",
+  "n_results": 10,
+  "page": 0,
+  "search_type": "SEARCH_TYPE_RU",
+  "ads": [
+    {"domain": "example.ru", "title": "Ad title", "snippet": "Ad snippet", "url": "https://example.ru", "position": 1}
+  ],
+  "ads_count_top": 1,
+  "organic": [
+    {"domain": "example.org", "title": "Organic title", "snippet": "Organic snippet", "url": "https://example.org", "position": 1}
+  ],
+  "captcha": false
+}
+```
+
+Notes:
+
+- `format=html` is the default and is required for ad extraction.
+- `format=xml` is useful for organic result debugging, but ad extraction is not
+  expected from XML.
+- `device` is implemented via the documented `userAgent` request field; the
+  response returns the normalized device enum.
+- `region` defaults to `YANDEX_SEARCH_API_DEFAULT_REGION` (`213` by default).
+- `search_type` defaults to `SEARCH_TYPE_RU`.
+- raw HTML/XML is omitted unless `include_raw=true`.

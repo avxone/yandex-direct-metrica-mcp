@@ -36,6 +36,13 @@ from .plugins import try_handle as plugins_try_handle
 from .ratelimit import RateLimiter
 from .report_names import make_unique_report_name
 from .retry import with_retries
+from .search_client import (
+    SEARCH_API_WEB_BASE,
+    SearchApiClient,
+    build_search_serp_payload,
+    decode_raw_data,
+    normalize_search_serp,
+)
 from .tools import tool_definitions
 from .wordstat_client import WORDSTAT_API_BASE, WordstatClient, WordstatError
 from .wordstat_utils import merge_wordstat_candidate, wordstat_provider_items
@@ -6138,6 +6145,62 @@ def _wordstat_post(ctx: AppContext, path: str, payload: dict[str, Any] | None = 
     return data
 
 
+def _search_serp(ctx: AppContext, args: dict[str, Any]) -> dict[str, Any]:
+    if not getattr(ctx.config, "search_api_enabled", True):
+        raise MissingClientError("search_api", "Search API tools are disabled (MCP_SEARCH_API_ENABLED=false).")
+    folder_id = getattr(ctx.config, "wordstat_search_api_folder_id", None)
+    api_key = getattr(ctx.config, "wordstat_search_api_api_key", None)
+    iam_token = getattr(ctx.config, "wordstat_search_api_iam_token", None)
+    if not folder_id:
+        raise MissingClientError("search_api", "YANDEX_SEARCH_API_FOLDER_ID is not configured.")
+    if not (api_key or iam_token):
+        raise MissingClientError(
+            "search_api",
+            "YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN is not configured.",
+        )
+
+    payload, meta = build_search_serp_payload(
+        args,
+        folder_id=folder_id,
+        default_region=getattr(ctx.config, "search_api_default_region", 213),
+    )
+    client = SearchApiClient(
+        folder_id=folder_id,
+        api_key=api_key,
+        iam_token=iam_token,
+        base_url=getattr(ctx.config, "search_api_web_base_url", None) or SEARCH_API_WEB_BASE,
+    )
+
+    def _call() -> dict[str, Any]:
+        ctx.wordstat_rate_limiter.acquire()
+        return client.search(payload)
+
+    data = with_retries(
+        _call,
+        max_attempts=ctx.config.retry_max_attempts,
+        base_delay_seconds=ctx.config.retry_base_delay_seconds,
+        max_delay_seconds=ctx.config.retry_max_delay_seconds,
+    )
+    raw = decode_raw_data(data)
+    normalized = normalize_search_serp(
+        raw,
+        response_format="FORMAT_HTML" if meta["format"] == "html" else "FORMAT_XML",
+    )
+    out = {
+        **meta,
+        "ads": normalized.get("ads") or [],
+        "ads_count_top": int(normalized.get("ads_count_top") or 0),
+        "organic": normalized.get("organic") or [],
+        "captcha": bool(normalized.get("captcha")),
+    }
+    for key in ("request_id", "found_docs_human"):
+        if normalized.get(key):
+            out[key] = normalized[key]
+    if args.get("include_raw"):
+        out["raw_html" if meta["format"] == "html" else "raw_xml"] = raw
+    return out
+
+
 def _audience_call(
     ctx: AppContext,
     method: str,
@@ -7220,6 +7283,22 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                     "Wordstat Search API credentials are not configured. Set YANDEX_SEARCH_API_FOLDER_ID and YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN.",
                 ),
             )
+    if name == "search_serp":
+        if not getattr(ctx.config, "search_api_enabled", True):
+            return _error_response(
+                name, MissingClientError("search_api", "Search API tools are disabled (MCP_SEARCH_API_ENABLED=false).")
+            )
+        if not getattr(ctx.config, "wordstat_search_api_folder_id", None) or not (
+            getattr(ctx.config, "wordstat_search_api_api_key", None)
+            or getattr(ctx.config, "wordstat_search_api_iam_token", None)
+        ):
+            return _error_response(
+                name,
+                MissingClientError(
+                    "search_api",
+                    "Search API credentials are not configured. Set YANDEX_SEARCH_API_FOLDER_ID and YANDEX_SEARCH_API_API_KEY or YANDEX_SEARCH_API_IAM_TOKEN.",
+                ),
+            )
 
     try:
         args = _resolve_account_overrides(ctx, name, args)
@@ -7313,6 +7392,13 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
                 "available": True,
                 "raw": access_check,
             }
+            return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    if name == "search_serp":
+        try:
+            data = _search_serp(ctx, args)
             return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)

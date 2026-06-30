@@ -51,6 +51,9 @@ class AppConfig:
     wordstat_search_api_api_key: str | None = None
     wordstat_search_api_iam_token: str | None = None
     wordstat_api_base_url: str | None = None
+    search_api_enabled: bool = True
+    search_api_default_region: int = 213
+    search_api_web_base_url: str | None = None
 
 
 def _split_csv(value: str | None) -> list[str]:
@@ -168,5 +171,8 @@ def load_config() -> AppConfig:
         wordstat_search_api_api_key=os.getenv("YANDEX_SEARCH_API_API_KEY"),
         wordstat_search_api_iam_token=os.getenv("YANDEX_SEARCH_API_IAM_TOKEN"),
         wordstat_api_base_url=os.getenv("YANDEX_SEARCH_API_WORDSTAT_BASE_URL"),
+        search_api_enabled=os.getenv("MCP_SEARCH_API_ENABLED", "true").lower() in {"1", "true", "yes"},
+        search_api_default_region=int(os.getenv("YANDEX_SEARCH_API_DEFAULT_REGION", "213")),
+        search_api_web_base_url=os.getenv("YANDEX_SEARCH_API_WEB_BASE_URL"),
     )
     return _apply_public_edition_overrides(config)
