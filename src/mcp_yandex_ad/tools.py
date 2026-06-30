@@ -1796,6 +1796,41 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
             inputSchema={"type": "object", "properties": {"params": {"type": "object"}}},
         ),
         Tool(
+            name="search_serp",
+            description="Search API Web Search: normalized Yandex SERP ads and organic results.",
+            inputSchema={
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                    "query": {"type": "string", "description": "Search query text, max 400 characters."},
+                    "region": {"type": "integer", "description": "Yandex Search region id. Defaults to server config."},
+                    "device": {
+                        "type": "string",
+                        "description": "desktop|phone|mobile|tablet. Implemented via Search API userAgent.",
+                    },
+                    "format": {"type": "string", "description": "html|xml. Use html for ads extraction (default)."},
+                    "mode": {"type": "string", "description": "sync only in this implementation."},
+                    "n_results": {
+                        "type": "integer",
+                        "description": "HTML: 5-50 groups; XML: 1-100 groups. Default: 10.",
+                    },
+                    "page": {"type": "integer", "description": "Zero-based result page. Default: 0."},
+                    "include_raw": {
+                        "type": "boolean",
+                        "description": "Include decoded raw HTML/XML in response. Default: false.",
+                    },
+                    "search_type": {
+                        "type": "string",
+                        "description": "Search API search type, e.g. SEARCH_TYPE_RU (default).",
+                    },
+                    "user_agent": {
+                        "type": "string",
+                        "description": "Advanced override for Search API userAgent.",
+                    },
+                },
+            },
+        ),
+        Tool(
             name="wordstat.get_regions_tree",
             description="Wordstat: getRegionsTree (regions dictionary).",
             inputSchema={"type": "object", "properties": {"params": {"type": "object"}}},

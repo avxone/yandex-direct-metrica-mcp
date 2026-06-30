@@ -4,11 +4,7 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
-- Automation: added an explicit issue capability contract and browser/live-api/manual-check matrix so Symphony tasks must declare required capabilities, secret sources, and blocker routing before execution.
-- Automation: documented external secret sourcing for Symphony from `/Users/georgyagaev/mcp/state/yandex.ad/.env` so live validation can run without copying credentials into the repo or Symphony workspace.
-- Automation: changed the Symphony blocker policy so missing credentials or other missing external inputs move an issue to `Backlog` instead of re-entering the active `Todo` loop.
-- Automation: split Symphony validation into stage-specific `Feature Validation`, `PR Validation`, and `Release Validation` sections to stop feature issues from bouncing between implementation and review over later-stage gates.
-- Automation: updated follow-up issue generation so PR/release Linear issues carry explicit execution profile metadata and stage-scoped validation contracts.
+- Search API: added read-only `search_serp` MCP tool for normalized Yandex SERP ads and organic results, with optional raw HTML/XML, device via `userAgent`, region defaults, tests, and Marketing2025 handoff docs.
 - Automation: replaced the broken state-based `Approved` / `Releasing` Symphony model with a two-lane `implementation + review` pipeline driven by `issue-type:*` labels and follow-up Linear issues.
 - Automation: extended `scripts/linear_issue.py` with `followup-pr` and `followup-release` commands that create next-stage issues in the same Linear team/project, inherit context labels, and backlink the created issue to the source issue.
 - Automation: added focused follow-up harness tests in `tests/test_linear_issue_followups.py`.

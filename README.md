@@ -141,6 +141,7 @@ The goal is to give the LLM **full access to raw reporting data** with minimal n
 - `direct.*` — Yandex Direct API calls (reports, entities, dictionaries)
 - `metrica.*` — Yandex Metrica API calls (exports, reports)
 - `wordstat.*` — Yandex Wordstat API calls (keyword statistics)
+- `search_serp` — Yandex Search API Web Search SERP normalization (ads + organic)
 - `audience.*` — Yandex Audience API calls (segments, overlaps, catalogs)
 
 Output format is controlled by:
@@ -180,11 +181,12 @@ Audience OAuth (may be shared with Direct/Metrica, but can be separate):
 - `YANDEX_AUDIENCE_ACCESS_TOKEN` or `YANDEX_AUDIENCE_REFRESH_TOKEN`
 - if using refresh: `YANDEX_AUDIENCE_CLIENT_ID`, `YANDEX_AUDIENCE_CLIENT_SECRET`
 
-Wordstat via Yandex Search API:
+Wordstat and Web Search via Yandex Search API:
 - `YANDEX_SEARCH_API_FOLDER_ID`
 - `YANDEX_SEARCH_API_API_KEY` or `YANDEX_SEARCH_API_IAM_TOKEN`
+- optional Web Search defaults: `MCP_SEARCH_API_ENABLED`, `YANDEX_SEARCH_API_DEFAULT_REGION`
 
-Search API Wordstat does **not** use Direct OAuth. Configure it separately:
+Search API tools do **not** use Direct OAuth. Configure them separately:
 - the service account belongs to the target folder;
 - the service account has `search-api.webSearch.user`;
 - the API key is created for that service account;
@@ -192,6 +194,8 @@ Search API Wordstat does **not** use Direct OAuth. Configure it separately:
 - `YANDEX_SEARCH_API_FOLDER_ID` matches that folder.
 
 If `wordstat.user_info` or any `wordstat.*` call returns 401/403, check the role/scope/folder above. For `wordstat.dynamics`, monthly `to_date` must be `YYYY-MM` or the last day of the month; weekly boundaries are provider-specific, so use raw `params` only with a confirmed provider-valid `toDate`.
+
+`search_serp` uses the same Search API credentials and returns normalized `ads`, `ads_count_top`, `organic`, and `captcha`. Use `format=html` when ads are required; raw HTML is returned only with `include_raw=true`.
 
 Multi-account registry:
 - `MCP_ACCOUNTS_FILE=/data/accounts.json`

@@ -90,3 +90,57 @@ Search API. Размер страницы задается через `groupSpec
 - `//found-docs-human`
 - `//reqid` для поддержки и отладки
 
+## MCP tool: `search_serp`
+
+`search_serp` - ограниченная MCP-поверхность для SERP-сценариев Web Search.
+Инструмент использует синхронный REST endpoint (`/v2/web/search`), декодирует
+`rawData` и возвращает нормализованные блоки, чтобы агенты не парсили сырой HTML
+в prompt space.
+
+Запрос:
+
+```json
+{
+  "query": "гарнитура для колл центра купить",
+  "region": 213,
+  "device": "desktop",
+  "format": "html",
+  "mode": "sync",
+  "n_results": 10
+}
+```
+
+Форма ответа:
+
+```json
+{
+  "query": "гарнитура для колл центра купить",
+  "region": 213,
+  "device": "DEVICE_DESKTOP",
+  "format": "html",
+  "mode": "sync",
+  "n_results": 10,
+  "page": 0,
+  "search_type": "SEARCH_TYPE_RU",
+  "ads": [
+    {"domain": "example.ru", "title": "Ad title", "snippet": "Ad snippet", "url": "https://example.ru", "position": 1}
+  ],
+  "ads_count_top": 1,
+  "organic": [
+    {"domain": "example.org", "title": "Organic title", "snippet": "Organic snippet", "url": "https://example.org", "position": 1}
+  ],
+  "captcha": false
+}
+```
+
+Примечания:
+
+- `format=html` используется по умолчанию и нужен для извлечения рекламы.
+- `format=xml` полезен для отладки organic-результатов, но реклама из XML не
+  ожидается.
+- `device` реализован через документированное поле `userAgent`; ответ возвращает
+  нормализованный enum устройства.
+- `region` по умолчанию берется из `YANDEX_SEARCH_API_DEFAULT_REGION` (`213` по
+  умолчанию).
+- `search_type` по умолчанию равен `SEARCH_TYPE_RU`.
+- сырой HTML/XML возвращается только при `include_raw=true`.

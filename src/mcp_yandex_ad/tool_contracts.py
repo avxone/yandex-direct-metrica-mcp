@@ -249,6 +249,42 @@ def _dashboard_schema() -> dict[str, Any]:
     }
 
 
+def _search_serp_schema() -> dict[str, Any]:
+    result_item = {
+        "type": "object",
+        "required": ["domain", "title", "position"],
+        "properties": {
+            "domain": {"type": "string"},
+            "title": {"type": "string"},
+            "snippet": {"type": "string"},
+            "url": {"type": "string"},
+            "position": {"type": "integer"},
+        },
+    }
+    return {
+        "type": "object",
+        "required": ["query", "region", "device", "ads", "ads_count_top", "organic", "captcha"],
+        "properties": {
+            "query": {"type": "string"},
+            "region": {"type": "integer"},
+            "device": {"type": "string"},
+            "format": {"type": "string"},
+            "mode": {"type": "string"},
+            "n_results": {"type": "integer"},
+            "page": {"type": "integer"},
+            "search_type": {"type": "string"},
+            "ads": {"type": "array", "items": result_item},
+            "ads_count_top": {"type": "integer"},
+            "organic": {"type": "array", "items": result_item},
+            "captcha": {"type": "boolean"},
+            "request_id": {"type": "string"},
+            "found_docs_human": {"type": "string"},
+            "raw_html": {"type": "string"},
+            "raw_xml": {"type": "string"},
+        },
+    }
+
+
 def _default_read_annotations() -> ToolAnnotations:
     return ToolAnnotations(readOnlyHint=True, idempotentHint=True)
 
@@ -277,6 +313,10 @@ def tool_contracts() -> dict[str, dict[str, Any]]:
         "dashboard.generate_option1": {
             "outputSchema": _dashboard_schema(),
             "annotations": _artifact_write_annotations(),
+        },
+        "search_serp": {
+            "outputSchema": _search_serp_schema(),
+            "annotations": _default_read_annotations(),
         },
         "direct.hf.get_campaign_summary": {
             "outputSchema": _hf_envelope_schema(result_schema=_campaign_counts_schema()),
