@@ -360,6 +360,7 @@ def followup_title(stage: str, source_issue: dict[str, Any], explicit_title: str
 
 
 def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
+    source_workspace = f"/Users/georgyagaev/Projects/Symphony_yaad/workspaces/{source_issue['identifier']}"
     source_type = classify_issue_type(issue_label_names(source_issue))
     source_label_list = ", ".join(issue_label_names(source_issue)) or "none"
     common = [
@@ -375,6 +376,11 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
         f"- URL: {source_issue['url']}",
         f"- Source type: {source_type}",
         f"- Source labels: {source_label_list}",
+        f"- Source workspace: `{source_workspace}`",
+        "",
+        "## Required Handoff Artifacts",
+        "- `SYMPHONY_WORK_RESULT.md` from the source workspace is mandatory.",
+        "- `SYMPHONY_STAGE_HANDOFF.md` from the source workspace is mandatory.",
         "",
         "## Boundary",
         "- This follow-up issue owns only this stage.",
@@ -389,6 +395,8 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "Publish the already-reviewed change as a branch and GitHub PR.",
                 "",
                 "## Scope",
+                "- Read and follow the source-stage handoff before making any git changes.",
+                "- Apply the approved source-stage patch from the source workspace into this fresh clone.",
                 "- Re-run non-live gates.",
                 "- Prepare deterministic PR metadata.",
                 "- Commit the approved change.",
@@ -402,6 +410,7 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "- No Docker publish.",
                 "",
                 "## Acceptance Criteria",
+                "- The PR-stage workspace reproduces the approved feature diff from the source workspace.",
                 "- Branch exists on GitHub.",
                 "- PR exists or was updated.",
                 "- Linear contains the PR URL.",
@@ -415,6 +424,12 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "- `python scripts/agent_lint.py`",
                 "- GitHub PR command succeeds.",
                 "",
+                "## Source Handoff Requirements",
+                f"- Preferred path: read `{source_workspace}/SYMPHONY_STAGE_HANDOFF.md` before applying the diff.",
+                f"- Preferred path: apply `{source_workspace}/SYMPHONY_STAGE_PATCH.diff` into this workspace before rerunning validation.",
+                f"- Legacy fallback only when the source issue predates the handoff-artifact contract: inspect `{source_workspace}` directly, reconstruct the approved diff from that workspace, and document the recovery in this stage's `SYMPHONY_WORK_RESULT.md`.",
+                "- If neither the handoff artifacts nor a clear source-workspace diff are available, stop and move the issue to `Backlog` rather than inventing a new diff.",
+                "",
                 "## Release Validation",
                 "Use `n/a`. Release publication is owned by a separate release follow-up issue.",
             ]
@@ -426,6 +441,7 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "Publish a versioned release and refresh local Docker aliases after successful publication.",
                 "",
                 "## Scope",
+                "- Read and follow the source-stage handoff before changing release metadata.",
                 "- Run full local gates.",
                 "- Run bounded live validation.",
                 "- Finalize version and release notes.",
@@ -440,6 +456,7 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "- No client-repo edits.",
                 "",
                 "## Acceptance Criteria",
+                "- The release stage uses the approved PR-stage branch/commit metadata from the source workspace.",
                 "- Release tag exists.",
                 "- GitHub Release exists.",
                 "- Docker publish workflows completed.",
@@ -457,6 +474,11 @@ def followup_description(stage: str, source_issue: dict[str, Any]) -> str:
                 "- `python scripts/agent_lint.py`",
                 "- `python scripts/live_validation.py --suite direct,metrica,wordstat,search`",
                 "- `python scripts/release_guard.py --version X.Y.Z --require-release-notes`",
+                "",
+                "## Source Handoff Requirements",
+                f"- Preferred path: read `{source_workspace}/SYMPHONY_STAGE_HANDOFF.md` for the approved branch, commit, PR URL, and release notes context.",
+                f"- Legacy fallback only when the source PR issue predates the handoff-artifact contract: inspect `{source_workspace}` directly and recover the approved branch/commit/PR metadata from its git state plus `SYMPHONY_WORK_RESULT.md`.",
+                "- If the PR-stage handoff or recoverable source metadata does not clearly identify the publishable branch/commit, stop and move the issue to `Backlog`.",
             ]
         )
     return "\n".join(common).strip()

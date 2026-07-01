@@ -71,11 +71,19 @@ Rule:
 - manual-check: `yes/no`
 - operator step required: `yes/no`
 
+Default browser guidance:
+
+- use `chrome-devtools` when the agent should inspect a human-visible Chrome session;
+- use `playwright` for deterministic agent-owned browser runs;
+- use `operator-browser` only when a human evidence step is intentionally accepted.
+
 `External Inputs / Secrets` should explicitly answer:
 
 - which env vars are required
 - where they are sourced from
 - whether they are expected in the parent Symphony process before the issue moves to `Todo`
+
+If manual/operator evidence is allowed, also state whether an existing Linear comment or repo-local evidence note can satisfy that requirement on a later retry.
 
 ## Create From A Draft
 
@@ -150,7 +158,13 @@ Both commands:
 - create the next-stage issue in the same team and project;
 - inherit context labels;
 - replace the previous `issue-type:*` label with the new stage label;
+- include the deterministic source workspace path for the previous stage;
+- require portable handoff artifacts from the previous stage:
+  - feature -> PR: `SYMPHONY_WORK_RESULT.md`, `SYMPHONY_STAGE_HANDOFF.md`, `SYMPHONY_STAGE_PATCH.diff`
+  - PR -> release: `SYMPHONY_WORK_RESULT.md`, `SYMPHONY_STAGE_HANDOFF.md`
 - comment the created follow-up link back onto the source issue.
+
+Do not create a follow-up issue until those artifacts exist in the source workspace.
 
 ## Comment On An Issue
 

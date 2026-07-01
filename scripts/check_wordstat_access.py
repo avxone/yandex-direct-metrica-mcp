@@ -28,6 +28,7 @@ from mcp_yandex_ad import server  # noqa: E402
 from mcp_yandex_ad.config import load_config  # noqa: E402
 from mcp_yandex_ad.errors import MissingClientError, normalize_error  # noqa: E402
 from mcp_yandex_ad.ratelimit import RateLimiter  # noqa: E402
+from mcp_yandex_ad.wordstat_client import WordstatError  # noqa: E402
 
 
 def _monthly_window(today: dt.date) -> tuple[str, str]:
@@ -35,6 +36,23 @@ def _monthly_window(today: dt.date) -> tuple[str, str]:
     prev_month_end = current_month_start - dt.timedelta(days=1)
     prev_month_start = prev_month_end.replace(day=1)
     return prev_month_start.strftime("%Y-%m"), prev_month_end.strftime("%Y-%m-%d")
+
+
+def _monthly_windows(today: dt.date) -> list[tuple[str, str]]:
+    """Return recent monthly windows to try for live Wordstat dynamics.
+
+    The provider can lag on the most recently closed month around month boundaries.
+    Try the previous month first, then one buffered month earlier.
+    """
+    current_month_start = today.replace(day=1)
+    prev_month_end = current_month_start - dt.timedelta(days=1)
+    prev_month_start = prev_month_end.replace(day=1)
+    buffered_month_end = prev_month_start - dt.timedelta(days=1)
+    buffered_month_start = buffered_month_end.replace(day=1)
+    return [
+        (prev_month_start.strftime("%Y-%m"), prev_month_end.strftime("%Y-%m-%d")),
+        (buffered_month_start.strftime("%Y-%m"), buffered_month_end.strftime("%Y-%m-%d")),
+    ]
 
 
 def _ctx() -> SimpleNamespace:
@@ -103,17 +121,34 @@ def main() -> int:
         return 2
 
     try:
-        from_month, to_month_end = _monthly_window(dt.date.today())
-        dynamics_payload = server._build_wordstat_dynamics_payload(
-            {
-                "phrase": phrase,
-                "from_date": from_month,
-                "to_date": to_month_end,
-                "period": "monthly",
-            }
+        dynamics = None
+        used_window: tuple[str, str] | None = None
+        last_error: Exception | None = None
+        for from_month, to_month_end in _monthly_windows(dt.date.today()):
+            dynamics_payload = server._build_wordstat_dynamics_payload(
+                {
+                    "phrase": phrase,
+                    "from_date": from_month,
+                    "to_date": to_month_end,
+                    "period": "monthly",
+                }
+            )
+            try:
+                dynamics = server._wordstat_post(ctx, "dynamics", dynamics_payload)
+                used_window = (from_month, to_month_end)
+                break
+            except WordstatError as exc:
+                last_error = exc
+                if getattr(exc.response, "status_code", None) != 400:
+                    raise
+        if dynamics is None or used_window is None:
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("Wordstat dynamics validation did not produce a result.")
+        print(
+            "Wordstat dynamics OK: "
+            f"month={used_window[0]} points={max(1, _items_count(dynamics, 'dynamics', 'items', 'results'))}"
         )
-        dynamics = server._wordstat_post(ctx, "dynamics", dynamics_payload)
-        print(f"Wordstat dynamics OK: points={max(1, _items_count(dynamics, 'dynamics', 'items', 'results'))}")
     except MissingClientError as exc:  # pragma: no cover - runtime safety
         _print_error("wordstat.dynamics", exc)
         return 1

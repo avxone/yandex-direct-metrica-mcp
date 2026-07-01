@@ -4,7 +4,18 @@ All notable changes to this MCP project will be documented in this file.
 
 ## Unreleased
 
-- Search API: added read-only `search_serp` MCP tool for normalized Yandex SERP ads and organic results, with optional raw HTML/XML, device via `userAgent`, region defaults, tests, and Marketing2025 handoff docs.
+## 2.0.13 - 2026-07-01
+
+- Search API: restored and shipped the bounded `search_serp` MCP tool with normalized ads plus organic results, HTML/XML parsing, region/device controls, and public contract snapshots/tests.
+- Client handoff: added `Marketing2025` release guidance for the Yandex Search API SERP migration and refreshed Search API Web Search docs/tool coverage.
+- Live validation: hardened the Wordstat monthly smoke to retry a buffered closed month when the provider has not published the freshest month yet around month boundaries.
+- Automation: required portable stage handoff artifacts between Symphony stages so feature review must preserve `SYMPHONY_STAGE_PATCH.diff` plus `SYMPHONY_STAGE_HANDOFF.md`, and PR/release follow-up issues now embed the source workspace path and artifact expectations.
+- Automation: switched Symphony `yandex.ad` lanes to the app-bundled Codex runtime, documented browser-capable validation preference, and allowed existing Linear/repo evidence to satisfy operator/browser validation requirements on retries.
+- Automation: added an explicit issue capability contract and browser/live-api/manual-check matrix so Symphony tasks must declare required capabilities, secret sources, and blocker routing before execution.
+- Automation: documented external secret sourcing for Symphony from an external state `.env` file so live validation can run without copying credentials into the repo or Symphony workspace.
+- Automation: changed the Symphony blocker policy so missing credentials or other missing external inputs move an issue to `Backlog` instead of re-entering the active `Todo` loop.
+- Automation: split Symphony validation into stage-specific `Feature Validation`, `PR Validation`, and `Release Validation` sections to stop feature issues from bouncing between implementation and review over later-stage gates.
+- Automation: updated follow-up issue generation so PR/release Linear issues carry explicit execution profile metadata and stage-scoped validation contracts.
 - Automation: replaced the broken state-based `Approved` / `Releasing` Symphony model with a two-lane `implementation + review` pipeline driven by `issue-type:*` labels and follow-up Linear issues.
 - Automation: extended `scripts/linear_issue.py` with `followup-pr` and `followup-release` commands that create next-stage issues in the same Linear team/project, inherit context labels, and backlink the created issue to the source issue.
 - Automation: added focused follow-up harness tests in `tests/test_linear_issue_followups.py`.

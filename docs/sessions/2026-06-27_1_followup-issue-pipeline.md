@@ -20,7 +20,7 @@ Date: 2026-06-27
 
 ## To Do
 
-- Copy the updated workflow files into `/Users/georgyagaev/Projects/Symphony_yaad/workflows/`.
+- Copy the updated workflow files into `<symphony-root>/workflows/`.
 - Stop any old PR/release Symphony sessions that still use ports `3323` and `3324`.
 - Restart Symphony with only the implementation and review lanes.
 - Create the missing PR and release follow-up issues for `GEO-7` using the updated harness.

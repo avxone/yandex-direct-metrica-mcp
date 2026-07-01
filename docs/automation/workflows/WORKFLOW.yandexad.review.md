@@ -13,7 +13,7 @@ tracker:
     - Cancelled
     - Duplicate
 workspace:
-  root: /Users/georgyagaev/Projects/Symphony_yaad/workspaces
+  root: <symphony-root>/workspaces
 hooks:
   after_create: |
     git clone --depth 1 https://github.com/georgy-agaev/yandex-direct-metrica-mcp.git .
@@ -21,7 +21,7 @@ agent:
   max_concurrent_agents: 1
   max_turns: 3
 codex:
-  command: codex --config shell_environment_policy.inherit=all app-server
+  command: /Applications/Codex.app/Contents/Resources/codex --config shell_environment_policy.inherit=all app-server
   approval_policy: never
   thread_sandbox: workspace-write
   turn_sandbox_policy:
@@ -51,17 +51,23 @@ Execution:
 
 1. Read `SYMPHONY_WORK_RESULT.md`.
 2. Inspect the workspace diff and relevant artifacts.
-3. Re-run only the validation appropriate for the current stage:
+3. Inspect `SYMPHONY_STAGE_HANDOFF.md` when the current stage is expected to feed a later stage.
+4. Re-run only the validation appropriate for the current stage:
    - feature issue -> `Feature Validation`
    - PR issue -> `PR Validation`
    - release issue -> `Release Validation`
-   - for Yandex live validation, you may source `/Users/georgyagaev/mcp/state/yandex.ad/.env` in the validation command, but never print its contents and never copy it into the repo or the Symphony workspace.
-4. Do not reject the current stage for missing later-stage validation.
-5. If you find issues:
+   - for Yandex live validation, you may source an external state file such as `<state-root>/yandex.ad/.env` in the validation command, but never print its contents and never copy it into the repo or the Symphony workspace.
+   - before rejecting on missing browser/manual evidence, inspect current Linear comments plus repo-local validation/session artifacts for already-supplied operator evidence.
+5. Do not reject the current stage for missing later-stage validation.
+6. Before approving and creating a follow-up:
+   - feature issue must contain `SYMPHONY_STAGE_PATCH.diff` plus `SYMPHONY_STAGE_HANDOFF.md`;
+   - PR issue must contain `SYMPHONY_STAGE_HANDOFF.md` with branch name, commit SHA, and PR URL;
+   - if a required handoff artifact is missing, treat it as a current-stage defect and move the issue back to `Todo`.
+7. If you find issues:
    - leave one concise Linear comment with findings,
    - move the issue back to `Todo` for code/test/doc defects,
-   - move the issue to `Backlog` for missing credentials, missing external inputs, or required manual validation that is impossible in the current environment.
-6. If findings are empty:
+   - move the issue to `Backlog` for missing credentials, missing external inputs, or required manual validation that is impossible in the current environment and is not already satisfied by existing comments/artifacts.
+8. If findings are empty:
    - leave one concise approval comment,
    - move the issue to `Done`,
    - create the next follow-up issue when required.

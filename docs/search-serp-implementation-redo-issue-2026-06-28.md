@@ -61,10 +61,10 @@ If client-side adaptation is needed, this issue must end with an explicit handof
 
 ## Required Capabilities
 
-- browser: `operator-browser`
+- browser: `chrome-devtools`
 - live-api: yes
 - manual-check: yes
-- operator step required: yes
+- operator step required: no if agent browser backend is available; yes only as fallback when prior evidence is not already attached
 
 ## External Inputs / Secrets
 
@@ -72,7 +72,7 @@ If client-side adaptation is needed, this issue must end with an explicit handof
   - `YANDEX_SEARCH_API_FOLDER_ID`
   - `YANDEX_SEARCH_API_API_KEY` or equivalent active Search API credential
 - source of truth:
-  - `/Users/georgyagaev/mcp/state/yandex.ad/.env`
+  - external state file, for example `<state-root>/yandex.ad/.env`
 - available to Symphony parent process before `Todo`: yes
 
 ## Blocked Input Policy
@@ -80,7 +80,7 @@ If client-side adaptation is needed, this issue must end with an explicit handof
 - move to `Backlog` if:
   - Search API credentials are unavailable in the Symphony parent process and cannot be sourced from the approved external state file
   - bounded live Search API validation cannot run
-  - required manual browser-visible SERP comparison cannot be completed in the current environment
+  - required browser-visible SERP comparison cannot be completed in the current environment and no existing Linear comment or repo-local evidence note already satisfies it
 - return to `Todo` only for:
   - code defects
   - test failures
@@ -214,7 +214,8 @@ Update:
 - client handoff document exists in this repo
 - bounded read-only live validation for `search` is required because this is a high-risk external API parsing feature
 - 3 to 5 real project queries with a short manual sanity note comparing API-derived output to browser-visible SERP structure
-- manual browser-visible SERP comparison is an `operator-browser` step; the agent must prepare the checklist and evidence note, but the operator owns the visible browser check when anti-bot gating prevents deterministic automation
+- browser-visible SERP comparison should be performed by the agent via `chrome-devtools` when the backend is available
+- if `chrome-devtools` is unavailable, an existing Linear evidence comment or repo-local validation note may satisfy this requirement without creating a new blocker
 
 ## PR Validation
 

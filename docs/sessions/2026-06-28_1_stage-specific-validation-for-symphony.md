@@ -17,6 +17,6 @@ Date: 2026-06-28
 ## To Do
 
 - Commit and push the workflow/process changes so Symphony can run from a clean base.
-- Refresh the external Symphony workspace files under `/Users/georgyagaev/Projects/Symphony_yaad/workflows/` if they differ from the repo copies.
+- Refresh the external Symphony workflow files under `<symphony-root>/workflows/` if they differ from the repo copies.
 - Re-launch the implementation and review lanes against the updated `GEO-9` issue.
 - Observe one full `Todo -> In Progress -> In Review -> Done` pass for the feature issue before creating any PR or release follow-up issues.

@@ -20,24 +20,36 @@ Do not copy provider credentials into the repo or into `Symphony_yaad/`.
 
 For Yandex live validation, export them into the parent Symphony process directly from:
 
-- `/Users/georgyagaev/mcp/state/yandex.ad/.env`
+- `<state-root>/yandex.ad/.env`
 
 This keeps the credentials in one place while still making them available to the isolated Codex worker via inherited process environment.
 
-If a live-validation command still reports missing Search API credentials, the implementation/review lane may source `/Users/georgyagaev/mcp/state/yandex.ad/.env` directly in that command. Do not print values and do not copy the file into the repo or workspace.
+If a live-validation command still reports missing Search API credentials, the implementation/review lane may source `<state-root>/yandex.ad/.env` directly in that command. Do not print values and do not copy the file into the repo or workspace.
+
+## Codex runtime
+
+Use the app-bundled Codex binary for Symphony lanes:
+
+- `/Applications/Codex.app/Contents/Resources/codex`
+
+Reason:
+
+- the global Codex config (for example `$CODEX_HOME/config.toml`) already carries the enabled browser/plugin configuration;
+- using the app-bundled binary keeps Symphony closer to the same runtime that already exposes `browser@openai-bundled`, `chrome-devtools`, and `playwrigh` in the interactive desktop setup.
 
 ## Implementation lane
 
 ```bash
-cd /Users/georgyagaev/Projects/Symphony_yaad/symphony/elixir
-mkdir -p /Users/georgyagaev/Projects/Symphony_yaad/logs
+cd <symphony-root>/symphony/elixir
+mkdir -p <symphony-root>/logs
 set -a
-. /Users/georgyagaev/Projects/Symphony_yaad/.env
-. /Users/georgyagaev/mcp/state/yandex.ad/.env
+. <symphony-root>/.env
+. <state-root>/yandex.ad/.env
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 set +a
 /opt/homebrew/bin/mise exec -- ./bin/symphony \
-  /Users/georgyagaev/Projects/Symphony_yaad/workflows/WORKFLOW.yandexad.implementation.md \
-  --logs-root /Users/georgyagaev/Projects/Symphony_yaad/logs \
+  <symphony-root>/workflows/WORKFLOW.yandexad.implementation.md \
+  --logs-root <symphony-root>/logs \
   --port 3321 \
   --i-understand-that-this-will-be-running-without-the-usual-guardrails
 ```
@@ -45,15 +57,16 @@ set +a
 ## Review lane
 
 ```bash
-cd /Users/georgyagaev/Projects/Symphony_yaad/symphony/elixir
-mkdir -p /Users/georgyagaev/Projects/Symphony_yaad/logs
+cd <symphony-root>/symphony/elixir
+mkdir -p <symphony-root>/logs
 set -a
-. /Users/georgyagaev/Projects/Symphony_yaad/.env
-. /Users/georgyagaev/mcp/state/yandex.ad/.env
+. <symphony-root>/.env
+. <state-root>/yandex.ad/.env
+export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 set +a
 /opt/homebrew/bin/mise exec -- ./bin/symphony \
-  /Users/georgyagaev/Projects/Symphony_yaad/workflows/WORKFLOW.yandexad.review.md \
-  --logs-root /Users/georgyagaev/Projects/Symphony_yaad/logs \
+  <symphony-root>/workflows/WORKFLOW.yandexad.review.md \
+  --logs-root <symphony-root>/logs \
   --port 3322 \
   --i-understand-that-this-will-be-running-without-the-usual-guardrails
 ```
@@ -64,9 +77,9 @@ When the repo workflow files change, refresh the external Symphony copies:
 
 ```bash
 cp docs/automation/workflows/WORKFLOW.yandexad.implementation.md \
-  /Users/georgyagaev/Projects/Symphony_yaad/workflows/
+  <symphony-root>/workflows/
 cp docs/automation/workflows/WORKFLOW.yandexad.review.md \
-  /Users/georgyagaev/Projects/Symphony_yaad/workflows/
+  <symphony-root>/workflows/
 ```
 
 ## Expected Runtime Behavior
@@ -87,3 +100,8 @@ If the current stage cannot proceed because required external credentials, opera
 2. the issue moves to `Backlog`, not `Todo`;
 3. the operator restores the missing input;
 4. the operator moves the issue back to `Todo`.
+
+If the restored input is operator/browser evidence, the next retry may consume it from either:
+
+- a Linear issue comment with explicit validation summary, or
+- a repo-local note under `docs/` or `docs/sessions/`.

@@ -47,6 +47,12 @@ Good fit:
 - checking session/cookie/captcha behavior
 - inspecting an already-open page
 
+Default preference for browser-visible validation of public web results:
+
+- prefer `chrome-devtools` when the agent should inspect what a human-visible Chrome session shows;
+- prefer `playwright` for deterministic agent-owned traversal in a clean browser context;
+- use `operator-browser` only when the team explicitly accepts a human-supplied evidence step.
+
 ### `operator-browser`
 
 Use when the comparison must be performed by a human operator in a visible browser and the agent can only describe or record the required checklist.
@@ -90,6 +96,12 @@ The issue must also define:
 - who owns the check: agent or operator
 - what artifact proves completion
 
+Accepted evidence channels:
+
+- repo-local note under `docs/` or `docs/sessions/`
+- existing Linear issue comment with explicit validation summary
+- browser screenshots or saved artifacts referenced from that note/comment
+
 ## Blocked Input Policy
 
 Use `Backlog` when the stage is blocked by:
@@ -115,3 +127,5 @@ If a feature issue requires:
 - or manual browser-visible comparison
 
 that requirement must be satisfied before the feature can move to `Done`, unless the issue explicitly delegates that check to a later stage.
+
+If the required evidence is already present in Linear comments or repo-local artifacts, the agent should consume and summarize that evidence instead of re-blocking the stage.
