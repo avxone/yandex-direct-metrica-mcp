@@ -134,6 +134,74 @@ def handle(name: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any] | None:
     if name == "direct.hf.interests_get":
         return _interests_get(ctx, args)
 
+    # ─── NEW TOOLS BATCH: Create campaign ──────────────────────────────
+    if name == "direct.hf.create_campaign":
+        return _create_campaign(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Combinator TextAds ───────────────────────────
+    if name == "direct.hf.create_textads_combinator":
+        return _create_textads_combinator(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Leads ────────────────────────────────────────
+    if name == "direct.hf.get_leads":
+        return _get_leads(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Creative update/delete ───────────────────────
+    if name == "direct.hf.creative_update":
+        return _creative_update(ctx, args)
+    if name == "direct.hf.creative_delete":
+        return _creative_delete(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Video delete ─────────────────────────────────
+    if name == "direct.hf.video_delete":
+        return _video_delete(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Keywords resume/update ───────────────────────
+    if name == "direct.hf.keywords_resume":
+        return _keywords_resume(ctx, args)
+    if name == "direct.hf.update_keywords":
+        return _update_keywords(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Audience targets setBids ─────────────────────
+    if name == "direct.hf.audience_targets_set_bids":
+        return _audience_targets_set_bids(ctx, args)
+
+    # ─── NEW TOOLS BATCH: VCard update ─────────────────────────────────
+    if name == "direct.hf.vcard_update":
+        return _vcard_update(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Sitelinks update ─────────────────────────────
+    if name == "direct.hf.sitelinks_update":
+        return _sitelinks_update(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Video extension add (adextensions) ───────────
+    if name == "direct.hf.video_extension_add":
+        return _video_extension_add(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Card extensions ──────────────────────────────
+    if name == "direct.hf.card_extension_add":
+        return _card_extension_add(ctx, args)
+    if name == "direct.hf.card_extension_delete":
+        return _card_extension_delete(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Client update ────────────────────────────────
+    if name == "direct.hf.client_update":
+        return _client_update(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Turbo pages ──────────────────────────────────
+    if name == "direct.hf.turbo_pages_list":
+        return _turbo_pages_list(ctx, args)
+    if name == "direct.hf.turbo_page_get":
+        return _turbo_page_get(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Video presets ────────────────────────────────
+    if name == "direct.hf.video_presets":
+        return _video_presets(ctx, args)
+
+    # ─── NEW TOOLS BATCH: Retargeting lists update ─────────────────────
+    if name == "direct.hf.retargeting_lists_update":
+        return _retargeting_lists_update(ctx, args)
+
     # Not our tool
     return None
 
@@ -860,3 +928,471 @@ def _interests_get(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
     params = {"DictionaryNames": ["Interests"]}
     result = ctx._direct_call("dictionaries", "get", params)
     return {"interests": result.get("result", {}).get("Interests", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — создание кампании
+# ═══════════════════════════════════════════════════════════════════════
+
+def _create_campaign(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Create a campaign from scratch."""
+    from .hf_common import micros_from_rub
+
+    name = args.get("name")
+    if not name:
+        raise HFError("name is required")
+
+    # Determine campaign type
+    ctype = args.get("type", "TEXT_CAMPAIGN")  # TEXT_CAMPAIGN, SMART_CAMPAIGN, etc.
+
+    # Build base campaign
+    campaign: dict[str, Any] = {"Name": name}
+
+    # Daily budget (in rubles -> micros)
+    daily_budget_rub = args.get("daily_budget_rub")
+    if daily_budget_rub is not None:
+        campaign["DailyBudget"] = micros_from_rub(daily_budget_rub)
+
+    # Strategy
+    strategy = args.get("strategy")
+    if strategy:
+        strategy_type = strategy.get("type", "WB_MAXIMUM_CONVERSION_RATE")
+        campaign["BiddingStrategy"] = {
+            "Search": {"BiddingStrategyType": strategy_type}
+        }
+        weekly_limit = strategy.get("weekly_spend_limit_rub")
+        if weekly_limit:
+            campaign["BiddingStrategy"]["Search"]["WeeklySpendLimit"] = micros_from_rub(weekly_limit)
+        avg_cpc = strategy.get("avg_cpc_rub")
+        if avg_cpc:
+            campaign["BiddingStrategy"]["Search"]["AvgCpc"] = micros_from_rub(avg_cpc)
+
+    # Regions
+    region_ids = args.get("region_ids")
+    if region_ids:
+        campaign["RegionIds"] = region_ids
+
+    # Start date
+    start_date = args.get("start_date")
+    if start_date:
+        campaign["StartDate"] = start_date
+
+    # UTM template
+    utm_template = args.get("utm_template")
+    if utm_template:
+        campaign["TrackingParams"] = utm_template
+
+    # Wrap in type-specific container
+    if ctype == "SMART_CAMPAIGN":
+        payload = {"SmartCampaigns": [campaign]}
+        result = ctx._direct_v501_call("campaigns", "add", payload)
+    elif ctype == "UNIFIED_CAMPAIGN":
+        payload = {"UnifiedCampaigns": [campaign]}
+        result = ctx._direct_v501_call("campaigns", "add", payload)
+    else:
+        # TEXT_CAMPAIGN (default)
+        payload = {"TextCampaigns": [campaign]}
+        result = ctx._direct_call("campaigns", "add", payload)
+
+    return {"result": result.get("result", {}), "errors": result.get("error", {}).get("Errors", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — комбинаторные объявления (ContentBlocks)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _create_textads_combinator(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Create text ads using modern ContentBlocks format (combinator ads).
+
+    Blocks format:
+    [
+      {"type": "TEXT", "content": "Заголовок"},
+      {"type": "TEXT", "content": "Подзаголовок"},
+      {"type": "TEXT", "content": "Текст"},
+      {"type": "MEDIA", "media_type": "IMAGE", "ad_image_hash": "..."},
+    ]
+    """
+    ad_group_id = args.get("ad_group_id")
+    blocks = args.get("blocks")
+    href = args.get("href")
+    if not ad_group_id or not blocks or not href:
+        raise HFError("ad_group_id, blocks, and href are required")
+
+    content_blocks = []
+    for b in blocks:
+        block_type = b.get("type")
+        if block_type == "TEXT":
+            content_blocks.append({
+                "BlockType": "TEXT",
+                "TextProperty": {"Append": b["content"]}
+            })
+        elif block_type == "MEDIA":
+            media_type = b.get("media_type", "IMAGE")
+            media_block = {
+                "BlockType": "MEDIA",
+                "MediaBlockProperty": {"MediaType": media_type}
+            }
+            if media_type == "IMAGE" and b.get("ad_image_hash"):
+                media_block["MediaBlockProperty"]["AdImageHash"] = b["ad_image_hash"]
+            elif media_type == "VIDEO" and b.get("creative_id"):
+                media_block["MediaBlockProperty"]["CreativeId"] = b["creative_id"]
+            content_blocks.append(media_block)
+        elif block_type == "BUTTON":
+            content_blocks.append({
+                "BlockType": "BUTTON",
+                "ButtonProperty": {"Text": b.get("text", "Подробнее"), "Href": b.get("href", href)}
+            })
+
+    ad: dict[str, Any] = {"AdGroupId": ad_group_id, "TextAd": {"ContentBlocks": content_blocks, "Href": href}}
+
+    # Attach sitelinks/callouts
+    sitelink_set_id = args.get("sitelink_set_id")
+    if sitelink_set_id:
+        ad["TextAd"]["SitelinkSetId"] = sitelink_set_id
+    callout_ids = args.get("callout_ids")
+    if callout_ids:
+        ad["TextAd"]["AdExtensions"] = {"AdExtensionIds": callout_ids}
+
+    payload = {"Ads": [ad]}
+    result = ctx._direct_call("ads", "add", payload)
+    return {"result": result.get("result", {}), "errors": result.get("error", {}).get("Errors", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — лиды (leads)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _get_leads(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Get leads from lead-based campaigns."""
+    campaign_id = args.get("campaign_id")
+    if not campaign_id:
+        raise HFError("campaign_id is required")
+    params: dict[str, Any] = {
+        "SelectionCriteria": {"CampaignIds": [campaign_id]},
+        "FieldNames": [
+            "Id", "CampaignId", "SubmitTime", "TurboPageId",
+            "Contacts", "UtmParameters", "State"
+        ],
+    }
+    date_from = args.get("date_from")
+    date_to = args.get("date_to")
+    if date_from and date_to:
+        params["SelectionCriteria"]["DateFrom"] = date_from
+        params["SelectionCriteria"]["DateTo"] = date_to
+    limit = args.get("limit", 50)
+    offset = args.get("offset", 0)
+    params["Page"] = {"Limit": limit, "Offset": offset}
+    result = ctx._direct_v501_call("leads", "get", params)
+    return {"leads": result.get("result", {}).get("Leads", []), "total": result.get("result", {}).get("TotalCount", 0)}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — creatives update/delete
+# ═══════════════════════════════════════════════════════════════════════
+
+def _creative_update(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update a creative (video extension)."""
+    creative_id = args.get("creative_id")
+    if not creative_id:
+        raise HFError("creative_id is required")
+    patch_data: dict[str, Any] = {"Id": creative_id}
+    if args.get("video_id"):
+        patch_data["VideoExtension"] = {"VideoId": args["video_id"]}
+    if args.get("name"):
+        patch_data["Name"] = args["name"]
+    payload = {"Creatives": [patch_data]}
+    result = ctx._direct_v501_call("creatives", "update", payload)
+    return {"result": result.get("result", {})}
+
+
+def _creative_delete(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Delete creatives."""
+    creative_ids = args.get("creative_ids")
+    if not creative_ids:
+        raise HFError("creative_ids are required")
+    params = {"SelectionCriteria": {"Ids": creative_ids}}
+    result = ctx._direct_v501_call("creatives", "delete", params)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — video delete
+# ═══════════════════════════════════════════════════════════════════════
+
+def _video_delete(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Delete uploaded videos."""
+    video_ids = args.get("video_ids")
+    if not video_ids:
+        raise HFError("video_ids are required")
+    params = {"SelectionCriteria": {"Ids": video_ids}}
+    result = ctx._direct_raw_post("json/v5/video", {"method": "delete", "params": params})
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — keywords resume/update
+# ═══════════════════════════════════════════════════════════════════════
+
+def _keywords_resume(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Resume auto-paused keywords."""
+    keyword_ids = args.get("keyword_ids")
+    if not keyword_ids:
+        raise HFError("keyword_ids are required")
+    params = {"SelectionCriteria": {"Ids": keyword_ids}}
+    result = ctx._direct_call("keywords", "resume", params)
+    return {"result": result.get("result", {})}
+
+
+def _update_keywords(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update keyword properties (text, bid, priority)."""
+    from .hf_common import micros_from_rub
+
+    keyword_id = args.get("keyword_id")
+    if not keyword_id:
+        raise HFError("keyword_id is required")
+    patch_data: dict[str, Any] = {"Id": keyword_id}
+    if args.get("keyword"):
+        patch_data["Keyword"] = args["keyword"]
+    bid_rub = args.get("bid_rub")
+    if bid_rub is not None:
+        patch_data["Bid"] = micros_from_rub(bid_rub)
+        patch_data["ContextBid"] = micros_from_rub(bid_rub)
+    if args.get("strategy_priority"):
+        patch_data["StrategyPriority"] = args["strategy_priority"]
+    payload = {"Keywords": [patch_data]}
+    result = ctx._direct_call("keywords", "update", payload)
+    return {"result": result.get("result", {}), "warnings": result.get("error", {}).get("Warnings", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — audience targets setBids
+# ═══════════════════════════════════════════════════════════════════════
+
+def _audience_targets_set_bids(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Set bids on audience targets."""
+    from .hf_common import micros_from_rub
+
+    bids = args.get("bids")
+    if not bids:
+        raise HFError("bids are required")
+    api_bids = []
+    for b in bids:
+        target_id = b.get("target_id")
+        if not target_id:
+            raise HFError("Each bid must have target_id")
+        bid_entry: dict[str, Any] = {"Id": target_id}
+        context_bid = b.get("context_bid")
+        if context_bid is not None:
+            bid_entry["ContextBid"] = micros_from_rub(context_bid)
+        api_bids.append(bid_entry)
+    params = {"Bids": api_bids}
+    result = ctx._direct_call("audiencetargets", "setBids", params)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — vcard update
+# ═══════════════════════════════════════════════════════════════════════
+
+def _vcard_update(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update a VCard."""
+    vcard_id = args.get("vcard_id")
+    if not vcard_id:
+        raise HFError("vcard_id is required")
+    patch_data: dict[str, Any] = {"Id": vcard_id}
+    if args.get("company"):
+        patch_data["CompanyName"] = args["company"]
+    if args.get("phone_number"):
+        patch_data["Phone"] = {
+            "CountryCode": args.get("country_code", "7"),
+            "CityCode": args.get("city_code", ""),
+            "PhoneNumber": args["phone_number"]
+        }
+    if args.get("street"):
+        patch_data["Street"] = args["street"]
+    if args.get("house"):
+        patch_data["House"] = args["house"]
+    if args.get("work_time"):
+        patch_data["WorkTime"] = args["work_time"]
+    if args.get("extra_message"):
+        patch_data["ExtraMessage"] = args["extra_message"]
+    payload = {"VCards": [patch_data]}
+    result = ctx._direct_v501_call("vcards", "update", payload)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — sitelinks update
+# ═══════════════════════════════════════════════════════════════════════
+
+def _sitelinks_update(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update a sitelinks set."""
+    sitelinks_set_id = args.get("sitelinks_set_id")
+    sitelinks = args.get("sitelinks")
+    if not sitelinks_set_id or not sitelinks:
+        raise HFError("sitelinks_set_id and sitelinks are required")
+    api_sitelinks = []
+    for sl in sitelinks:
+        if not sl.get("title") or not sl.get("href"):
+            raise HFError("Each sitelink must have title and href")
+        api_sitelinks.append({"Title": sl["title"], "Href": sl["href"]})
+    payload = {"SitelinksSets": [{"Id": sitelinks_set_id, "Sitelinks": api_sitelinks}]}
+    result = ctx._direct_call("sitelinks", "update", payload)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — video extension add (adextensions)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _video_extension_add(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Add a VIDEO_EXTENSION ad extension to a campaign."""
+    campaign_id = args.get("campaign_id")
+    creative_id = args.get("creative_id")
+    if not campaign_id or not creative_id:
+        raise HFError("campaign_id and creative_id are required")
+    payload = {
+        "AdExtensions": [{
+            "CampaignId": campaign_id,
+            "Type": "VIDEO_EXTENSION",
+            "VideoExtension": {"CreativeId": creative_id}
+        }]
+    }
+    result = ctx._direct_call("adextensions", "add", payload)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — card extensions
+# ═══════════════════════════════════════════════════════════════════════
+
+def _card_extension_add(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Add card extension (EXTENDED_TEXT) to a campaign."""
+    campaign_id = args.get("campaign_id")
+    cards = args.get("cards")
+    if not campaign_id or not cards:
+        raise HFError("campaign_id and cards are required")
+    items = []
+    for card in cards:
+        c: dict[str, Any] = {
+            "Title": card["title"],
+            "Description": card.get("description", ""),
+            "Href": card["href"],
+        }
+        if card.get("price"):
+            c["Price"] = card["price"]
+        items.append(c)
+    payload = {
+        "AdExtensions": [{
+            "CampaignId": campaign_id,
+            "Type": "EXTENDED_TEXT",
+            "ExtendedText": {"Items": items}
+        }]
+    }
+    result = ctx._direct_call("adextensions", "add", payload)
+    return {"result": result.get("result", {})}
+
+
+def _card_extension_delete(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Delete card (EXTENDED_TEXT) extensions by IDs."""
+    extension_ids = args.get("extension_ids")
+    if not extension_ids:
+        raise HFError("extension_ids are required")
+    params = {"SelectionCriteria": {"Ids": extension_ids}}
+    result = ctx._direct_call("adextensions", "delete", params)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — client update (agency)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _client_update(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update client info (agency operation)."""
+    client_id = args.get("client_id")
+    if not client_id:
+        raise HFError("client_id is required")
+    patch_data: dict[str, Any] = {"ClientId": client_id}
+    if args.get("phone"):
+        patch_data["Phone"] = args["phone"]
+    if args.get("email"):
+        patch_data["Email"] = args["email"]
+    payload = {"Clients": [patch_data]}
+    result = ctx._direct_call("clients", "update", payload)
+    return {"result": result.get("result", {})}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — turbo pages
+# ═══════════════════════════════════════════════════════════════════════
+
+def _turbo_pages_list(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """List turbo landing pages."""
+    params: dict[str, Any] = {}
+    campaign_id = args.get("campaign_id")
+    if campaign_id:
+        params["SelectionCriteria"] = {"CampaignIds": [campaign_id]}
+    limit = args.get("limit", 50)
+    offset = args.get("offset", 0)
+    params["Page"] = {"Limit": limit, "Offset": offset}
+    params["FieldNames"] = ["Id", "CampaignId", "Name", "Domain", "Status", "Href", "ModerationStatus"]
+    result = ctx._direct_v501_call("turbolandingpages", "list", params)
+    return {"pages": result.get("result", {}).get("TurboLandingPages", [])}
+
+
+def _turbo_page_get(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Get a single turbo landing page by ID."""
+    page_id = args.get("page_id")
+    if not page_id:
+        raise HFError("page_id is required")
+    params = {
+        "SelectionCriteria": {"Ids": [page_id]},
+        "FieldNames": [
+            "Id", "CampaignId", "Name", "Domain", "Status",
+            "Href", "ModerationStatus", "ModerationRejectionDescription"
+        ],
+    }
+    result = ctx._direct_v501_call("turbolandingpages", "get", params)
+    return {"page": result.get("result", {}).get("TurboLandingPages", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — video presets
+# ═══════════════════════════════════════════════════════════════════════
+
+def _video_presets(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Get video presets (supported formats, sizes)."""
+    params = {"FieldNames": ["Id", "Name", "Type", "Params"]}
+    result = ctx._direct_raw_post("json/v5/videopresets", {"method": "get", "params": params})
+    return {"presets": result.get("result", {}).get("VideoPresets", [])}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# NEW TOOLS BATCH — retargeting lists update
+# ═══════════════════════════════════════════════════════════════════════
+
+def _retargeting_lists_update(ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Update a retargeting list."""
+    list_id = args.get("id")
+    if not list_id:
+        raise HFError("id is required")
+    patch_data: dict[str, Any] = {"Id": list_id}
+    if args.get("name"):
+        patch_data["Name"] = args["name"]
+    if args.get("description"):
+        patch_data["Description"] = args["description"]
+    rules = args.get("rules")
+    if rules:
+        payload_rules = []
+        for r in rules:
+            rule = {"Operator": r["operator"], "Goals": []}
+            for g in r.get("goals", []):
+                rule["Goals"].append({
+                    "GoalId": g["goal_id"],
+                    "MembershipLifeSpan": g.get("membership_life_span", 30)
+                })
+            payload_rules.append(rule)
+        patch_data["Rules"] = payload_rules
+    payload = {"RetargetingLists": [patch_data]}
+    result = ctx._direct_v501_call("retargetinglists", "update", payload)
+    return {"result": result.get("result", {})}

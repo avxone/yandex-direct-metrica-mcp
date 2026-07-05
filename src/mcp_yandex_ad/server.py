@@ -34,6 +34,7 @@ from .hf_metrica import handle as hf_metrica_handle
 from .hf_cdp import handle as hf_cdp_handle
 from .hf_wordstat import handle as hf_wordstat_handle
 from .hf_audience import handle as hf_audience_handle
+from .hf_webmaster import handle as hf_webmaster_handle
 from .plugins import try_handle as plugins_try_handle
 from .ratelimit import RateLimiter
 from .report_names import make_unique_report_name
@@ -5970,6 +5971,8 @@ def _build_metrica_stats_params(args: dict[str, Any]) -> dict[str, Any]:
         params["offset"] = args.get("offset")
     if args.get("accuracy") is not None:
         params["accuracy"] = args.get("accuracy")
+    if args.get("attribution") is not None:
+        params["attribution"] = args.get("attribution")
     return params
 
 
@@ -7348,6 +7351,20 @@ async def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
             else:
                 data = _metrica_stats_call(ctx, method, params or {})
             return _ok_result(ctx, name, data)
+        except Exception as exc:  # pragma: no cover - runtime safety
+            return _error_response(name, exc)
+
+    # ─── Webmaster tools ──────────────────────────────────────────────
+    if name.startswith("webmaster.hf."):
+        try:
+            access_token = ctx.tokens.get_access_token()
+            if not access_token:
+                return _error_response(name, MissingClientError("webmaster", "Access token missing (YANDEX_ACCESS_TOKEN)."))
+            from .webmaster_client import WebmasterClient
+            client = WebmasterClient(access_token=access_token)
+            data = hf_webmaster_handle(name, client, args)
+            if data is not None:
+                return _ok_result(ctx, name, data)
         except Exception as exc:  # pragma: no cover - runtime safety
             return _error_response(name, exc)
 

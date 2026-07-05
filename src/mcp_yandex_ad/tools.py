@@ -1342,6 +1342,548 @@ def _hf_tools() -> list[Tool]:
                 "properties": {},
             },
         ),
+        # ═══════════════════════════════════════════════════════════════════
+        # NEW TOOLS — Created from TZ (15.07.2026)
+        # ═══════════════════════════════════════════════════════════════════
+        # ─── Create campaign ───────────────────────────────────────────
+        Tool(
+            name="direct.hf.create_campaign",
+            description="Create a campaign from scratch (TEXT/SMART/UNIFIED). Supports budget (rub), strategy, regions, schedule.",
+            inputSchema={
+                "type": "object",
+                "required": ["name", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "name": {"type": "string", "description": "Campaign name"},
+                    "type": {"type": "string", "enum": ["TEXT_CAMPAIGN", "SMART_CAMPAIGN", "UNIFIED_CAMPAIGN"], "description": "Campaign type (default TEXT_CAMPAIGN)"},
+                    "daily_budget_rub": {"type": "number", "description": "Daily budget in rubles"},
+                    "strategy": {
+                        "type": "object",
+                        "description": "Bidding strategy",
+                        "properties": {
+                            "type": {"type": "string", "description": "WB_MAXIMUM_CONVERSION_RATE, AVERAGE_CPC, etc."},
+                            "weekly_spend_limit_rub": {"type": "number"},
+                            "avg_cpc_rub": {"type": "number"},
+                        },
+                    },
+                    "region_ids": {"type": "array", "items": {"type": "integer"}, "description": "Region IDs for targeting"},
+                    "start_date": {"type": "string", "description": "YYYY-MM-DD campaign start date"},
+                    "utm_template": {"type": "string", "description": "UTM template string"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Combinator text ads ───────────────────────────────────────
+        Tool(
+            name="direct.hf.create_textads_combinator",
+            description="Create text ads with ContentBlocks (combinator format). Supports TEXT/MEDIA/BUTTON blocks.",
+            inputSchema={
+                "type": "object",
+                "required": ["ad_group_id", "blocks", "href", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "ad_group_id": {"type": "integer"},
+                    "blocks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["type"],
+                            "properties": {
+                                "type": {"type": "string", "enum": ["TEXT", "MEDIA", "BUTTON"]},
+                                "content": {"type": "string"},
+                                "media_type": {"type": "string", "enum": ["IMAGE", "VIDEO"]},
+                                "ad_image_hash": {"type": "string"},
+                                "creative_id": {"type": "integer"},
+                                "text": {"type": "string"},
+                            },
+                        },
+                    },
+                    "href": {"type": "string"},
+                    "sitelink_set_id": {"type": "integer"},
+                    "callout_ids": {"type": "array", "items": {"type": "integer"}},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Leads ────────────────────────────────────────────────────
+        Tool(
+            name="direct.hf.get_leads",
+            description="Get leads from lead-based campaigns.",
+            inputSchema={
+                "type": "object",
+                "required": ["campaign_id"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_id": {"type": "integer"},
+                    "date_from": {"type": "string", "description": "YYYY-MM-DD"},
+                    "date_to": {"type": "string", "description": "YYYY-MM-DD"},
+                    "limit": {"type": "integer", "description": "Page size (default: 50)"},
+                    "offset": {"type": "integer", "description": "Page offset"},
+                },
+            },
+        ),
+        # ─── Creative update/delete ───────────────────────────────────
+        Tool(
+            name="direct.hf.creative_update",
+            description="Update a creative (video extension).",
+            inputSchema={
+                "type": "object",
+                "required": ["creative_id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "creative_id": {"type": "integer"},
+                    "video_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.creative_delete",
+            description="Delete creatives.",
+            inputSchema={
+                "type": "object",
+                "required": ["creative_ids", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "creative_ids": {"type": "array", "items": {"type": "integer"}},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Video delete ─────────────────────────────────────────────
+        Tool(
+            name="direct.hf.video_delete",
+            description="Delete uploaded videos.",
+            inputSchema={
+                "type": "object",
+                "required": ["video_ids", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "video_ids": {"type": "array", "items": {"type": "string"}},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Keywords resume/update ───────────────────────────────────
+        Tool(
+            name="direct.hf.keywords_resume",
+            description="Resume auto-paused keywords.",
+            inputSchema={
+                "type": "object",
+                "required": ["keyword_ids", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "keyword_ids": {"type": "array", "items": {"type": "integer"}},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.update_keywords",
+            description="Update keyword properties (text, bid in rubles, strategy priority).",
+            inputSchema={
+                "type": "object",
+                "required": ["keyword_id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "keyword_id": {"type": "integer"},
+                    "keyword": {"type": "string", "description": "New keyword text"},
+                    "bid_rub": {"type": "number", "description": "Bid in rubles (converted to micros)"},
+                    "strategy_priority": {"type": "string", "enum": ["LOW", "NORMAL", "HIGH"]},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Audience targets setBids ──────────────────────────────────
+        Tool(
+            name="direct.hf.audience_targets_set_bids",
+            description="Set bids on audience targets.",
+            inputSchema={
+                "type": "object",
+                "required": ["bids", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "bids": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["target_id"],
+                            "properties": {
+                                "target_id": {"type": "integer"},
+                                "context_bid": {"type": "number", "description": "Bid in rubles"},
+                            },
+                        },
+                    },
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── VCard update ─────────────────────────────────────────────
+        Tool(
+            name="direct.hf.vcard_update",
+            description="Update a VCard (business card).",
+            inputSchema={
+                "type": "object",
+                "required": ["vcard_id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "vcard_id": {"type": "integer"},
+                    "company": {"type": "string"},
+                    "phone_number": {"type": "string"},
+                    "country_code": {"type": "string", "description": "Default: 7"},
+                    "city_code": {"type": "string"},
+                    "street": {"type": "string"},
+                    "house": {"type": "string"},
+                    "work_time": {"type": "string"},
+                    "extra_message": {"type": "string"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Sitelinks update ─────────────────────────────────────────
+        Tool(
+            name="direct.hf.sitelinks_update",
+            description="Update a sitelinks set.",
+            inputSchema={
+                "type": "object",
+                "required": ["sitelinks_set_id", "sitelinks", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "sitelinks_set_id": {"type": "integer"},
+                    "sitelinks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["title", "href"],
+                            "properties": {
+                                "title": {"type": "string"},
+                                "href": {"type": "string"},
+                            },
+                        },
+                    },
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Video extension add ──────────────────────────────────────
+        Tool(
+            name="direct.hf.video_extension_add",
+            description="Add a VIDEO_EXTENSION ad extension to a campaign.",
+            inputSchema={
+                "type": "object",
+                "required": ["campaign_id", "creative_id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_id": {"type": "integer"},
+                    "creative_id": {"type": "integer"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Card extensions ──────────────────────────────────────────
+        Tool(
+            name="direct.hf.card_extension_add",
+            description="Add card extension (EXTENDED_TEXT) to a campaign.",
+            inputSchema={
+                "type": "object",
+                "required": ["campaign_id", "cards", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_id": {"type": "integer"},
+                    "cards": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["title", "href"],
+                            "properties": {
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                                "href": {"type": "string"},
+                                "price": {"type": "string"},
+                            },
+                        },
+                    },
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.card_extension_delete",
+            description="Delete card (EXTENDED_TEXT) extensions by IDs.",
+            inputSchema={
+                "type": "object",
+                "required": ["extension_ids", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "extension_ids": {"type": "array", "items": {"type": "integer"}},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Client update (agency) ───────────────────────────────────
+        Tool(
+            name="direct.hf.client_update",
+            description="Update client info (agency operation). Requires agency access.",
+            inputSchema={
+                "type": "object",
+                "required": ["client_id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "client_id": {"type": "integer"},
+                    "phone": {"type": "string"},
+                    "email": {"type": "string"},
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ─── Turbo pages ──────────────────────────────────────────────
+        Tool(
+            name="direct.hf.turbo_pages_list",
+            description="List turbo landing pages.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "campaign_id": {"type": "integer"},
+                    "limit": {"type": "integer", "description": "Page size (default: 50)"},
+                    "offset": {"type": "integer"},
+                },
+            },
+        ),
+        Tool(
+            name="direct.hf.turbo_page_get",
+            description="Get a single turbo landing page by ID.",
+            inputSchema={
+                "type": "object",
+                "required": ["page_id"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "page_id": {"type": "integer"},
+                },
+            },
+        ),
+        # ─── Video presets ────────────────────────────────────────────
+        Tool(
+            name="direct.hf.video_presets",
+            description="Get video presets (supported formats, sizes).",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+            },
+        ),
+        # ─── Retargeting lists update ─────────────────────────────────
+        Tool(
+            name="direct.hf.retargeting_lists_update",
+            description="Update a retargeting/audience list.",
+            inputSchema={
+                "type": "object",
+                "required": ["id", "apply"],
+                "properties": {
+                    "account_id": {"type": "string", **ACCOUNT_ID_SCHEMA_BASE},
+                    "direct_client_login": DIRECT_CLIENT_LOGIN_SCHEMA_BASE,
+                    "id": {"type": "integer", "description": "Retargeting list ID"},
+                    "name": {"type": "string"},
+                    "description": {"type": "string"},
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["operator", "goals"],
+                            "properties": {
+                                "operator": {"type": "string", "enum": ["ALL", "ANY", "NONE"]},
+                                "goals": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": ["goal_id"],
+                                        "properties": {
+                                            "goal_id": {"type": "integer"},
+                                            "membership_life_span": {"type": "integer"},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "dry_run": {"type": "boolean"},
+                    "apply": {"type": "boolean"},
+                },
+            },
+        ),
+        # ═══ Webmaster tools ════════════════════════════════════════════
+        Tool(
+            name="webmaster.hf.user_info",
+            description="Get current Yandex Webmaster user info (user_id, login).",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="webmaster.hf.hosts_list",
+            description="List all verified and unverified hosts/sites in Webmaster.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "Webmaster user id (optional, auto-fetched)"},
+                    "page": {"type": "integer", "description": "Page number (default: 0)"},
+                    "per_page": {"type": "integer", "description": "Per page (default: 50)"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.host_info",
+            description="Get details about a specific host/site in Webmaster.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string", "description": "Host ID (e.g. 'example.com:https')"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.host_add",
+            description="Add a new host/site to Webmaster.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_url"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_url": {"type": "string", "description": "Full URL (e.g. 'https://example.com')"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.host_verification",
+            description="Get verification status for a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.verification_uinna",
+            description="Set verification uinna for a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id", "uinna"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                    "uinna": {"type": "string", "description": "Verification uinna hash"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.sitemaps_list",
+            description="List sitemaps for a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.sitemap_add",
+            description="Add a sitemap URL for a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id", "sitemap_url"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                    "sitemap_url": {"type": "string", "description": "Full sitemap URL"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.sitemap_remove",
+            description="Remove a sitemap from a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id", "sitemap_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                    "sitemap_id": {"type": "string", "description": "Sitemap ID"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.external_links",
+            description="Get external links for a host.",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.search_queries",
+            description="Get popular search queries for a host (or specific query detail if query_id provided).",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                    "query_id": {"type": "string", "description": "Optional: get detail for specific query"},
+                },
+            },
+        ),
+        Tool(
+            name="webmaster.hf.host_summary",
+            description="Get host summary (indexing stats, TIC, site quality).",
+            inputSchema={
+                "type": "object",
+                "required": ["host_id"],
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "host_id": {"type": "string"},
+                },
+            },
+        ),
     ]
 
 
@@ -2549,6 +3091,7 @@ def tool_definitions(config: AppConfig | None = None) -> list[Tool]:
                     "counter_id": {"type": "string", "description": "Metrica counter ID."},
                     "date_from": {"type": "string", "description": "YYYY-MM-DD."},
                     "date_to": {"type": "string", "description": "YYYY-MM-DD."},
+                    "attribution": {"type": "string", "description": "Attribution model: lastsign (default) | firstsign | lastyandexdirect | firstyandexdirect | lastclick | firstclick | lastimpression | firstimpression."},
                 },
             },
         ),

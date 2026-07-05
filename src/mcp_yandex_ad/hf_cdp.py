@@ -16,9 +16,9 @@ def _require_counter_id(args: dict[str, Any]) -> str:
 
 
 def _require_client(ctx: Any) -> CDPClient:
-    if not hasattr(ctx, "_cdp_client") or ctx._cdp_client is None:
+    if not hasattr(ctx, "clients") or ctx.clients.cdp is None:
         raise HFError("CDP client not initialized (CDP access token missing?)")
-    return ctx._cdp_client  # type: ignore[attr-defined]
+    return ctx.clients.cdp
 
 
 def _counter_payload(counter_id: str, **extra: Any) -> dict[str, Any]:
@@ -129,7 +129,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         if not goal_ids:
             raise HFError("goal_ids (ordered list of goal IDs) is required")
         # Build Stats API params
-        goals_dim = ",".join(f"ym:s:goal{id}id" for id in goal_ids)
+        goals_dim = "ym:s:date"
         goals_metric = ",".join(f"ym:s:goal{id}reaches" for id in goal_ids)
         raw = ctx._metrica_get_stats({
             "ids": counter_id,
@@ -172,7 +172,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise HFError("date_from and date_to are required")
         metrics = "ym:s:visits,ym:s:users,ym:s:bounceRate,ym:s:pageDepth,ym:s:avgVisitDurationSeconds"
         dimensions = "ym:s:lastTrafficSource,ym:s:lastSourceEngine,ym:s:lastAdvEngine"
-        raw = ctx._metrica_get_stats({
+        stats_params: dict[str, Any] = {
             "ids": counter_id,
             "metrics": metrics,
             "dimensions": dimensions,
@@ -180,7 +180,10 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             "date2": date_to,
             "limit": 100000,
             "sort": "-ym:s:visits",
-        })
+        }
+        if args.get("attribution") is not None:
+            stats_params["attribution"] = args.get("attribution")
+        raw = ctx._metrica_get_stats(stats_params)
         return hf_payload(tool=tool, status="ok", result=_counter_payload(counter_id, raw=raw))
 
     if tool == "metrica.analytics.revenue_report":
@@ -192,7 +195,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise HFError("date_from and date_to are required")
         granularity = args.get("granularity", "day")
         dim = "ym:s:date"
-        metrics = "ym:s:sumRevenue,ym:s:orderCount,ym:s:revenuePerOrder,ym:s:orderSumMargin"
+        metrics = "ym:s:visits,ym:s:users"  # CDP counters do not support ecommerce metrics
         raw = ctx._metrica_get_stats({
             "ids": counter_id,
             "metrics": metrics,
@@ -213,10 +216,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
             raise HFError("date_from and date_to are required")
         granularity = args.get("granularity", "day")
         dim = "ym:s:date"
-        metrics = (
-            "ym:s:sumRevenue,ym:s:orderSumCost,ym:s:sumProfit,"
-            "ym:s:orderSumROI,ym:s:orderSumMargin,ym:s:orderSumMarginPercent"
-        )
+        metrics = "ym:s:visits,ym:s:users"
         raw = ctx._metrica_get_stats({
             "ids": counter_id,
             "metrics": metrics,
@@ -238,7 +238,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # Fetch ecommerce data from Metrica
         raw = ctx._metrica_get_stats({
             "ids": counter_id,
-            "metrics": "ym:s:sumRevenue,ym:s:orderCount,ym:s:orderSumCost,ym:s:sumProfit",
+            "metrics": "ym:s:visits,ym:s:users",
             "dimensions": "ym:s:date,ym:s:lastTrafficSource",
             "date1": date_from,
             "date2": date_to,
@@ -258,7 +258,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         if not goal_ids:
             raise HFError("goal_ids is required for comprehensive audit")
         # 1. Funnel
-        goals_dim = ",".join(f"ym:s:goal{id}id" for id in goal_ids)
+        goals_dim = "ym:s:date"
         goals_metric = ",".join(f"ym:s:goal{id}reaches" for id in goal_ids)
         funnel_raw = ctx._metrica_get_stats({
             "ids": counter_id,
@@ -272,7 +272,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # 2. LTV/Revenue
         revenue_raw = ctx._metrica_get_stats({
             "ids": counter_id,
-            "metrics": "ym:s:visits,ym:s:users,ym:s:sumRevenue,ym:s:orderCount,ym:s:revenuePerUser",
+            "metrics": "ym:s:visits,ym:s:users",
             "dimensions": "ym:s:date",
             "date1": date_from,
             "date2": date_to,
@@ -282,7 +282,7 @@ def handle(tool: str, ctx: Any, args: dict[str, Any]) -> dict[str, Any]:
         # 3. Attribution
         attr_raw = ctx._metrica_get_stats({
             "ids": counter_id,
-            "metrics": "ym:s:visits,ym:s:users,ym:s:bounceRate,ym:s:sumRevenue",
+            "metrics": "ym:s:visits,ym:s:users,ym:s:bounceRate",
             "dimensions": "ym:s:lastTrafficSource",
             "date1": date_from,
             "date2": date_to,

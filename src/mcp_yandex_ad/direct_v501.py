@@ -20,11 +20,14 @@ EXTRA_RESOURCES = {
     "feeds": {"resource": "json/v501/feeds", "methods": ["get", "add", "delete", "update"]},
     "smartadtargets": {"resource": "json/v501/smartadtargets", "methods": ["get", "add", "suspend", "resume", "delete"]},
     "businesses": {"resource": "json/v501/businesses", "methods": ["get"]},
-    "creatives": {"resource": "json/v501/creatives", "methods": ["get", "add"]},
+    "creatives": {"resource": "json/v501/creatives", "methods": ["get", "add", "update", "delete"]},
     "vcards": {"resource": "json/v501/vcards", "methods": ["get", "add", "delete", "update"]},
     "negativekeywordsharedsets": {"resource": "json/v5/negativekeywordsharedsets", "methods": ["get", "add", "delete", "update"]},
     "keywordbids": {"resource": "json/v501/keywordbids", "methods": ["get", "setAuto", "deduplicate"]},
-    "retargetinglists": {"resource": "json/v5/retargetinglists", "methods": ["get", "add", "delete"]},
+    "retargetinglists": {"resource": "json/v5/retargetinglists", "methods": ["get", "add", "delete", "update"]},
+    "leads": {"resource": "json/v501/leads", "methods": ["get"]},
+    "turbolandingpages": {"resource": "json/v501/turbolandingpages", "methods": ["get", "list"]},
+    "videopresets": {"resource": "json/v5/videopresets", "methods": ["get"]},
 }
 
 
